@@ -1,0 +1,28 @@
+/* theme.css — делаем панели светлыми, текст тёмным */
+.p-card {
+  background-color: var(--clot-panel-bg) !important;
+  color: var(--clot-panel-text) !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+}
+
+.p-button {
+  background-color: var(--clot-accent) !important;
+  border: none !important;
+  color: white !important;
+  transition: background-color 0.2s;
+}
+
+.p-button:hover {
+  background-color: var(--clot-accent-hover) !important;
+}
+
+.p-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Вкладки, если понадобятся позже */
+.p-tabview .p-tabview-nav {
+  background-color: var(--clot-panel-bg) !important;
+}
