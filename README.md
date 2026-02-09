@@ -1,6 +1,7 @@
 <p align="center">
   <img src="./clots-game.png" width="600">
 </p>
+
 # Clots: Hem Empire
 
 Полноценная стратегическая игра о кровяной империи. Вы — разумная система крови,
