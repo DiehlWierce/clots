@@ -8,6 +8,7 @@ export type NodeType =
   | 'boss'
   | 'sanctuary'
   | 'relay'
+  | 'vault'
 
 export interface GameNode {
   id: string
@@ -29,6 +30,8 @@ export interface GameModule {
   id: string
   name: string
   description: string
+  category: string
+  tier: number
   cost: {
     clots?: number
     plasma?: number
@@ -49,6 +52,8 @@ export interface Doctrine {
   id: string
   name: string
   description: string
+  focus: string
+  tier: number
   cost: GameModule['cost']
   effects: GameModule['effects']
 }
@@ -77,7 +82,13 @@ interface CombatState {
   focused: boolean
 }
 
-const STORAGE_KEY = 'clots_game_state_v3'
+interface Notification {
+  id: number
+  message: string
+  type: 'info' | 'warning' | 'success'
+}
+
+const STORAGE_KEY = 'clots_game_state_v4'
 
 const levelThresholds = [0, 60, 150, 280, 450, 650, 900, 1200, 1600]
 
@@ -189,6 +200,60 @@ const baseNodes: GameNode[] = [
     discovered: false,
     cleared: false,
     reward: { clots: 60, essence: 16, experience: 120 }
+  },
+  {
+    id: 'n13',
+    name: 'Хранилище ферритина',
+    type: 'vault',
+    difficulty: 8,
+    discovered: false,
+    cleared: false,
+    reward: { clots: 80, plasma: 70, experience: 130 }
+  },
+  {
+    id: 'n14',
+    name: 'Эритроцитарный маяк',
+    type: 'relay',
+    difficulty: 9,
+    discovered: false,
+    cleared: false,
+    reward: { plasma: 110, essence: 14, experience: 150 }
+  },
+  {
+    id: 'n15',
+    name: 'Крипта лейкоцитов',
+    type: 'ruins',
+    difficulty: 9,
+    discovered: false,
+    cleared: false,
+    reward: { essence: 20, experience: 160 }
+  },
+  {
+    id: 'n16',
+    name: 'Полярный гребень иммунитета',
+    type: 'battle',
+    difficulty: 10,
+    discovered: false,
+    cleared: false,
+    reward: { clots: 90, essence: 18, experience: 180 }
+  },
+  {
+    id: 'n17',
+    name: 'Синтез-купол архонтов',
+    type: 'forge',
+    difficulty: 10,
+    discovered: false,
+    cleared: false,
+    reward: { moduleId: 'crimson-forge', experience: 200 }
+  },
+  {
+    id: 'n18',
+    name: 'Тронный синус',
+    type: 'boss',
+    difficulty: 11,
+    discovered: false,
+    cleared: false,
+    reward: { clots: 140, essence: 30, experience: 260 }
   }
 ]
 
@@ -197,6 +262,8 @@ const baseModules: GameModule[] = [
     id: 'pulse-harvester',
     name: 'Пульс-сборщик',
     description: 'Пассивно увеличивает добычу плазмы каждую секунду.',
+    category: 'Экономика',
+    tier: 1,
     cost: { clots: 12, plasma: 40 },
     effects: { plasmaRate: 1.4 },
     unlocked: false
@@ -205,6 +272,8 @@ const baseModules: GameModule[] = [
     id: 'veil-shroud',
     name: 'Пелена маскировки',
     description: 'Снижает рост угрозы и повышает скрытность.',
+    category: 'Скрытность',
+    tier: 1,
     cost: { essence: 4, plasma: 25 },
     effects: { masking: 8, defense: 1 },
     unlocked: false
@@ -213,6 +282,8 @@ const baseModules: GameModule[] = [
     id: 'hem-arsenal',
     name: 'Гемо-арсенал',
     description: 'Усиливает боевые импульсы и урон по врагу.',
+    category: 'Штурм',
+    tier: 1,
     cost: { clots: 20, essence: 6 },
     effects: { attack: 3 },
     unlocked: false
@@ -221,6 +292,8 @@ const baseModules: GameModule[] = [
     id: 'energy-loop',
     name: 'Контур питания',
     description: 'Увеличивает запас энергии и ускоряет восстановление.',
+    category: 'Энергия',
+    tier: 1,
     cost: { plasma: 60, essence: 3 },
     effects: { energy: 2 },
     unlocked: false
@@ -229,6 +302,8 @@ const baseModules: GameModule[] = [
     id: 'forge-core',
     name: 'Ядро кузницы',
     description: 'Открывает продвинутые синтезы и улучшает защиту.',
+    category: 'Оборона',
+    tier: 2,
     cost: { clots: 30, essence: 10 },
     effects: { defense: 2, plasmaRate: 0.8 },
     unlocked: false
@@ -237,6 +312,8 @@ const baseModules: GameModule[] = [
     id: 'rally-node',
     name: 'Узел концентрации',
     description: 'Поднимает максимальную целостность цитадели.',
+    category: 'Оборона',
+    tier: 2,
     cost: { clots: 28, essence: 8 },
     effects: { integrity: 8 },
     unlocked: false
@@ -245,6 +322,8 @@ const baseModules: GameModule[] = [
     id: 'blood-matrix',
     name: 'Матрица сгустков',
     description: 'Укрепляет боевой темп и уменьшает расход сгустков.',
+    category: 'Штурм',
+    tier: 2,
     cost: { clots: 40, plasma: 55 },
     effects: { attack: 2, defense: 1 },
     unlocked: false
@@ -253,8 +332,60 @@ const baseModules: GameModule[] = [
     id: 'silent-veil',
     name: 'Тихий покров',
     description: 'Глушит рост угрозы и усиливает маскировку.',
+    category: 'Скрытность',
+    tier: 2,
     cost: { plasma: 80, essence: 10 },
     effects: { masking: 12 },
+    unlocked: false
+  },
+  {
+    id: 'sanguine-pylon',
+    name: 'Сангвинарный пилон',
+    description: 'Конденсирует плазму и поднимает общий темп добычи.',
+    category: 'Экономика',
+    tier: 2,
+    cost: { plasma: 120, clots: 35 },
+    effects: { plasmaRate: 2.2 },
+    unlocked: false
+  },
+  {
+    id: 'phase-screen',
+    name: 'Фазовый экран',
+    description: 'Укрепляет защиту и сглаживает всплески угрозы.',
+    category: 'Оборона',
+    tier: 3,
+    cost: { essence: 14, clots: 45 },
+    effects: { defense: 3, masking: 6, integrity: 6 },
+    unlocked: false
+  },
+  {
+    id: 'nerve-lattice',
+    name: 'Нервная решётка',
+    description: 'Сокращает издержки действий, усиливая энергоотдачу.',
+    category: 'Энергия',
+    tier: 3,
+    cost: { plasma: 140, essence: 12 },
+    effects: { energy: 3, plasmaRate: 0.6 },
+    unlocked: false
+  },
+  {
+    id: 'scarlet-arsenal',
+    name: 'Алый арсенал',
+    description: 'Закрепляет атакующий контур и повышает стойкость.',
+    category: 'Штурм',
+    tier: 3,
+    cost: { clots: 70, essence: 18 },
+    effects: { attack: 4, defense: 2 },
+    unlocked: false
+  },
+  {
+    id: 'crimson-forge',
+    name: 'Багровая кузня',
+    description: 'Позволяет ковать элитные импульсы и укреплять ядро.',
+    category: 'Экономика',
+    tier: 4,
+    cost: { plasma: 180, essence: 20, clots: 90 },
+    effects: { attack: 3, plasmaRate: 2.4, integrity: 10 },
     unlocked: false
   }
 ]
@@ -264,6 +395,8 @@ const baseDoctrines: Doctrine[] = [
     id: 'reaver',
     name: 'Доктрина Пожирателей',
     description: 'Ставка на агрессию и давление, растущий урон и плазму.',
+    focus: 'Атака',
+    tier: 1,
     cost: { essence: 6, plasma: 40 },
     effects: { attack: 2, plasmaRate: 0.8 }
   },
@@ -271,6 +404,8 @@ const baseDoctrines: Doctrine[] = [
     id: 'warden',
     name: 'Доктрина Стражей',
     description: 'Выживаемость и контроль: защита, маскировка, целостность.',
+    focus: 'Оборона',
+    tier: 1,
     cost: { essence: 6, clots: 20 },
     effects: { defense: 2, masking: 6, integrity: 6 }
   },
@@ -278,8 +413,37 @@ const baseDoctrines: Doctrine[] = [
     id: 'weaver',
     name: 'Доктрина Ткачей',
     description: 'Энергия и темп, ускоряющий экономику и восстановление.',
+    focus: 'Экономика',
+    tier: 1,
     cost: { essence: 5, plasma: 30 },
     effects: { energy: 1, plasmaRate: 1.1 }
+  },
+  {
+    id: 'vanguard',
+    name: 'Доктрина Авангарда',
+    description: 'Манёвры на грани: урон, маскировка и жёсткая экономия.',
+    focus: 'Гибрид',
+    tier: 2,
+    cost: { essence: 10, clots: 40 },
+    effects: { attack: 2, masking: 5, plasmaRate: 0.6 }
+  },
+  {
+    id: 'oracle',
+    name: 'Доктрина Провидцев',
+    description: 'Чувствительность к угрозам и усиление энергопотоков.',
+    focus: 'Контроль',
+    tier: 2,
+    cost: { essence: 12, plasma: 65 },
+    effects: { energy: 2, defense: 1, masking: 4 }
+  },
+  {
+    id: 'pulsar',
+    name: 'Доктрина Пульсаров',
+    description: 'Экспоненциальный рост силы при длительной игре.',
+    focus: 'Рост',
+    tier: 3,
+    cost: { essence: 16, plasma: 90, clots: 60 },
+    effects: { attack: 3, plasmaRate: 1.5, integrity: 4 }
   }
 ]
 
@@ -313,7 +477,7 @@ const decodeSave = (code: string) => {
 
 export function useGameState() {
   const savedRaw = loadState()
-  const saved = savedRaw?.version === 3 ? savedRaw : null
+  const saved = savedRaw?.version === 4 ? savedRaw : null
 
   const day = ref(saved?.day ?? 1)
   const clots = ref(saved?.clots ?? 25)
@@ -341,10 +505,13 @@ export function useGameState() {
   const selectedDoctrineId = ref<string | null>(
     saved?.selectedDoctrineId ?? null
   )
+  const tutorialEnabled = ref(saved?.tutorialEnabled ?? true)
+  const tutorialStep = ref(saved?.tutorialStep ?? 0)
 
   const log = ref<Array<{ id: number; message: string; time: string }>>(
     saved?.log ?? []
   )
+  const notifications = ref<Notification[]>([])
   const encounter = ref<Encounter | null>(saved?.encounter ?? null)
   const combatState = reactive<CombatState>({
     guarded: saved?.combatState?.guarded ?? false,
@@ -445,6 +612,27 @@ export function useGameState() {
     }
   }
 
+  const pushNotification = (
+    message: string,
+    type: Notification['type'] = 'info'
+  ) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000)
+    notifications.value.push({ id, message, type })
+    if (notifications.value.length > 4) {
+      notifications.value.shift()
+    }
+    window.setTimeout(() => {
+      notifications.value = notifications.value.filter(item => item.id !== id)
+    }, 3800)
+  }
+
+  const advanceTutorial = (step: number) => {
+    if (!tutorialEnabled.value) return
+    if (tutorialStep.value === step) {
+      tutorialStep.value += 1
+    }
+  }
+
   const gainExperience = (amount: number, reason?: string) => {
     if (amount <= 0) return
     experience.value += amount
@@ -471,22 +659,36 @@ export function useGameState() {
 
   const buyModule = (moduleId: string) => {
     const module = modules.value.find(item => item.id === moduleId)
-    if (!module || module.unlocked || !canAfford(module.cost)) return
+    if (!module || module.unlocked || !canAfford(module.cost)) {
+      pushNotification('Недостаточно ресурсов для модуля.', 'warning')
+      return
+    }
     spendCost(module.cost)
     module.unlocked = true
     logEvent(`Модуль «${module.name}» интегрирован в ядро.`)
+    pushNotification(`Модуль «${module.name}» активирован.`, 'success')
+    advanceTutorial(2)
   }
 
   const adoptDoctrine = (doctrineId: string) => {
     const doctrine = doctrines.value.find(item => item.id === doctrineId)
-    if (!doctrine || !canAfford(doctrine.cost)) return
+    if (!doctrine || !canAfford(doctrine.cost)) {
+      pushNotification('Недостаточно ресурсов для доктрины.', 'warning')
+      return
+    }
     spendCost(doctrine.cost)
     selectedDoctrineId.value = doctrine.id
     logEvent(`Вы выбрали ${doctrine.name}.`)
+    pushNotification(`Доктрина «${doctrine.name}» принята.`, 'success')
+    advanceTutorial(4)
   }
 
   const spendEnergy = (amount = 1) => {
-    if (energy.value < amount) return false
+    if (energy.value < amount) {
+      pushNotification('Недостаточно энергии для действия.', 'warning')
+      logEvent('Не хватает энергии для действия.')
+      return false
+    }
     energy.value -= amount
     return true
   }
@@ -497,6 +699,7 @@ export function useGameState() {
     plasma.value += gained
     gainExperience(3)
     logEvent(`Сбор плазмы: +${gained}.`)
+    advanceTutorial(0)
   }
 
   const refineClots = () => {
@@ -504,18 +707,21 @@ export function useGameState() {
     const required = 18
     if (plasma.value < required) {
       logEvent('Недостаточно плазмы для синтеза.')
+      pushNotification('Нужно больше плазмы для синтеза.', 'warning')
       return
     }
     plasma.value -= required
     clots.value += 6
     gainExperience(4)
     logEvent('Синтез сгустков: +6.')
+    advanceTutorial(1)
   }
 
   const transmuteEssence = () => {
     if (!spendEnergy(2)) return
     if (clots.value < 12) {
       logEvent('Нужны сгустки для возгонки эссенции.')
+      pushNotification('Не хватает сгустков для эссенции.', 'warning')
       return
     }
     clots.value -= 12
@@ -528,6 +734,7 @@ export function useGameState() {
     if (!spendEnergy(1)) return
     if (essence.value < 2) {
       logEvent('Не хватает эссенции для маскировки.')
+      pushNotification('Нужна эссенция для маскировки.', 'warning')
       return
     }
     essence.value -= 2
@@ -553,6 +760,7 @@ export function useGameState() {
     const cost = { plasma: 20, essence: 1 }
     if (!canAfford(cost)) {
       logEvent('Недостаточно ресурсов для регенерации ядра.')
+      pushNotification('Нужны плазма и эссенция для регенерации.', 'warning')
       return
     }
     spendCost(cost)
@@ -566,6 +774,7 @@ export function useGameState() {
     const cost = { essence: 4 }
     if (!canAfford(cost)) {
       logEvent('Недостаточно эссенции для прорыва.')
+      pushNotification('Нужна эссенция для прорыва фронтира.', 'warning')
       return
     }
     spendCost(cost)
@@ -648,6 +857,7 @@ export function useGameState() {
       combatState.focused = false
       combatState.guarded = false
       logEvent(`Контакт с угрозой: ${encounter.value.enemyName}.`)
+      pushNotification('Началась схватка. Проверьте боевой контур.', 'info')
       return
     }
 
@@ -656,6 +866,7 @@ export function useGameState() {
     unlockNextNode()
     gainExperience(10)
     logEvent(`Сектор «${node.name}» стабилизирован.`)
+    advanceTutorial(3)
   }
 
   const applyCombatDamage = (base: number) => {
@@ -726,6 +937,7 @@ export function useGameState() {
       }
       logEvent(`Угроза нейтрализована: ${encounter.value.enemyName}.`)
       closeEncounter()
+      advanceTutorial(5)
       return
     }
 
@@ -737,6 +949,7 @@ export function useGameState() {
     if (!spendEnergy(2)) return
     if (clots.value < 6) {
       logEvent('Недостаточно сгустков для всплеска.')
+      pushNotification('Не хватает сгустков для всплеска.', 'warning')
       return
     }
     clots.value -= 6
@@ -754,6 +967,7 @@ export function useGameState() {
       }
       logEvent(`Угроза нейтрализована: ${encounter.value.enemyName}.`)
       closeEncounter()
+      advanceTutorial(5)
       return
     }
 
@@ -781,6 +995,7 @@ export function useGameState() {
     closeEncounter()
     threat.value = Math.min(100, threat.value + 8)
     logEvent('Отступление. Угроза возросла.')
+    pushNotification('Вы отступили. Угроза выросла.', 'info')
   }
 
   const tick = () => {
@@ -801,7 +1016,7 @@ export function useGameState() {
   }
 
   const createSavePayload = () => ({
-    version: 3,
+    version: 4,
     day: day.value,
     clots: clots.value,
     plasma: plasma.value,
@@ -816,7 +1031,9 @@ export function useGameState() {
     log: log.value,
     encounter: encounter.value,
     combatState,
-    selectedDoctrineId: selectedDoctrineId.value
+    selectedDoctrineId: selectedDoctrineId.value,
+    tutorialEnabled: tutorialEnabled.value,
+    tutorialStep: tutorialStep.value
   })
 
   const resetGame = () => {
@@ -831,6 +1048,8 @@ export function useGameState() {
     nodes.value = baseNodes.map(node => ({ ...node }))
     modules.value = baseModules.map(module => ({ ...module }))
     selectedDoctrineId.value = null
+    tutorialEnabled.value = true
+    tutorialStep.value = 0
     encounter.value = null
     combatState.guarded = false
     combatState.focused = false
@@ -872,6 +1091,10 @@ export function useGameState() {
     }
     selectedDoctrineId.value =
       (payload.selectedDoctrineId as string | null) ?? selectedDoctrineId.value
+    tutorialEnabled.value = Boolean(
+      payload.tutorialEnabled ?? tutorialEnabled.value
+    )
+    tutorialStep.value = Number(payload.tutorialStep ?? tutorialStep.value)
     encounter.value = (payload.encounter as Encounter | null) ?? null
     if (payload.combatState && typeof payload.combatState === 'object') {
       const combat = payload.combatState as CombatState
@@ -908,7 +1131,9 @@ export function useGameState() {
       modules,
       log,
       encounter,
-      selectedDoctrineId
+      selectedDoctrineId,
+      tutorialEnabled,
+      tutorialStep
     ],
     () => {
       saveState(createSavePayload())
@@ -941,6 +1166,7 @@ export function useGameState() {
     doctrines,
     selectedDoctrineId,
     log,
+    notifications,
     encounter,
     combatState,
     selectedNodeId,
@@ -969,6 +1195,10 @@ export function useGameState() {
     guard,
     retreat,
     logEvent,
+    tutorialEnabled,
+    tutorialStep,
+    advanceTutorial,
+    pushNotification,
     generateSaveCode,
     loadFromCode,
     resetGame,

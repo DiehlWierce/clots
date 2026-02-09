@@ -2,8 +2,8 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  padding: 24px;
-  gap: 20px;
+  padding: 18px;
+  gap: 16px;
 }
 
 .hud {
@@ -13,7 +13,7 @@
   background: rgba(15, 18, 28, 0.9);
   border: 1px solid rgba(120, 135, 180, 0.2);
   border-radius: 16px;
-  padding: 18px 22px;
+  padding: 16px 18px;
   box-shadow: 0 10px 24px rgba(4, 6, 12, 0.4);
 }
 
@@ -25,7 +25,7 @@
 }
 
 .hud__brand {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -38,29 +38,30 @@
 .hud__stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .stat {
   background: rgba(25, 28, 44, 0.7);
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 13px;
   color: #dfe6f6;
 }
 
 .game-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 18px;
+  gap: 14px;
   flex: 1;
+  align-content: start;
 }
 
 .panel {
   background: rgba(11, 13, 22, 0.9);
   border-radius: 18px;
   border: 1px solid rgba(92, 104, 142, 0.3);
-  padding: 18px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -76,16 +77,82 @@
   font-size: 13px;
 }
 
+.tab-bar {
+  grid-column: span 12;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: rgba(12, 15, 26, 0.9);
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(92, 104, 142, 0.3);
+}
+
+.tab-bar__button {
+  background: rgba(25, 30, 46, 0.9);
+  color: #d4e0ff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.tab-bar__button--active {
+  background: linear-gradient(135deg, #b21f42, #e34d6d);
+  color: #fff;
+}
+
+.tab-bar__button:hover:not(.tab-bar__button--active) {
+  transform: translateY(-1px);
+}
+
+.toast-stack {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  gap: 8px;
+  z-index: 50;
+  max-width: 280px;
+}
+
+.toast {
+  background: rgba(15, 18, 28, 0.95);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  border: 1px solid rgba(92, 104, 142, 0.4);
+  color: #dfe6f6;
+  box-shadow: 0 6px 18px rgba(4, 6, 12, 0.35);
+}
+
+.toast--warning {
+  border-color: rgba(255, 178, 110, 0.6);
+  color: #ffd7b1;
+}
+
+.toast--success {
+  border-color: rgba(118, 232, 170, 0.6);
+  color: #c6ffe3;
+}
+
+.toast--info {
+  border-color: rgba(145, 181, 255, 0.6);
+  color: #cbd9ff;
+}
+
 .panel--story {
-  grid-column: span 4;
+  grid-column: span 12;
 }
 
 .panel--map {
-  grid-column: span 5;
+  grid-column: span 7;
 }
 
 .panel--details {
-  grid-column: span 3;
+  grid-column: span 5;
 }
 
 .panel--modules {
@@ -93,23 +160,31 @@
 }
 
 .panel--combat {
-  grid-column: span 5;
+  grid-column: span 12;
 }
 
 .panel--doctrine {
-  grid-column: span 4;
+  grid-column: span 5;
 }
 
 .panel--save {
-  grid-column: span 4;
+  grid-column: span 6;
 }
 
 .panel--faq {
-  grid-column: span 4;
+  grid-column: span 6;
+}
+
+.panel--training {
+  grid-column: span 12;
 }
 
 .panel--log {
-  grid-column: span 12;
+  grid-column: span 7;
+}
+
+.panel--notifications {
+  grid-column: span 5;
 }
 
 .level-progress {
@@ -153,7 +228,7 @@
 .save-actions button {
   background: linear-gradient(135deg, #b21f42, #e34d6d);
   color: #fff;
-  padding: 10px 14px;
+  padding: 9px 12px;
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
@@ -196,6 +271,25 @@
   color: #f4c6d1;
 }
 
+.action-insight {
+  background: rgba(17, 22, 36, 0.8);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(92, 104, 142, 0.2);
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.action-insight__title {
+  font-weight: 600;
+  color: #f1c2ce;
+}
+
+.action-insight__effect {
+  color: #a7c1ff;
+}
+
 .map-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -205,7 +299,7 @@
 .map-node {
   background: rgba(22, 27, 45, 0.9);
   border: 1px solid rgba(92, 104, 142, 0.4);
-  padding: 14px;
+  padding: 12px;
   border-radius: 14px;
   text-align: left;
   color: #e5ebf7;
@@ -289,7 +383,7 @@
 .module-card {
   background: rgba(20, 25, 42, 0.8);
   border-radius: 14px;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid rgba(85, 97, 134, 0.4);
   display: grid;
   gap: 12px;
@@ -308,6 +402,13 @@
   color: #c1cce7;
 }
 
+.module-card__meta,
+.module-card__effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .doctrine-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -317,7 +418,7 @@
 .doctrine-card {
   background: rgba(20, 25, 42, 0.8);
   border-radius: 14px;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid rgba(85, 97, 134, 0.4);
   display: grid;
   gap: 10px;
@@ -327,6 +428,19 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
+}
+
+.pill {
+  background: rgba(35, 42, 64, 0.8);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #c4d4f5;
+}
+
+.pill--dark {
+  background: rgba(24, 28, 44, 0.9);
+  color: #f0c8d4;
 }
 
 .combat {
@@ -388,6 +502,39 @@
   max-height: 180px;
   overflow: auto;
   padding-right: 6px;
+}
+
+.notification-list {
+  display: grid;
+  gap: 8px;
+}
+
+.notification-item {
+  background: rgba(19, 24, 38, 0.8);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  border: 1px solid rgba(92, 104, 142, 0.3);
+}
+
+.notification-item--warning {
+  border-color: rgba(255, 178, 110, 0.6);
+  color: #ffd7b1;
+}
+
+.notification-item--success {
+  border-color: rgba(118, 232, 170, 0.6);
+  color: #c6ffe3;
+}
+
+.notification-item--info {
+  border-color: rgba(145, 181, 255, 0.6);
+  color: #cbd9ff;
+}
+
+.notification-empty {
+  color: #8fa1c5;
+  font-size: 13px;
 }
 
 .save-box {
@@ -457,20 +604,93 @@
   color: #9fb0d1;
 }
 
+.training {
+  display: grid;
+  gap: 12px;
+  font-size: 13px;
+  color: #d1dbf5;
+}
+
+.training__toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.training__button {
+  background: rgba(25, 30, 46, 0.9);
+  color: #d4e0ff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.training__button--active {
+  background: linear-gradient(135deg, #2f994c, #3fd37c);
+  color: #052011;
+}
+
+.training__steps {
+  display: grid;
+  gap: 10px;
+}
+
+.training__step {
+  background: rgba(18, 22, 36, 0.65);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(92, 104, 142, 0.2);
+  display: grid;
+  gap: 4px;
+}
+
+.training__step--active {
+  border-color: rgba(255, 170, 195, 0.6);
+  box-shadow: 0 0 0 1px rgba(255, 170, 195, 0.2);
+}
+
+.training__step--done {
+  border-color: rgba(118, 232, 170, 0.5);
+}
+
+.training__title {
+  font-weight: 600;
+  color: #f5c7d5;
+}
+
+.training__note {
+  color: #8fa1c5;
+}
+
+@media (max-width: 720px) {
+  .toast-stack {
+    left: 18px;
+    right: 18px;
+  }
+  .tab-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+}
+
 .game-over {
   color: #ff9aa8;
   font-weight: 600;
 }
 
 @media (max-width: 1200px) {
-  .panel--story,
   .panel--map,
   .panel--details,
   .panel--modules,
   .panel--combat,
   .panel--doctrine,
   .panel--save,
-  .panel--faq {
+  .panel--faq,
+  .panel--log,
+  .panel--notifications,
+  .panel--training {
     grid-column: span 12;
   }
 }

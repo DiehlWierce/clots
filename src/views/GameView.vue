@@ -32,8 +32,31 @@
       </div>
     </header>
 
+    <div class="toast-stack" aria-live="polite">
+      <div
+        v-for="note in notifications"
+        :key="note.id"
+        class="toast"
+        :class="`toast--${note.type}`"
+      >
+        {{ note.message }}
+      </div>
+    </div>
+
     <main class="game-grid">
-      <section class="panel panel--story">
+      <nav class="tab-bar">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="tab-bar__button"
+          :class="{ 'tab-bar__button--active': activeTab === tab.id }"
+          @click="activeTab = tab.id"
+        >
+          {{ tab.label }}
+        </button>
+      </nav>
+
+      <section v-show="activeTab === 'control'" class="panel panel--story">
         <h2>Замысел</h2>
         <p>
           Вы — разумная кровь, организующая собственную империю в сосудистой сети.
@@ -57,19 +80,47 @@
         <div class="action-group">
           <h3>Производство</h3>
           <div class="actions">
-            <button :disabled="isGameOver" @click="gatherPlasma">
+            <button
+              :disabled="isGameOver"
+              @click="gatherPlasma"
+              @mouseenter="setActionHint('gatherPlasma')"
+              @focus="setActionHint('gatherPlasma')"
+              @mouseleave="clearActionHint"
+              @blur="clearActionHint"
+            >
               🌊 Сбор плазмы
               <span class="action-cost">Стоимость: ⚡1</span>
             </button>
-            <button :disabled="isGameOver" @click="refineClots">
+            <button
+              :disabled="isGameOver"
+              @click="refineClots"
+              @mouseenter="setActionHint('refineClots')"
+              @focus="setActionHint('refineClots')"
+              @mouseleave="clearActionHint"
+              @blur="clearActionHint"
+            >
               🧪 Синтез сгустков
               <span class="action-cost">Стоимость: ⚡1 • 💧18</span>
             </button>
-            <button :disabled="isGameOver" @click="transmuteEssence">
+            <button
+              :disabled="isGameOver"
+              @click="transmuteEssence"
+              @mouseenter="setActionHint('transmuteEssence')"
+              @focus="setActionHint('transmuteEssence')"
+              @mouseleave="clearActionHint"
+              @blur="clearActionHint"
+            >
               🔮 Возгонка эссенции
               <span class="action-cost">Стоимость: ⚡2 • 🩸12</span>
             </button>
-            <button :disabled="isGameOver" @click="reinforceMasking">
+            <button
+              :disabled="isGameOver"
+              @click="reinforceMasking"
+              @mouseenter="setActionHint('reinforceMasking')"
+              @focus="setActionHint('reinforceMasking')"
+              @mouseleave="clearActionHint"
+              @blur="clearActionHint"
+            >
               🕶️ Усилить маскировку
               <span class="action-cost">Стоимость: ⚡1 • ✨2</span>
             </button>
@@ -78,19 +129,46 @@
         <div class="action-group">
           <h3>Тактика и движение</h3>
           <div class="actions">
-            <button :disabled="isGameOver" @click="scanFlow">
+            <button
+              :disabled="isGameOver"
+              @click="scanFlow"
+              @mouseenter="setActionHint('scanFlow')"
+              @focus="setActionHint('scanFlow')"
+              @mouseleave="clearActionHint"
+              @blur="clearActionHint"
+            >
               🛰️ Разведка потока
               <span class="action-cost">Стоимость: ⚡1</span>
             </button>
-            <button :disabled="isGameOver" @click="stabilizeCore">
+            <button
+              :disabled="isGameOver"
+              @click="stabilizeCore"
+              @mouseenter="setActionHint('stabilizeCore')"
+              @focus="setActionHint('stabilizeCore')"
+              @mouseleave="clearActionHint"
+              @blur="clearActionHint"
+            >
               🧩 Стабилизировать ядро
               <span class="action-cost">Стоимость: ⚡2 • 💧20 • ✨1</span>
             </button>
-            <button :disabled="isGameOver" @click="advanceFront">
+            <button
+              :disabled="isGameOver"
+              @click="advanceFront"
+              @mouseenter="setActionHint('advanceFront')"
+              @focus="setActionHint('advanceFront')"
+              @mouseleave="clearActionHint"
+              @blur="clearActionHint"
+            >
               🧭 Прорыв фронтира
               <span class="action-cost">Стоимость: ⚡2 • ✨4</span>
             </button>
           </div>
+        </div>
+        <div class="action-insight">
+          <h3>Что делает выбранное действие</h3>
+          <p class="action-insight__title">{{ activeHint.title }}</p>
+          <p class="action-insight__text">{{ activeHint.description }}</p>
+          <div class="action-insight__effect">{{ activeHint.effect }}</div>
         </div>
         <div class="rates">
           <div>Пассивная плазма: {{ plasmaRate.toFixed(1) }}/сек.</div>
@@ -98,7 +176,7 @@
         </div>
       </section>
 
-      <section class="panel panel--map">
+      <section v-show="activeTab === 'map'" class="panel panel--map">
         <div class="panel__header">
           <h2>Карта кровотока</h2>
           <span>Выберите сектор и разверните операцию.</span>
@@ -124,7 +202,7 @@
         </div>
       </section>
 
-      <section class="panel panel--details">
+      <section v-show="activeTab === 'map'" class="panel panel--details">
         <div v-if="selectedNode" class="details">
           <div class="details__header">
             <h2>{{ selectedNode.name }}</h2>
@@ -165,7 +243,7 @@
         </div>
       </section>
 
-      <section class="panel panel--modules">
+      <section v-show="activeTab === 'development'" class="panel panel--modules">
         <div class="panel__header">
           <h2>Модули цитадели</h2>
           <span>Усиливайте ядро гемо-империи.</span>
@@ -177,6 +255,19 @@
               <span v-if="module.unlocked" class="tag tag--success">Активно</span>
             </div>
             <p>{{ module.description }}</p>
+            <div class="module-card__meta">
+              <span class="pill">Категория: {{ module.category }}</span>
+              <span class="pill">Уровень: {{ module.tier }}</span>
+            </div>
+            <div class="module-card__effects">
+              <span
+                v-for="effect in formatEffects(module.effects)"
+                :key="effect"
+                class="pill pill--dark"
+              >
+                {{ effect }}
+              </span>
+            </div>
             <div class="module-card__cost">
               <span v-if="module.cost.clots">🩸 {{ module.cost.clots }}</span>
               <span v-if="module.cost.plasma">💧 {{ module.cost.plasma }}</span>
@@ -192,7 +283,7 @@
         </div>
       </section>
 
-      <section class="panel panel--combat">
+      <section v-show="activeTab === 'combat'" class="panel panel--combat">
         <div class="panel__header">
           <h2>Боевой контур</h2>
           <span v-if="encounter">Идёт схватка.</span>
@@ -254,7 +345,7 @@
         </div>
       </section>
 
-      <section class="panel panel--doctrine">
+      <section v-show="activeTab === 'development'" class="panel panel--doctrine">
         <div class="panel__header">
           <h2>Доктрина развития</h2>
           <span>Выберите путь усиления цитадели.</span>
@@ -275,6 +366,19 @@
               </span>
             </div>
             <p>{{ doctrine.description }}</p>
+            <div class="module-card__meta">
+              <span class="pill">Фокус: {{ doctrine.focus }}</span>
+              <span class="pill">Уровень: {{ doctrine.tier }}</span>
+            </div>
+            <div class="module-card__effects">
+              <span
+                v-for="effect in formatEffects(doctrine.effects)"
+                :key="effect"
+                class="pill pill--dark"
+              >
+                {{ effect }}
+              </span>
+            </div>
             <div class="module-card__cost">
               <span v-if="doctrine.cost.clots">🩸 {{ doctrine.cost.clots }}</span>
               <span v-if="doctrine.cost.plasma">💧 {{ doctrine.cost.plasma }}</span>
@@ -290,7 +394,7 @@
         </div>
       </section>
 
-      <section class="panel panel--save">
+      <section v-show="activeTab === 'system'" class="panel panel--save">
         <div class="panel__header">
           <h2>Сохранения</h2>
           <span>Скопируйте код, чтобы восстановить игру позже.</span>
@@ -319,7 +423,7 @@
         </div>
       </section>
 
-      <section class="panel panel--faq">
+      <section v-show="activeTab === 'system'" class="panel panel--faq">
         <div class="panel__header">
           <h2>FAQ</h2>
           <span>Как играть и что делать в первую очередь.</span>
@@ -364,7 +468,7 @@
         </div>
       </section>
 
-      <section class="panel panel--log">
+      <section v-show="activeTab === 'journal'" class="panel panel--log">
         <div class="panel__header">
           <h2>Полевой журнал</h2>
           <span>Последние сигналы ядра.</span>
@@ -375,6 +479,66 @@
             <span class="log__message">{{ entry.message }}</span>
           </li>
         </ul>
+      </section>
+
+      <section v-show="activeTab === 'journal'" class="panel panel--notifications">
+        <div class="panel__header">
+          <h2>Оперативные уведомления</h2>
+          <span>Подсказки о нехватке ресурсов и событиях.</span>
+        </div>
+        <div class="notification-list">
+          <div
+            v-for="note in notifications"
+            :key="note.id"
+            class="notification-item"
+            :class="`notification-item--${note.type}`"
+          >
+            {{ note.message }}
+          </div>
+          <p v-if="!notifications.length" class="notification-empty">
+            Здесь будут появляться свежие уведомления.
+          </p>
+        </div>
+      </section>
+
+      <section v-show="activeTab === 'system'" class="panel panel--training">
+        <div class="panel__header">
+          <h2>Режим обучения</h2>
+          <span>Включите подсказки или сразу переходите к основной игре.</span>
+        </div>
+        <div class="training">
+          <div class="training__toggle">
+            <button
+              class="training__button"
+              :class="{ 'training__button--active': tutorialEnabled }"
+              @click="tutorialEnabled = !tutorialEnabled"
+            >
+              {{ tutorialEnabled ? 'Обучение включено' : 'Включить обучение' }}
+            </button>
+            <button class="training__button" @click="tutorialStep = 0">
+              Перезапустить этапы
+            </button>
+          </div>
+          <div v-if="tutorialEnabled" class="training__steps">
+            <div
+              v-for="(step, index) in tutorialSteps"
+              :key="step.id"
+              class="training__step"
+              :class="{
+                'training__step--active': tutorialStep === index,
+                'training__step--done': tutorialStep > index
+              }"
+            >
+              <div class="training__title">
+                {{ index + 1 }}. {{ step.title }}
+              </div>
+              <div class="training__text">{{ step.text }}</div>
+            </div>
+          </div>
+          <p v-else class="training__note">
+            Подсказки скрыты. Вы можете включить обучение в любой момент.
+          </p>
+        </div>
       </section>
     </main>
 
@@ -408,6 +572,7 @@ const {
   doctrines,
   selectedDoctrineId,
   log,
+  notifications,
   encounter,
   combatState,
   selectedNodeId,
@@ -437,8 +602,105 @@ const {
   generateSaveCode,
   loadFromCode,
   resetGame,
+  tutorialEnabled,
+  tutorialStep,
   tick
 } = useGameState()
+
+const tabs = [
+  { id: 'control', label: 'Управление' },
+  { id: 'map', label: 'Карта' },
+  { id: 'development', label: 'Развитие' },
+  { id: 'combat', label: 'Бой' },
+  { id: 'journal', label: 'Журнал' },
+  { id: 'system', label: 'Система' }
+]
+
+const activeTab = ref('control')
+
+const actionHints: Record<
+  string,
+  { title: string; description: string; effect: string }
+> = {
+  gatherPlasma: {
+    title: 'Сбор плазмы',
+    description: 'Базовая добыча, которая подпитывает производство и энергию.',
+    effect: 'Даёт плазму и немного опыта.'
+  },
+  refineClots: {
+    title: 'Синтез сгустков',
+    description: 'Преобразует плазму в сгустки для модулей и боевых всплесков.',
+    effect: 'Обменивает 💧 на 🩸, повышая боевой запас.'
+  },
+  transmuteEssence: {
+    title: 'Возгонка эссенции',
+    description: 'Редкий ресурс для доктрин, маскировки и прорыва.',
+    effect: 'Меняет 🩸 на ✨, открывая продвинутые действия.'
+  },
+  reinforceMasking: {
+    title: 'Усилить маскировку',
+    description: 'Снижает угрозу и защищает от иммунных всплесков.',
+    effect: 'Поднимает 🛡️ маскировку и сбрасывает угрозу.'
+  },
+  scanFlow: {
+    title: 'Разведка потока',
+    description: 'Снижает угрозу и может открыть новый сектор.',
+    effect: 'Уменьшает 👁️ угрозу, шанс обнаружить сектор.'
+  },
+  stabilizeCore: {
+    title: 'Стабилизировать ядро',
+    description: 'Восстанавливает целостность, если хватает ресурсов.',
+    effect: 'Лечит 🫀 ядро и повышает устойчивость.'
+  },
+  advanceFront: {
+    title: 'Прорыв фронтира',
+    description: 'Открывает новые маршруты ценой эссенции.',
+    effect: 'Расширяет карту и повышает угрозу.'
+  }
+}
+
+const activeHint = ref(actionHints.gatherPlasma)
+
+const setActionHint = (key: keyof typeof actionHints) => {
+  activeHint.value = actionHints[key]
+}
+
+const clearActionHint = () => {
+  activeHint.value = actionHints.gatherPlasma
+}
+
+const tutorialSteps = [
+  {
+    id: 'step-1',
+    title: 'Соберите плазму',
+    text: 'Нажмите «Сбор плазмы», чтобы запустить экономику.'
+  },
+  {
+    id: 'step-2',
+    title: 'Синтезируйте сгустки',
+    text: 'Преобразуйте плазму в сгустки для модулей.'
+  },
+  {
+    id: 'step-3',
+    title: 'Активируйте модуль',
+    text: 'Откройте вкладку «Развитие» и интегрируйте первый модуль.'
+  },
+  {
+    id: 'step-4',
+    title: 'Исследуйте сектор',
+    text: 'Перейдите на карту и стабилизируйте первый сектор.'
+  },
+  {
+    id: 'step-5',
+    title: 'Выберите доктрину',
+    text: 'Доктрины дают глобальные бонусы и направление развития.'
+  },
+  {
+    id: 'step-6',
+    title: 'Проведите бой',
+    text: 'Найдите боевой сектор и победите в схватке.'
+  }
+]
 
 const saveCode = ref('')
 const saveStatus = ref('')
@@ -486,9 +748,30 @@ const nodeLabel = (type: string) => {
       return 'Санктум'
     case 'relay':
       return 'Релейный узел'
+    case 'vault':
+      return 'Хранилище'
     default:
       return 'Неизвестно'
   }
+}
+
+const formatEffects = (effects: {
+  attack?: number
+  defense?: number
+  plasmaRate?: number
+  masking?: number
+  energy?: number
+  integrity?: number
+}) => {
+  const entries = [
+    effects.attack ? `Атака +${effects.attack}` : null,
+    effects.defense ? `Защита +${effects.defense}` : null,
+    effects.plasmaRate ? `Плазма +${effects.plasmaRate}` : null,
+    effects.masking ? `Маскировка +${effects.masking}` : null,
+    effects.energy ? `Энергия +${effects.energy}` : null,
+    effects.integrity ? `Целостность +${effects.integrity}` : null
+  ]
+  return entries.filter(Boolean) as string[]
 }
 
 const canAfford = (cost: { clots?: number; plasma?: number; essence?: number }) => {
