@@ -1,8 +1,7 @@
-<!-- App.vue -->
 <template>
-  <Chapter1 />
+  <GameView />
 </template>
 
 <script setup lang="ts">
-import Chapter1 from './views/Chapter1.vue'
+import GameView from './views/GameView.vue'
 </script>
