@@ -312,7 +312,8 @@ const decodeSave = (code: string) => {
 }
 
 export function useGameState() {
-  const saved = loadState()
+  const savedRaw = loadState()
+  const saved = savedRaw?.version === 3 ? savedRaw : null
 
   const day = ref(saved?.day ?? 1)
   const clots = ref(saved?.clots ?? 25)
