@@ -41,6 +41,36 @@
   gap: 8px;
 }
 
+.hud__training {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  background: rgba(18, 22, 36, 0.75);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(92, 104, 142, 0.25);
+  flex-wrap: wrap;
+}
+
+.hud__training-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.hud__training-step {
+  font-size: 13px;
+  color: #c8d4f0;
+}
+
+.hud__training-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .stat {
   background: rgba(25, 28, 44, 0.7);
   padding: 8px 10px;
@@ -102,6 +132,11 @@
 .tab-bar__button--active {
   background: linear-gradient(135deg, #b21f42, #e34d6d);
   color: #fff;
+}
+
+.tab-bar__button--locked {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .tab-bar__button:hover:not(.tab-bar__button--active) {
@@ -179,6 +214,18 @@
   grid-column: span 12;
 }
 
+.panel--tutorial {
+  grid-column: span 12;
+}
+
+.panel--research {
+  grid-column: span 7;
+}
+
+.panel--achievements {
+  grid-column: span 12;
+}
+
 .panel--log {
   grid-column: span 7;
 }
@@ -225,6 +272,8 @@
 .combat__actions button,
 .module-card button,
 .doctrine-card button,
+.research-card button,
+.harvest-mode__button,
 .save-actions button {
   background: linear-gradient(135deg, #b21f42, #e34d6d);
   color: #fff;
@@ -243,6 +292,8 @@
 .combat__actions button:disabled,
 .module-card button:disabled,
 .doctrine-card button:disabled,
+.research-card button:disabled,
+.harvest-mode__button:disabled,
 .save-actions button:disabled {
   background: rgba(69, 76, 95, 0.7);
   cursor: not-allowed;
@@ -254,6 +305,8 @@
 .combat__actions button:hover:not(:disabled),
 .module-card button:hover:not(:disabled),
 .doctrine-card button:hover:not(:disabled),
+.research-card button:hover:not(:disabled),
+.harvest-mode__button:hover:not(:disabled),
 .save-actions button:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(226, 70, 103, 0.35);
@@ -400,6 +453,56 @@
   gap: 10px;
   font-size: 13px;
   color: #c1cce7;
+}
+
+.module-card__actions,
+.doctrine-card__actions {
+  display: grid;
+  gap: 8px;
+}
+
+.module-card__upgrade,
+.doctrine-card__upgrade,
+.doctrine-card__activate {
+  background: rgba(25, 30, 46, 0.9);
+}
+
+.module-card__requires {
+  font-size: 12px;
+  color: #9fb0d1;
+}
+
+.harvest-mode {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+  color: #cdd8f3;
+}
+
+.harvest-mode__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.harvest-mode__button {
+  background: rgba(25, 30, 46, 0.9);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.harvest-mode__button--active {
+  background: linear-gradient(135deg, #2f994c, #3fd37c);
+  color: #052011;
+}
+
+.harvest-mode__meta {
+  font-size: 12px;
+  color: #f4c6d1;
 }
 
 .module-card__meta,
@@ -611,6 +714,96 @@
   color: #d1dbf5;
 }
 
+.tutorial-card {
+  display: grid;
+  gap: 10px;
+  background: rgba(18, 22, 36, 0.75);
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid rgba(92, 104, 142, 0.3);
+}
+
+.tutorial-card__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tutorial-card__title {
+  font-size: 16px;
+  color: #f5c7d5;
+}
+
+.tutorial-card__text {
+  color: #cfd8f0;
+}
+
+.tutorial-card__hint {
+  background: rgba(24, 28, 44, 0.9);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #a7c1ff;
+  font-size: 13px;
+}
+
+.tutorial-card__locked {
+  font-size: 12px;
+  color: #ffb7c6;
+}
+
+.research-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.research-card {
+  background: rgba(20, 25, 42, 0.8);
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid rgba(85, 97, 134, 0.4);
+  display: grid;
+  gap: 10px;
+}
+
+.research-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.achievement-card {
+  background: rgba(18, 22, 36, 0.8);
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid rgba(92, 104, 142, 0.3);
+  display: grid;
+  gap: 8px;
+}
+
+.achievement-card--unlocked {
+  border-color: rgba(118, 232, 170, 0.6);
+}
+
+.achievement-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.achievement-card__progress {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: #c4d4f5;
+}
+
 .training__toggle {
   display: flex;
   flex-wrap: wrap;
@@ -686,11 +879,14 @@
   .panel--modules,
   .panel--combat,
   .panel--doctrine,
+  .panel--research,
   .panel--save,
   .panel--faq,
   .panel--log,
   .panel--notifications,
-  .panel--training {
+  .panel--training,
+  .panel--achievements,
+  .panel--tutorial {
     grid-column: span 12;
   }
 }
