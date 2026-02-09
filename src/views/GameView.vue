@@ -295,12 +295,14 @@
           <h2>Сохранения</h2>
           <span>Скопируйте код, чтобы восстановить игру позже.</span>
         </div>
+
         <div class="save-box">
           <textarea
             v-model="saveCode"
             rows="4"
-            placeholder="Вставьте код сохранения или нажмите \"Сгенерировать\""
+            placeholder='Вставьте код сохранения или нажмите "Сгенерировать"'
           ></textarea>
+
           <div class="save-actions">
             <button :disabled="isGameOver" @click="handleGenerateSave">
               💾 Сгенерировать код
@@ -312,7 +314,10 @@
               📥 Загрузить код
             </button>
           </div>
-          <div v-if="saveStatus" class="save-status">{{ saveStatus }}</div>
+
+          <div v-if="saveStatus" class="save-status">
+            {{ saveStatus }}
+          </div>
         </div>
       </section>
 
