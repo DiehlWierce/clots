@@ -96,8 +96,48 @@
   grid-column: span 5;
 }
 
+.panel--doctrine {
+  grid-column: span 4;
+}
+
+.panel--save {
+  grid-column: span 4;
+}
+
+.panel--faq {
+  grid-column: span 4;
+}
+
 .panel--log {
   grid-column: span 12;
+}
+
+.level-progress {
+  display: grid;
+  gap: 8px;
+  background: rgba(18, 22, 36, 0.75);
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #cdd8f3;
+}
+
+.level-progress__title {
+  font-weight: 600;
+}
+
+.level-progress__meta {
+  color: #9fb0d1;
+}
+
+.action-group {
+  display: grid;
+  gap: 10px;
+}
+
+.action-group h3 {
+  font-size: 15px;
+  color: #d7e1f7;
 }
 
 .actions {
@@ -108,7 +148,9 @@
 .actions button,
 .details__actions button,
 .combat__actions button,
-.module-card button {
+.module-card button,
+.doctrine-card button,
+.save-actions button {
   background: linear-gradient(135deg, #b21f42, #e34d6d);
   color: #fff;
   padding: 10px 14px;
@@ -116,12 +158,17 @@
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: grid;
+  gap: 6px;
+  text-align: left;
 }
 
 .actions button:disabled,
 .details__actions button:disabled,
 .combat__actions button:disabled,
-.module-card button:disabled {
+.module-card button:disabled,
+.doctrine-card button:disabled,
+.save-actions button:disabled {
   background: rgba(69, 76, 95, 0.7);
   cursor: not-allowed;
   box-shadow: none;
@@ -130,7 +177,9 @@
 .actions button:hover:not(:disabled),
 .details__actions button:hover:not(:disabled),
 .combat__actions button:hover:not(:disabled),
-.module-card button:hover:not(:disabled) {
+.module-card button:hover:not(:disabled),
+.doctrine-card button:hover:not(:disabled),
+.save-actions button:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(226, 70, 103, 0.35);
 }
@@ -140,6 +189,11 @@
   color: #b6c2de;
   display: grid;
   gap: 6px;
+}
+
+.action-cost {
+  font-size: 12px;
+  color: #f4c6d1;
 }
 
 .map-grid {
@@ -254,6 +308,27 @@
   color: #c1cce7;
 }
 
+.doctrine-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.doctrine-card {
+  background: rgba(20, 25, 42, 0.8);
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid rgba(85, 97, 134, 0.4);
+  display: grid;
+  gap: 10px;
+}
+
+.doctrine-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .combat {
   display: grid;
   gap: 12px;
@@ -289,6 +364,19 @@
   gap: 10px;
 }
 
+.combat__intent {
+  font-size: 12px;
+  color: #ffb7c6;
+}
+
+.combat__buffs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: #cfe2ff;
+}
+
 .combat--idle {
   font-size: 14px;
   color: #b2bfdc;
@@ -300,6 +388,47 @@
   max-height: 180px;
   overflow: auto;
   padding-right: 6px;
+}
+
+.save-box {
+  display: grid;
+  gap: 12px;
+}
+
+.save-box textarea {
+  background: rgba(20, 24, 38, 0.8);
+  border: 1px solid rgba(92, 104, 142, 0.4);
+  color: #e1e9ff;
+  border-radius: 12px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.save-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.save-status {
+  font-size: 13px;
+  color: #9fc2ff;
+}
+
+.faq {
+  display: grid;
+  gap: 12px;
+  font-size: 13px;
+  color: #d1dbf5;
+}
+
+.faq__item {
+  background: rgba(18, 22, 36, 0.65);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(92, 104, 142, 0.2);
+  display: grid;
+  gap: 6px;
 }
 
 .log li {
@@ -330,7 +459,10 @@
   .panel--map,
   .panel--details,
   .panel--modules,
-  .panel--combat {
+  .panel--combat,
+  .panel--doctrine,
+  .panel--save,
+  .panel--faq {
     grid-column: span 12;
   }
 }
