@@ -819,6 +819,28 @@ export function useGameState() {
     selectedDoctrineId: selectedDoctrineId.value
   })
 
+  const resetGame = () => {
+    day.value = 1
+    clots.value = 25
+    plasma.value = 60
+    essence.value = 2
+    energy.value = 5
+    threat.value = 12
+    masking.value = 65
+    experience.value = 0
+    nodes.value = baseNodes.map(node => ({ ...node }))
+    modules.value = baseModules.map(module => ({ ...module }))
+    selectedDoctrineId.value = null
+    encounter.value = null
+    combatState.guarded = false
+    combatState.focused = false
+    integrity.value = 100
+    log.value = []
+    selectedNodeId.value = nodes.value[0]?.id ?? null
+    saveState(createSavePayload())
+    logEvent('Цикл перезапущен. Все показатели обнулены.')
+  }
+
   const generateSaveCode = () => {
     const payload = createSavePayload()
     return encodeSave(payload)
@@ -837,9 +859,13 @@ export function useGameState() {
     experience.value = Number(payload.experience ?? experience.value)
     if (Array.isArray(payload.nodes)) {
       nodes.value = payload.nodes as GameNode[]
+    } else {
+      nodes.value = baseNodes.map(node => ({ ...node }))
     }
     if (Array.isArray(payload.modules)) {
       modules.value = payload.modules as GameModule[]
+    } else {
+      modules.value = baseModules.map(module => ({ ...module }))
     }
     if (Array.isArray(payload.log)) {
       log.value = payload.log as Array<{ id: number; message: string; time: string }>
@@ -852,6 +878,7 @@ export function useGameState() {
       combatState.guarded = combat.guarded ?? false
       combatState.focused = combat.focused ?? false
     }
+    selectedNodeId.value = nodes.value[0]?.id ?? null
     logEvent('Сохранение загружено.')
     return true
   }
@@ -944,6 +971,7 @@ export function useGameState() {
     logEvent,
     generateSaveCode,
     loadFromCode,
+    resetGame,
     tick
   }
 }
