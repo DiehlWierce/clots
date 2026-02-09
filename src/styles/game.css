@@ -410,8 +410,6 @@
   gap: 10px;
 }
 
-<<<<<<< ours
-=======
 .save-reset {
   background: linear-gradient(135deg, #2f394f, #4d5978);
 }
@@ -420,7 +418,6 @@
   box-shadow: 0 6px 16px rgba(115, 136, 185, 0.35);
 }
 
->>>>>>> theirs
 .save-status {
   font-size: 13px;
   color: #9fc2ff;

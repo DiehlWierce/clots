@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./Сlots.png" width="900">
+  <img src="./Clots.png" width="600">
 </p>
 
 # Clots: Hem Empire

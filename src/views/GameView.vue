@@ -295,20 +295,12 @@
           <h2>Сохранения</h2>
           <span>Скопируйте код, чтобы восстановить игру позже.</span>
         </div>
-<<<<<<< ours
-
-=======
->>>>>>> theirs
         <div class="save-box">
           <textarea
             v-model="saveCode"
             rows="4"
             placeholder='Вставьте код сохранения или нажмите "Сгенерировать"'
           ></textarea>
-<<<<<<< ours
-
-=======
->>>>>>> theirs
           <div class="save-actions">
             <button :disabled="isGameOver" @click="handleGenerateSave">
               💾 Сгенерировать код
@@ -319,19 +311,11 @@
             <button :disabled="!saveCode" @click="handleLoadSave">
               📥 Загрузить код
             </button>
-<<<<<<< ours
-          </div>
-
-          <div v-if="saveStatus" class="save-status">
-            {{ saveStatus }}
-          </div>
-=======
             <button class="save-reset" @click="handleReset">
               🔄 Сбросить прогресс
             </button>
           </div>
           <div v-if="saveStatus" class="save-status">{{ saveStatus }}</div>
->>>>>>> theirs
         </div>
       </section>
 
@@ -452,10 +436,7 @@ const {
   retreat,
   generateSaveCode,
   loadFromCode,
-<<<<<<< ours
-=======
   resetGame,
->>>>>>> theirs
   tick
 } = useGameState()
 
@@ -483,15 +464,12 @@ const handleCopySave = async () => {
   }
 }
 
-<<<<<<< ours
-=======
 const handleReset = () => {
   resetGame()
   saveCode.value = ''
   saveStatus.value = 'Прогресс сброшен.'
 }
 
->>>>>>> theirs
 const nodeLabel = (type: string) => {
   switch (type) {
     case 'harvest':
