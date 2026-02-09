@@ -32,11 +32,13 @@ export interface GameModule {
   description: string
   category: string
   tier: number
+  branch: string
   cost: {
     clots?: number
     plasma?: number
     essence?: number
   }
+  upgradeCosts: Array<GameModule['cost']>
   effects: {
     attack?: number
     defense?: number
@@ -45,7 +47,10 @@ export interface GameModule {
     energy?: number
     integrity?: number
   }
+  requires?: string[]
   unlocked: boolean
+  level: number
+  maxLevel: number
 }
 
 export interface Doctrine {
@@ -53,9 +58,39 @@ export interface Doctrine {
   name: string
   description: string
   focus: string
+  branch: string
   tier: number
   cost: GameModule['cost']
+  upgradeCosts: Array<GameModule['cost']>
   effects: GameModule['effects']
+  requires?: string[]
+  unlocked: boolean
+  level: number
+  maxLevel: number
+}
+
+export interface ResourceUpgrade {
+  id: string
+  name: string
+  description: string
+  branch: string
+  tier: number
+  cost: GameModule['cost']
+  upgradeCosts: Array<GameModule['cost']>
+  effects: {
+    plasmaYield?: number
+    clotYield?: number
+    essenceYield?: number
+    plasmaCostReduction?: number
+    clotCostReduction?: number
+    essenceCostReduction?: number
+    threatShift?: number
+    experienceBonus?: number
+  }
+  requires?: string[]
+  unlocked: boolean
+  level: number
+  maxLevel: number
 }
 
 interface EnemyIntent {
@@ -88,9 +123,57 @@ interface Notification {
   type: 'info' | 'warning' | 'success'
 }
 
-const STORAGE_KEY = 'clots_game_state_v4'
+interface Achievement {
+  id: string
+  title: string
+  description: string
+  unlocked: boolean
+  progress?: number
+  target?: number
+}
+
+export interface TutorialStep {
+  id: string
+  title: string
+  text: string
+}
+
+const STORAGE_KEY = 'clots_game_state_v6'
 
 const levelThresholds = [0, 60, 150, 280, 450, 650, 900, 1200, 1600]
+
+const tutorialSteps: TutorialStep[] = [
+  {
+    id: 'step-1',
+    title: 'Соберите плазму',
+    text: 'Начните с «Сбора плазмы», чтобы запустить экономику.'
+  },
+  {
+    id: 'step-2',
+    title: 'Синтезируйте сгустки',
+    text: 'Преобразуйте плазму в сгустки и откройте путь к модулям.'
+  },
+  {
+    id: 'step-3',
+    title: 'Интегрируйте первый модуль',
+    text: 'Перейдите в «Развитие» и установите модуль в ветке экономики.'
+  },
+  {
+    id: 'step-4',
+    title: 'Стабилизируйте сектор',
+    text: 'На карте выберите сектор и проведите исследование.'
+  },
+  {
+    id: 'step-5',
+    title: 'Примите доктрину',
+    text: 'Выберите путь развития в дереве доктрин и активируйте его.'
+  },
+  {
+    id: 'step-6',
+    title: 'Выдержите бой',
+    text: 'Найдите боевой сектор, победите угрозу и закрепите контроль.'
+  }
+]
 
 const baseNodes: GameNode[] = [
   {
@@ -263,130 +346,194 @@ const baseModules: GameModule[] = [
     name: 'Пульс-сборщик',
     description: 'Пассивно увеличивает добычу плазмы каждую секунду.',
     category: 'Экономика',
+    branch: 'Плазменный поток',
     tier: 1,
     cost: { clots: 12, plasma: 40 },
+    upgradeCosts: [{ clots: 18, plasma: 60 }, { clots: 24, plasma: 90 }],
     effects: { plasmaRate: 1.4 },
-    unlocked: false
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'veil-shroud',
     name: 'Пелена маскировки',
     description: 'Снижает рост угрозы и повышает скрытность.',
     category: 'Скрытность',
+    branch: 'Тени',
     tier: 1,
     cost: { essence: 4, plasma: 25 },
+    upgradeCosts: [{ essence: 6, plasma: 45 }, { essence: 8, plasma: 70 }],
     effects: { masking: 8, defense: 1 },
-    unlocked: false
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'hem-arsenal',
     name: 'Гемо-арсенал',
     description: 'Усиливает боевые импульсы и урон по врагу.',
     category: 'Штурм',
+    branch: 'Штурмовой контур',
     tier: 1,
     cost: { clots: 20, essence: 6 },
+    upgradeCosts: [{ clots: 28, essence: 8 }, { clots: 38, essence: 12 }],
     effects: { attack: 3 },
-    unlocked: false
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'energy-loop',
     name: 'Контур питания',
     description: 'Увеличивает запас энергии и ускоряет восстановление.',
     category: 'Энергия',
+    branch: 'Энергетический купол',
     tier: 1,
     cost: { plasma: 60, essence: 3 },
+    upgradeCosts: [{ plasma: 90, essence: 6 }, { plasma: 130, essence: 10 }],
     effects: { energy: 2 },
-    unlocked: false
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'forge-core',
     name: 'Ядро кузницы',
     description: 'Открывает продвинутые синтезы и улучшает защиту.',
     category: 'Оборона',
+    branch: 'Цитадель',
     tier: 2,
     cost: { clots: 30, essence: 10 },
+    upgradeCosts: [{ clots: 40, essence: 14 }, { clots: 60, essence: 20 }],
     effects: { defense: 2, plasmaRate: 0.8 },
-    unlocked: false
+    requires: ['pulse-harvester'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'rally-node',
     name: 'Узел концентрации',
     description: 'Поднимает максимальную целостность цитадели.',
     category: 'Оборона',
+    branch: 'Цитадель',
     tier: 2,
     cost: { clots: 28, essence: 8 },
+    upgradeCosts: [{ clots: 38, essence: 12 }, { clots: 52, essence: 16 }],
     effects: { integrity: 8 },
-    unlocked: false
+    requires: ['forge-core'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'blood-matrix',
     name: 'Матрица сгустков',
     description: 'Укрепляет боевой темп и уменьшает расход сгустков.',
     category: 'Штурм',
+    branch: 'Штурмовой контур',
     tier: 2,
     cost: { clots: 40, plasma: 55 },
+    upgradeCosts: [{ clots: 54, plasma: 80 }, { clots: 75, plasma: 110 }],
     effects: { attack: 2, defense: 1 },
-    unlocked: false
+    requires: ['hem-arsenal'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'silent-veil',
     name: 'Тихий покров',
     description: 'Глушит рост угрозы и усиливает маскировку.',
     category: 'Скрытность',
+    branch: 'Тени',
     tier: 2,
     cost: { plasma: 80, essence: 10 },
+    upgradeCosts: [{ plasma: 110, essence: 16 }, { plasma: 150, essence: 22 }],
     effects: { masking: 12 },
-    unlocked: false
+    requires: ['veil-shroud'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'sanguine-pylon',
     name: 'Сангвинарный пилон',
     description: 'Конденсирует плазму и поднимает общий темп добычи.',
     category: 'Экономика',
+    branch: 'Плазменный поток',
     tier: 2,
     cost: { plasma: 120, clots: 35 },
+    upgradeCosts: [{ plasma: 160, clots: 48 }, { plasma: 210, clots: 60 }],
     effects: { plasmaRate: 2.2 },
-    unlocked: false
+    requires: ['pulse-harvester'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'phase-screen',
     name: 'Фазовый экран',
     description: 'Укрепляет защиту и сглаживает всплески угрозы.',
     category: 'Оборона',
+    branch: 'Цитадель',
     tier: 3,
     cost: { essence: 14, clots: 45 },
+    upgradeCosts: [{ essence: 20, clots: 60 }, { essence: 28, clots: 85 }],
     effects: { defense: 3, masking: 6, integrity: 6 },
-    unlocked: false
+    requires: ['rally-node'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'nerve-lattice',
     name: 'Нервная решётка',
     description: 'Сокращает издержки действий, усиливая энергоотдачу.',
     category: 'Энергия',
+    branch: 'Энергетический купол',
     tier: 3,
     cost: { plasma: 140, essence: 12 },
+    upgradeCosts: [{ plasma: 190, essence: 18 }, { plasma: 240, essence: 26 }],
     effects: { energy: 3, plasmaRate: 0.6 },
-    unlocked: false
+    requires: ['energy-loop'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'scarlet-arsenal',
     name: 'Алый арсенал',
     description: 'Закрепляет атакующий контур и повышает стойкость.',
     category: 'Штурм',
+    branch: 'Штурмовой контур',
     tier: 3,
     cost: { clots: 70, essence: 18 },
+    upgradeCosts: [{ clots: 96, essence: 26 }, { clots: 130, essence: 36 }],
     effects: { attack: 4, defense: 2 },
-    unlocked: false
+    requires: ['blood-matrix'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'crimson-forge',
     name: 'Багровая кузня',
     description: 'Позволяет ковать элитные импульсы и укреплять ядро.',
     category: 'Экономика',
+    branch: 'Плазменный поток',
     tier: 4,
     cost: { plasma: 180, essence: 20, clots: 90 },
+    upgradeCosts: [
+      { plasma: 240, essence: 28, clots: 120 },
+      { plasma: 320, essence: 40, clots: 160 }
+    ],
     effects: { attack: 3, plasmaRate: 2.4, integrity: 10 },
-    unlocked: false
+    requires: ['sanguine-pylon'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   }
 ]
 
@@ -396,56 +543,336 @@ const baseDoctrines: Doctrine[] = [
     name: 'Доктрина Пожирателей',
     description: 'Ставка на агрессию и давление, растущий урон и плазму.',
     focus: 'Атака',
+    branch: 'Агрессия',
     tier: 1,
     cost: { essence: 6, plasma: 40 },
-    effects: { attack: 2, plasmaRate: 0.8 }
+    upgradeCosts: [{ essence: 10, plasma: 65 }, { essence: 15, plasma: 95 }],
+    effects: { attack: 2, plasmaRate: 0.8 },
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'warden',
     name: 'Доктрина Стражей',
     description: 'Выживаемость и контроль: защита, маскировка, целостность.',
     focus: 'Оборона',
+    branch: 'Фортификация',
     tier: 1,
     cost: { essence: 6, clots: 20 },
-    effects: { defense: 2, masking: 6, integrity: 6 }
+    upgradeCosts: [{ essence: 10, clots: 35 }, { essence: 16, clots: 50 }],
+    effects: { defense: 2, masking: 6, integrity: 6 },
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'weaver',
     name: 'Доктрина Ткачей',
     description: 'Энергия и темп, ускоряющий экономику и восстановление.',
     focus: 'Экономика',
+    branch: 'Поток',
     tier: 1,
     cost: { essence: 5, plasma: 30 },
-    effects: { energy: 1, plasmaRate: 1.1 }
+    upgradeCosts: [{ essence: 8, plasma: 50 }, { essence: 12, plasma: 75 }],
+    effects: { energy: 1, plasmaRate: 1.1 },
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'vanguard',
     name: 'Доктрина Авангарда',
     description: 'Манёвры на грани: урон, маскировка и жёсткая экономия.',
     focus: 'Гибрид',
+    branch: 'Агрессия',
     tier: 2,
     cost: { essence: 10, clots: 40 },
-    effects: { attack: 2, masking: 5, plasmaRate: 0.6 }
+    upgradeCosts: [{ essence: 16, clots: 60 }, { essence: 22, clots: 85 }],
+    effects: { attack: 2, masking: 5, plasmaRate: 0.6 },
+    requires: ['reaver'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'oracle',
     name: 'Доктрина Провидцев',
     description: 'Чувствительность к угрозам и усиление энергопотоков.',
     focus: 'Контроль',
+    branch: 'Фортификация',
     tier: 2,
     cost: { essence: 12, plasma: 65 },
-    effects: { energy: 2, defense: 1, masking: 4 }
+    upgradeCosts: [{ essence: 18, plasma: 95 }, { essence: 26, plasma: 130 }],
+    effects: { energy: 2, defense: 1, masking: 4 },
+    requires: ['warden'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   },
   {
     id: 'pulsar',
     name: 'Доктрина Пульсаров',
     description: 'Экспоненциальный рост силы при длительной игре.',
     focus: 'Рост',
+    branch: 'Поток',
     tier: 3,
     cost: { essence: 16, plasma: 90, clots: 60 },
-    effects: { attack: 3, plasmaRate: 1.5, integrity: 4 }
+    upgradeCosts: [
+      { essence: 22, plasma: 130, clots: 85 },
+      { essence: 30, plasma: 180, clots: 120 }
+    ],
+    effects: { attack: 3, plasmaRate: 1.5, integrity: 4 },
+    requires: ['weaver'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
   }
 ]
+
+const baseResourceUpgrades: ResourceUpgrade[] = [
+  {
+    id: 'flux-cores',
+    name: 'Флюкс-ядра',
+    description: 'Базовое усиление плазменных потоков.',
+    branch: 'Плазма',
+    tier: 1,
+    cost: { plasma: 45, clots: 8 },
+    upgradeCosts: [{ plasma: 70, clots: 12 }, { plasma: 110, clots: 16 }],
+    effects: { plasmaYield: 0.08 },
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
+  },
+  {
+    id: 'granulation',
+    name: 'Грануляция',
+    description: 'Повышает выход сгустков при переработке.',
+    branch: 'Сгустки',
+    tier: 1,
+    cost: { plasma: 35, clots: 12 },
+    upgradeCosts: [{ plasma: 55, clots: 18 }, { plasma: 80, clots: 26 }],
+    effects: { clotYield: 0.12 },
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
+  },
+  {
+    id: 'essence-distill',
+    name: 'Эссенциальный дистиллятор',
+    description: 'Стабилизирует возгонку и повышает выход эссенции.',
+    branch: 'Эссенция',
+    tier: 1,
+    cost: { clots: 24, essence: 4 },
+    upgradeCosts: [{ clots: 32, essence: 6 }, { clots: 42, essence: 9 }],
+    effects: { essenceYield: 0.1 },
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
+  },
+  {
+    id: 'plasma-lattice',
+    name: 'Плазменная решётка',
+    description: 'Снижает потребление плазмы при синтезе.',
+    branch: 'Плазма',
+    tier: 2,
+    cost: { plasma: 90, clots: 20 },
+    upgradeCosts: [{ plasma: 130, clots: 30 }, { plasma: 170, clots: 40 }],
+    effects: { plasmaCostReduction: 0.08 },
+    requires: ['flux-cores'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
+  },
+  {
+    id: 'clot-cascade',
+    name: 'Каскад сгустков',
+    description: 'Понижает расход сгустков в алхимических процессах.',
+    branch: 'Сгустки',
+    tier: 2,
+    cost: { clots: 38, essence: 8 },
+    upgradeCosts: [{ clots: 50, essence: 12 }, { clots: 65, essence: 18 }],
+    effects: { clotCostReduction: 0.1 },
+    requires: ['granulation'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
+  },
+  {
+    id: 'ether-siphon',
+    name: 'Эфирный сифон',
+    description: 'Снижает напряжение от добычи, уменьшает угрозу.',
+    branch: 'Эссенция',
+    tier: 2,
+    cost: { essence: 8, plasma: 60 },
+    upgradeCosts: [{ essence: 12, plasma: 90 }, { essence: 18, plasma: 130 }],
+    effects: { threatShift: -0.6 },
+    requires: ['essence-distill'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
+  },
+  {
+    id: 'harmonic-forge',
+    name: 'Гармонический горн',
+    description: 'Увеличивает опыт за добычу, раскрывая потенциал.',
+    branch: 'Эссенция',
+    tier: 3,
+    cost: { essence: 16, plasma: 120 },
+    upgradeCosts: [{ essence: 22, plasma: 160 }, { essence: 30, plasma: 210 }],
+    effects: { experienceBonus: 0.2 },
+    requires: ['ether-siphon'],
+    unlocked: false,
+    level: 0,
+    maxLevel: 3
+  }
+]
+
+const baseAchievements: Achievement[] = [
+  {
+    id: 'first-harvest',
+    title: 'Первый прилив',
+    description: 'Собрать плазму впервые.',
+    unlocked: false
+  },
+  {
+    id: 'first-module',
+    title: 'Архитектор ядра',
+    description: 'Интегрировать первый модуль.',
+    unlocked: false
+  },
+  {
+    id: 'first-doctrine',
+    title: 'Выбор пути',
+    description: 'Принять первую доктрину.',
+    unlocked: false
+  },
+  {
+    id: 'sector-clear',
+    title: 'Стабилизация',
+    description: 'Очистить первый сектор.',
+    unlocked: false
+  },
+  {
+    id: 'battle-win',
+    title: 'Иммунный слом',
+    description: 'Победить в первой схватке.',
+    unlocked: false
+  },
+  {
+    id: 'plasma-collector',
+    title: 'Хранитель плазмы',
+    description: 'Накопить 200 единиц плазмы.',
+    unlocked: false,
+    progress: 0,
+    target: 200
+  },
+  {
+    id: 'clot-master',
+    title: 'Повелитель сгустков',
+    description: 'Накопить 120 единиц сгустков.',
+    unlocked: false,
+    progress: 0,
+    target: 120
+  },
+  {
+    id: 'essence-weaver',
+    title: 'Ткач эссенции',
+    description: 'Накопить 30 единиц эссенции.',
+    unlocked: false,
+    progress: 0,
+    target: 30
+  },
+  {
+    id: 'level-five',
+    title: 'Сила крови',
+    description: 'Достичь 5 уровня цитадели.',
+    unlocked: false
+  },
+  {
+    id: 'tutorial-complete',
+    title: 'Полный инструктаж',
+    description: 'Завершить обучение.',
+    unlocked: false
+  },
+  {
+    id: 'core-rescue',
+    title: 'Стабилизация ядра',
+    description: 'Восстановить целостность ядра через стабилизацию.',
+    unlocked: false
+  },
+  {
+    id: 'masking-expert',
+    title: 'Тень крови',
+    description: 'Достичь 80% маскировки.',
+    unlocked: false
+  },
+  {
+    id: 'threat-zero',
+    title: 'Полное затишье',
+    description: 'Снизить угрозу до 0%.',
+    unlocked: false
+  },
+  {
+    id: 'module-triad',
+    title: 'Триада модулей',
+    description: 'Открыть три разных модуля.',
+    unlocked: false
+  },
+  {
+    id: 'doctrine-upgrade',
+    title: 'Клятва силы',
+    description: 'Усилить доктрину хотя бы один раз.',
+    unlocked: false
+  },
+  {
+    id: 'resource-master',
+    title: 'Архитектор добычи',
+    description: 'Открыть три технологии добычи.',
+    unlocked: false
+  },
+  {
+    id: 'battle-streak',
+    title: 'Иммунный натиск',
+    description: 'Победить в трёх боях.',
+    unlocked: false,
+    progress: 0,
+    target: 3
+  }
+]
+
+const cloneCosts = (costs: Array<GameModule['cost']>) =>
+  costs.map(cost => ({ ...cost }))
+
+const cloneModules = () =>
+  baseModules.map(module => ({
+    ...module,
+    cost: { ...module.cost },
+    upgradeCosts: cloneCosts(module.upgradeCosts),
+    effects: { ...module.effects },
+    requires: module.requires ? [...module.requires] : undefined
+  }))
+
+const cloneDoctrines = () =>
+  baseDoctrines.map(doctrine => ({
+    ...doctrine,
+    cost: { ...doctrine.cost },
+    upgradeCosts: cloneCosts(doctrine.upgradeCosts),
+    effects: { ...doctrine.effects },
+    requires: doctrine.requires ? [...doctrine.requires] : undefined
+  }))
+
+const cloneResourceUpgrades = () =>
+  baseResourceUpgrades.map(upgrade => ({
+    ...upgrade,
+    cost: { ...upgrade.cost },
+    upgradeCosts: cloneCosts(upgrade.upgradeCosts),
+    effects: { ...upgrade.effects },
+    requires: upgrade.requires ? [...upgrade.requires] : undefined
+  }))
+
+const cloneAchievements = () =>
+  baseAchievements.map(achievement => ({ ...achievement }))
 
 const loadState = () => {
   if (typeof localStorage === 'undefined') return null
@@ -475,9 +902,87 @@ const decodeSave = (code: string) => {
   return JSON.parse(json)
 }
 
+const mergeAchievements = (saved: Achievement[] | undefined) => {
+  if (!saved?.length) return cloneAchievements()
+  const map = new Map(saved.map(item => [item.id, item]))
+  return baseAchievements.map(base => ({
+    ...base,
+    ...map.get(base.id)
+  }))
+}
+
+const hydrateModules = (saved: GameModule[] | undefined) => {
+  const baseMap = new Map(baseModules.map(module => [module.id, module]))
+  if (!saved?.length) return cloneModules()
+  return saved.map(module => {
+    const base = baseMap.get(module.id)
+    if (!base) return module
+    const level = module.level ?? (module.unlocked ? 1 : 0)
+    return {
+      ...base,
+      ...module,
+      level,
+      cost: { ...base.cost, ...module.cost },
+      effects: { ...base.effects, ...module.effects },
+      upgradeCosts: cloneCosts(base.upgradeCosts),
+      requires: base.requires
+    }
+  })
+}
+
+const hydrateDoctrines = (saved: Doctrine[] | undefined) => {
+  const baseMap = new Map(baseDoctrines.map(doctrine => [doctrine.id, doctrine]))
+  if (!saved?.length) return cloneDoctrines()
+  return saved.map(doctrine => {
+    const base = baseMap.get(doctrine.id)
+    if (!base) return doctrine
+    const level = doctrine.level ?? (doctrine.unlocked ? 1 : 0)
+    return {
+      ...base,
+      ...doctrine,
+      level,
+      cost: { ...base.cost, ...doctrine.cost },
+      effects: { ...base.effects, ...doctrine.effects },
+      upgradeCosts: cloneCosts(base.upgradeCosts),
+      requires: base.requires
+    }
+  })
+}
+
+const hydrateResourceUpgrades = (saved: ResourceUpgrade[] | undefined) => {
+  const baseMap = new Map(baseResourceUpgrades.map(upgrade => [upgrade.id, upgrade]))
+  if (!saved?.length) return cloneResourceUpgrades()
+  return saved.map(upgrade => {
+    const base = baseMap.get(upgrade.id)
+    if (!base) return upgrade
+    const level = upgrade.level ?? (upgrade.unlocked ? 1 : 0)
+    return {
+      ...base,
+      ...upgrade,
+      level,
+      cost: { ...base.cost, ...upgrade.cost },
+      effects: { ...base.effects, ...upgrade.effects },
+      upgradeCosts: cloneCosts(base.upgradeCosts),
+      requires: base.requires
+    }
+  })
+}
+
+const scaleEffects = (
+  effects: GameModule['effects'],
+  level: number
+): GameModule['effects'] => ({
+  attack: effects.attack ? effects.attack * level : undefined,
+  defense: effects.defense ? effects.defense * level : undefined,
+  plasmaRate: effects.plasmaRate ? effects.plasmaRate * level : undefined,
+  masking: effects.masking ? effects.masking * level : undefined,
+  energy: effects.energy ? effects.energy * level : undefined,
+  integrity: effects.integrity ? effects.integrity * level : undefined
+})
+
 export function useGameState() {
   const savedRaw = loadState()
-  const saved = savedRaw?.version === 4 ? savedRaw : null
+  const saved = savedRaw?.version === 5 ? savedRaw : null
 
   const day = ref(saved?.day ?? 1)
   const clots = ref(saved?.clots ?? 25)
@@ -490,18 +995,14 @@ export function useGameState() {
   const experience = ref(saved?.experience ?? 0)
 
   const nodes = ref<GameNode[]>(
-    saved?.nodes
-      ? saved.nodes
-      : baseNodes.map(node => ({ ...node }))
+    saved?.nodes ? saved.nodes : baseNodes.map(node => ({ ...node }))
   )
-  const modules = ref<GameModule[]>(
-    saved?.modules
-      ? saved.modules
-      : baseModules.map(module => ({ ...module }))
+  const modules = ref<GameModule[]>(hydrateModules(saved?.modules))
+  const doctrines = ref<Doctrine[]>(hydrateDoctrines(saved?.doctrines))
+  const resourceUpgrades = ref<ResourceUpgrade[]>(
+    hydrateResourceUpgrades(saved?.resourceUpgrades)
   )
-  const doctrines = ref<Doctrine[]>(
-    baseDoctrines.map(doctrine => ({ ...doctrine }))
-  )
+  const achievements = ref<Achievement[]>(mergeAchievements(saved?.achievements))
   const selectedDoctrineId = ref<string | null>(
     saved?.selectedDoctrineId ?? null
   )
@@ -541,11 +1042,15 @@ export function useGameState() {
     }
   })
 
+  const activeDoctrine = computed(() =>
+    doctrines.value.find(
+      item => item.id === selectedDoctrineId.value && item.unlocked
+    ) ?? null
+  )
+
   const doctrineEffects = computed(() => {
-    const doctrine = doctrines.value.find(
-      item => item.id === selectedDoctrineId.value
-    )
-    return doctrine?.effects ?? {}
+    if (!activeDoctrine.value) return {}
+    return scaleEffects(activeDoctrine.value.effects, activeDoctrine.value.level)
   })
 
   const levelEffects = computed(() => {
@@ -563,13 +1068,14 @@ export function useGameState() {
   const stats = computed(() => {
     return modules.value.reduce(
       (acc, module) => {
-        if (!module.unlocked) return acc
-        acc.attack += module.effects.attack ?? 0
-        acc.defense += module.effects.defense ?? 0
-        acc.plasmaRate += module.effects.plasmaRate ?? 0
-        acc.masking += module.effects.masking ?? 0
-        acc.energy += module.effects.energy ?? 0
-        acc.integrity += module.effects.integrity ?? 0
+        if (!module.unlocked || module.level <= 0) return acc
+        const scaled = scaleEffects(module.effects, module.level)
+        acc.attack += scaled.attack ?? 0
+        acc.defense += scaled.defense ?? 0
+        acc.plasmaRate += scaled.plasmaRate ?? 0
+        acc.masking += scaled.masking ?? 0
+        acc.energy += scaled.energy ?? 0
+        acc.integrity += scaled.integrity ?? 0
         return acc
       },
       {
@@ -585,6 +1091,37 @@ export function useGameState() {
       }
     )
   })
+
+  const resourceEffects = computed(() =>
+    resourceUpgrades.value.reduce(
+      (acc, upgrade) => {
+        if (!upgrade.unlocked || upgrade.level <= 0) return acc
+        const level = upgrade.level
+        acc.plasmaYield += (upgrade.effects.plasmaYield ?? 0) * level
+        acc.clotYield += (upgrade.effects.clotYield ?? 0) * level
+        acc.essenceYield += (upgrade.effects.essenceYield ?? 0) * level
+        acc.plasmaCostReduction +=
+          (upgrade.effects.plasmaCostReduction ?? 0) * level
+        acc.clotCostReduction +=
+          (upgrade.effects.clotCostReduction ?? 0) * level
+        acc.essenceCostReduction +=
+          (upgrade.effects.essenceCostReduction ?? 0) * level
+        acc.threatShift += (upgrade.effects.threatShift ?? 0) * level
+        acc.experienceBonus += (upgrade.effects.experienceBonus ?? 0) * level
+        return acc
+      },
+      {
+        plasmaYield: 0,
+        clotYield: 0,
+        essenceYield: 0,
+        plasmaCostReduction: 0,
+        clotCostReduction: 0,
+        essenceCostReduction: 0,
+        threatShift: 0,
+        experienceBonus: 0
+      }
+    )
+  )
 
   const maxEnergy = computed(() => 6 + stats.value.energy)
   const plasmaRate = computed(() => 1.2 + stats.value.plasmaRate)
@@ -626,18 +1163,50 @@ export function useGameState() {
     }, 3800)
   }
 
+  const unlockAchievement = (id: string) => {
+    const achievement = achievements.value.find(item => item.id === id)
+    if (!achievement || achievement.unlocked) return
+    achievement.unlocked = true
+    pushNotification(`Достижение открыто: ${achievement.title}.`, 'success')
+    logEvent(`Достижение: ${achievement.title}.`)
+  }
+
+  const updateAchievementProgress = (id: string, value: number) => {
+    const achievement = achievements.value.find(item => item.id === id)
+    if (!achievement || achievement.unlocked || !achievement.target) return
+    achievement.progress = Math.min(value, achievement.target)
+    if (achievement.progress >= achievement.target) {
+      unlockAchievement(id)
+    }
+  }
+
+  const incrementAchievement = (id: string, amount = 1) => {
+    const achievement = achievements.value.find(item => item.id === id)
+    if (!achievement || achievement.unlocked) return
+    const current = achievement.progress ?? 0
+    updateAchievementProgress(id, current + amount)
+  }
+
   const advanceTutorial = (step: number) => {
     if (!tutorialEnabled.value) return
     if (tutorialStep.value === step) {
-      tutorialStep.value += 1
+      tutorialStep.value = Math.min(
+        tutorialSteps.length,
+        tutorialStep.value + 1
+      )
+      if (tutorialStep.value >= tutorialSteps.length) {
+        unlockAchievement('tutorial-complete')
+      }
     }
   }
 
   const gainExperience = (amount: number, reason?: string) => {
     if (amount <= 0) return
-    experience.value += amount
+    const bonus = 1 + resourceEffects.value.experienceBonus
+    const adjusted = Math.round(amount * bonus)
+    experience.value += adjusted
     if (reason) {
-      logEvent(`${reason} +${amount} опыта.`)
+      logEvent(`${reason} +${adjusted} опыта.`)
     }
   }
 
@@ -657,30 +1226,153 @@ export function useGameState() {
     if (cost.essence) essence.value -= cost.essence
   }
 
-  const buyModule = (moduleId: string) => {
+  const hasRequirements = (requires?: string[]) => {
+    if (!requires?.length) return true
+    return requires.every(id =>
+      modules.value.find(module => module.id === id && module.unlocked)
+    )
+  }
+
+  const hasDoctrineRequirements = (requires?: string[]) => {
+    if (!requires?.length) return true
+    return requires.every(id =>
+      doctrines.value.find(doctrine => doctrine.id === id && doctrine.unlocked)
+    )
+  }
+
+  const hasResourceRequirements = (requires?: string[]) => {
+    if (!requires?.length) return true
+    return requires.every(id =>
+      resourceUpgrades.value.find(upgrade => upgrade.id === id && upgrade.unlocked)
+    )
+  }
+
+  const getModuleUpgradeCost = (module: GameModule) =>
+    module.upgradeCosts[module.level - 1]
+
+  const unlockModule = (moduleId: string) => {
     const module = modules.value.find(item => item.id === moduleId)
-    if (!module || module.unlocked || !canAfford(module.cost)) {
+    if (!module || module.unlocked) return
+    if (!hasRequirements(module.requires)) {
+      pushNotification('Нужны предыдущие модули ветки.', 'warning')
+      return
+    }
+    if (!canAfford(module.cost)) {
       pushNotification('Недостаточно ресурсов для модуля.', 'warning')
       return
     }
     spendCost(module.cost)
     module.unlocked = true
+    module.level = 1
     logEvent(`Модуль «${module.name}» интегрирован в ядро.`)
     pushNotification(`Модуль «${module.name}» активирован.`, 'success')
+    unlockAchievement('first-module')
+    const unlockedCount = modules.value.filter(item => item.unlocked).length
+    if (unlockedCount >= 3) {
+      unlockAchievement('module-triad')
+    }
     advanceTutorial(2)
   }
 
-  const adoptDoctrine = (doctrineId: string) => {
+  const upgradeModule = (moduleId: string) => {
+    const module = modules.value.find(item => item.id === moduleId)
+    if (!module || !module.unlocked || module.level >= module.maxLevel) return
+    const upgradeCost = getModuleUpgradeCost(module)
+    if (!upgradeCost || !canAfford(upgradeCost)) {
+      pushNotification('Недостаточно ресурсов для улучшения.', 'warning')
+      return
+    }
+    spendCost(upgradeCost)
+    module.level += 1
+    logEvent(`Модуль «${module.name}» улучшен до ${module.level} уровня.`)
+    pushNotification(`Модуль «${module.name}» усилен.`, 'success')
+  }
+
+  const getDoctrineUpgradeCost = (doctrine: Doctrine) =>
+    doctrine.upgradeCosts[doctrine.level - 1]
+
+  const unlockDoctrine = (doctrineId: string) => {
     const doctrine = doctrines.value.find(item => item.id === doctrineId)
-    if (!doctrine || !canAfford(doctrine.cost)) {
+    if (!doctrine || doctrine.unlocked) return
+    if (!hasDoctrineRequirements(doctrine.requires)) {
+      pushNotification('Сначала укрепите базовую доктрину.', 'warning')
+      return
+    }
+    if (!canAfford(doctrine.cost)) {
       pushNotification('Недостаточно ресурсов для доктрины.', 'warning')
       return
     }
     spendCost(doctrine.cost)
+    doctrine.unlocked = true
+    doctrine.level = 1
     selectedDoctrineId.value = doctrine.id
     logEvent(`Вы выбрали ${doctrine.name}.`)
     pushNotification(`Доктрина «${doctrine.name}» принята.`, 'success')
+    unlockAchievement('first-doctrine')
     advanceTutorial(4)
+  }
+
+  const upgradeDoctrine = (doctrineId: string) => {
+    const doctrine = doctrines.value.find(item => item.id === doctrineId)
+    if (!doctrine || !doctrine.unlocked || doctrine.level >= doctrine.maxLevel) {
+      return
+    }
+    const upgradeCost = getDoctrineUpgradeCost(doctrine)
+    if (!upgradeCost || !canAfford(upgradeCost)) {
+      pushNotification('Недостаточно ресурсов для усиления доктрины.', 'warning')
+      return
+    }
+    spendCost(upgradeCost)
+    doctrine.level += 1
+    logEvent(`Доктрина «${doctrine.name}» усилена до ${doctrine.level} уровня.`)
+    pushNotification('Доктрина усилена.', 'success')
+    unlockAchievement('doctrine-upgrade')
+  }
+
+  const activateDoctrine = (doctrineId: string) => {
+    const doctrine = doctrines.value.find(item => item.id === doctrineId)
+    if (!doctrine || !doctrine.unlocked) return
+    selectedDoctrineId.value = doctrine.id
+    logEvent(`Активирована доктрина ${doctrine.name}.`)
+  }
+
+  const getResourceUpgradeCost = (upgrade: ResourceUpgrade) =>
+    upgrade.upgradeCosts[upgrade.level - 1]
+
+  const unlockResourceUpgrade = (upgradeId: string) => {
+    const upgrade = resourceUpgrades.value.find(item => item.id === upgradeId)
+    if (!upgrade || upgrade.unlocked) return
+    if (!hasResourceRequirements(upgrade.requires)) {
+      pushNotification('Нужно открыть предыдущий уровень ветки.', 'warning')
+      return
+    }
+    if (!canAfford(upgrade.cost)) {
+      pushNotification('Недостаточно ресурсов для технологии.', 'warning')
+      return
+    }
+    spendCost(upgrade.cost)
+    upgrade.unlocked = true
+    upgrade.level = 1
+    logEvent(`Технология «${upgrade.name}» активирована.`)
+    pushNotification('Технология добычи открыта.', 'success')
+    const unlockedCount = resourceUpgrades.value.filter(item => item.unlocked).length
+    if (unlockedCount >= 3) {
+      unlockAchievement('resource-master')
+    }
+  }
+
+  const upgradeResourceUpgrade = (upgradeId: string) => {
+    const upgrade = resourceUpgrades.value.find(item => item.id === upgradeId)
+    if (!upgrade || !upgrade.unlocked || upgrade.level >= upgrade.maxLevel) return
+    const upgradeCost = getResourceUpgradeCost(upgrade)
+    if (!upgradeCost || !canAfford(upgradeCost)) {
+      pushNotification('Недостаточно ресурсов для улучшения.', 'warning')
+      return
+    }
+    spendCost(upgradeCost)
+    upgrade.level += 1
+    logEvent(`Технология «${upgrade.name}» улучшена.`)
+    pushNotification('Технология улучшена.', 'success')
   }
 
   const spendEnergy = (amount = 1) => {
@@ -695,39 +1387,53 @@ export function useGameState() {
 
   const gatherPlasma = () => {
     if (!spendEnergy(1)) return
-    const gained = Math.round(14 + stats.value.plasmaRate * 3)
+    const baseGain = 14 + stats.value.plasmaRate * 3
+    const upgradeBonus = 1 + resourceEffects.value.plasmaYield
+    const gained = Math.round(baseGain * upgradeBonus)
     plasma.value += gained
     gainExperience(3)
     logEvent(`Сбор плазмы: +${gained}.`)
+    unlockAchievement('first-harvest')
     advanceTutorial(0)
   }
 
   const refineClots = () => {
     if (!spendEnergy(1)) return
-    const required = 18
+    const baseCost = 18
+    const baseYield = 6
+    const reduction = resourceEffects.value.plasmaCostReduction
+    const required = Math.max(10, Math.round(baseCost * (1 - reduction)))
     if (plasma.value < required) {
       logEvent('Недостаточно плазмы для синтеза.')
       pushNotification('Нужно больше плазмы для синтеза.', 'warning')
       return
     }
     plasma.value -= required
-    clots.value += 6
+    const output = Math.round(baseYield * (1 + resourceEffects.value.clotYield))
+    clots.value += output
     gainExperience(4)
-    logEvent('Синтез сгустков: +6.')
+    logEvent(`Синтез сгустков: +${output}.`)
     advanceTutorial(1)
   }
 
   const transmuteEssence = () => {
     if (!spendEnergy(2)) return
-    if (clots.value < 12) {
+    const baseCost = 12
+    const baseYield = 3
+    const reduction = resourceEffects.value.clotCostReduction
+    const required = Math.max(6, Math.round(baseCost * (1 - reduction)))
+    if (clots.value < required) {
       logEvent('Нужны сгустки для возгонки эссенции.')
       pushNotification('Не хватает сгустков для эссенции.', 'warning')
       return
     }
-    clots.value -= 12
-    essence.value += 3
+    clots.value -= required
+    const output = Math.round(
+      baseYield * (1 + resourceEffects.value.essenceYield)
+    )
+    essence.value += output
     gainExperience(6)
-    logEvent('Возгонка эссенции: +3.')
+    logEvent(`Возгонка эссенции: +${output}.`)
   }
 
   const reinforceMasking = () => {
@@ -742,6 +1448,12 @@ export function useGameState() {
     threat.value = Math.max(0, threat.value - 8)
     gainExperience(4)
     logEvent('Контур маскировки укреплён.')
+    if (masking.value >= 80) {
+      unlockAchievement('masking-expert')
+    }
+    if (threat.value <= 0) {
+      unlockAchievement('threat-zero')
+    }
   }
 
   const scanFlow = () => {
@@ -753,6 +1465,9 @@ export function useGameState() {
     }
     gainExperience(5)
     logEvent('Проведена разведка потока. Угроза снижена.')
+    if (threat.value <= 0) {
+      unlockAchievement('threat-zero')
+    }
   }
 
   const stabilizeCore = () => {
@@ -767,6 +1482,7 @@ export function useGameState() {
     integrity.value = Math.min(maxIntegrity.value, integrity.value + 10)
     gainExperience(6)
     logEvent('Ядро стабилизировано, целостность восстановлена.')
+    unlockAchievement('core-rescue')
   }
 
   const advanceFront = () => {
@@ -808,7 +1524,13 @@ export function useGameState() {
       const module = modules.value.find(item => item.id === reward.moduleId)
       if (module && !module.unlocked) {
         module.unlocked = true
+        module.level = 1
         logEvent(`Найден уникальный модуль: ${module.name}.`)
+        unlockAchievement('first-module')
+        const unlockedCount = modules.value.filter(item => item.unlocked).length
+        if (unlockedCount >= 3) {
+          unlockAchievement('module-triad')
+        }
       }
     }
   }
@@ -866,6 +1588,7 @@ export function useGameState() {
     unlockNextNode()
     gainExperience(10)
     logEvent(`Сектор «${node.name}» стабилизирован.`)
+    unlockAchievement('sector-clear')
     advanceTutorial(3)
   }
 
@@ -937,6 +1660,8 @@ export function useGameState() {
       }
       logEvent(`Угроза нейтрализована: ${encounter.value.enemyName}.`)
       closeEncounter()
+      unlockAchievement('battle-win')
+      incrementAchievement('battle-streak')
       advanceTutorial(5)
       return
     }
@@ -967,6 +1692,8 @@ export function useGameState() {
       }
       logEvent(`Угроза нейтрализована: ${encounter.value.enemyName}.`)
       closeEncounter()
+      unlockAchievement('battle-win')
+      incrementAchievement('battle-streak')
       advanceTutorial(5)
       return
     }
@@ -1006,7 +1733,8 @@ export function useGameState() {
     masking.value = Math.max(0, masking.value - 0.4)
     threat.value = Math.min(
       100,
-      threat.value + Math.max(0, 0.6 - stats.value.masking * 0.05)
+      threat.value + Math.max(0, 0.6 - stats.value.masking * 0.05) +
+        resourceEffects.value.threatShift
     )
 
     if (threat.value >= 90) {
@@ -1016,7 +1744,7 @@ export function useGameState() {
   }
 
   const createSavePayload = () => ({
-    version: 4,
+    version: 5,
     day: day.value,
     clots: clots.value,
     plasma: plasma.value,
@@ -1028,12 +1756,15 @@ export function useGameState() {
     experience: experience.value,
     nodes: nodes.value,
     modules: modules.value,
+    doctrines: doctrines.value,
+    resourceUpgrades: resourceUpgrades.value,
+    achievements: achievements.value,
     log: log.value,
     encounter: encounter.value,
     combatState,
     selectedDoctrineId: selectedDoctrineId.value,
     tutorialEnabled: tutorialEnabled.value,
-    tutorialStep: tutorialStep.value
+    tutorialStep: tutorialStep.value,
   })
 
   const resetGame = () => {
@@ -1046,7 +1777,10 @@ export function useGameState() {
     masking.value = 65
     experience.value = 0
     nodes.value = baseNodes.map(node => ({ ...node }))
-    modules.value = baseModules.map(module => ({ ...module }))
+    modules.value = cloneModules()
+    doctrines.value = cloneDoctrines()
+    resourceUpgrades.value = cloneResourceUpgrades()
+    achievements.value = cloneAchievements()
     selectedDoctrineId.value = null
     tutorialEnabled.value = true
     tutorialStep.value = 0
@@ -1081,11 +1815,12 @@ export function useGameState() {
     } else {
       nodes.value = baseNodes.map(node => ({ ...node }))
     }
-    if (Array.isArray(payload.modules)) {
-      modules.value = payload.modules as GameModule[]
-    } else {
-      modules.value = baseModules.map(module => ({ ...module }))
-    }
+    modules.value = hydrateModules(payload.modules as GameModule[] | undefined)
+    doctrines.value = hydrateDoctrines(payload.doctrines as Doctrine[] | undefined)
+    resourceUpgrades.value = hydrateResourceUpgrades(
+      payload.resourceUpgrades as ResourceUpgrade[] | undefined
+    )
+    achievements.value = mergeAchievements(payload.achievements as Achievement[])
     if (Array.isArray(payload.log)) {
       log.value = payload.log as Array<{ id: number; message: string; time: string }>
     }
@@ -1102,6 +1837,11 @@ export function useGameState() {
       combatState.focused = combat.focused ?? false
     }
     selectedNodeId.value = nodes.value[0]?.id ?? null
+    if (integrity.value <= 0) {
+      encounter.value = null
+      combatState.focused = false
+      combatState.guarded = false
+    }
     logEvent('Сохранение загружено.')
     return true
   }
@@ -1129,11 +1869,14 @@ export function useGameState() {
       experience,
       nodes,
       modules,
+      doctrines,
+      resourceUpgrades,
+      achievements,
       log,
       encounter,
       selectedDoctrineId,
       tutorialEnabled,
-      tutorialStep
+      tutorialStep,
     ],
     () => {
       saveState(createSavePayload())
@@ -1142,13 +1885,50 @@ export function useGameState() {
   )
 
   watch(
+    isGameOver,
+    isOver => {
+      if (isOver) {
+        encounter.value = null
+        combatState.focused = false
+        combatState.guarded = false
+      }
+    }
+  )
+
+  watch(
     () => levelInfo.value.level,
     (level, prev) => {
       if (level > prev) {
         logEvent(`Цитадель достигла уровня ${level}.`)
         integrity.value = Math.min(maxIntegrity.value, integrity.value + 6)
+        if (level >= 5) {
+          unlockAchievement('level-five')
+        }
       }
     }
+  )
+
+  watch(
+    [plasma, clots, essence],
+    () => {
+      updateAchievementProgress('plasma-collector', plasma.value)
+      updateAchievementProgress('clot-master', clots.value)
+      updateAchievementProgress('essence-weaver', essence.value)
+    },
+    { immediate: true }
+  )
+
+  watch(
+    [masking, threat],
+    () => {
+      if (masking.value >= 80) {
+        unlockAchievement('masking-expert')
+      }
+      if (threat.value <= 0) {
+        unlockAchievement('threat-zero')
+      }
+    },
+    { immediate: true }
   )
 
   return {
@@ -1164,6 +1944,8 @@ export function useGameState() {
     nodes,
     modules,
     doctrines,
+    resourceUpgrades,
+    achievements,
     selectedDoctrineId,
     log,
     notifications,
@@ -1179,8 +1961,16 @@ export function useGameState() {
     maxIntegrity,
     levelInfo,
     stats,
-    buyModule,
-    adoptDoctrine,
+    tutorialEnabled,
+    tutorialStep,
+    tutorialSteps,
+    unlockModule,
+    upgradeModule,
+    unlockDoctrine,
+    upgradeDoctrine,
+    activateDoctrine,
+    unlockResourceUpgrade,
+    upgradeResourceUpgrade,
     gatherPlasma,
     refineClots,
     transmuteEssence,
@@ -1195,8 +1985,6 @@ export function useGameState() {
     guard,
     retreat,
     logEvent,
-    tutorialEnabled,
-    tutorialStep,
     advanceTutorial,
     pushNotification,
     generateSaveCode,

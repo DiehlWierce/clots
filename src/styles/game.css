@@ -41,6 +41,7 @@
   gap: 8px;
 }
 
+
 .stat {
   background: rgba(25, 28, 44, 0.7);
   padding: 8px 10px;
@@ -102,6 +103,11 @@
 .tab-bar__button--active {
   background: linear-gradient(135deg, #b21f42, #e34d6d);
   color: #fff;
+}
+
+.tab-bar__button--locked {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .tab-bar__button:hover:not(.tab-bar__button--active) {
@@ -179,6 +185,22 @@
   grid-column: span 12;
 }
 
+.panel--tutorial {
+  grid-column: span 12;
+}
+
+.panel--research {
+  grid-column: span 7;
+}
+
+.panel--lore {
+  grid-column: span 12;
+}
+
+.panel--achievements {
+  grid-column: span 12;
+}
+
 .panel--log {
   grid-column: span 7;
 }
@@ -225,6 +247,7 @@
 .combat__actions button,
 .module-card button,
 .doctrine-card button,
+.research-card button,
 .save-actions button {
   background: linear-gradient(135deg, #b21f42, #e34d6d);
   color: #fff;
@@ -243,6 +266,7 @@
 .combat__actions button:disabled,
 .module-card button:disabled,
 .doctrine-card button:disabled,
+.research-card button:disabled,
 .save-actions button:disabled {
   background: rgba(69, 76, 95, 0.7);
   cursor: not-allowed;
@@ -254,6 +278,7 @@
 .combat__actions button:hover:not(:disabled),
 .module-card button:hover:not(:disabled),
 .doctrine-card button:hover:not(:disabled),
+.research-card button:hover:not(:disabled),
 .save-actions button:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(226, 70, 103, 0.35);
@@ -402,11 +427,36 @@
   color: #c1cce7;
 }
 
+.module-card__actions,
+.doctrine-card__actions {
+  display: grid;
+  gap: 8px;
+}
+
+.module-card__upgrade,
+.doctrine-card__upgrade,
+.doctrine-card__activate {
+  background: rgba(25, 30, 46, 0.9);
+}
+
+.module-card__requires {
+  font-size: 12px;
+  color: #9fb0d1;
+}
+
+
 .module-card__meta,
 .module-card__effects {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.module-card__upgrade-costs {
+  font-size: 12px;
+  color: #b9c6e4;
+  display: grid;
+  gap: 4px;
 }
 
 .doctrine-grid {
@@ -586,6 +636,30 @@
   gap: 6px;
 }
 
+.faq__item summary {
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq__item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq__item summary::after {
+  content: '+';
+  float: right;
+  color: #9fb0d1;
+}
+
+.faq__item[open] summary::after {
+  content: '–';
+}
+
+.faq__item p {
+  margin-top: 8px;
+}
+
 .log li {
   display: grid;
   grid-template-columns: 70px 1fr;
@@ -609,6 +683,207 @@
   gap: 12px;
   font-size: 13px;
   color: #d1dbf5;
+}
+
+.tree-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.tree-branch {
+  background: rgba(16, 20, 34, 0.7);
+  border-radius: 16px;
+  border: 1px solid rgba(92, 104, 142, 0.3);
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.tree-branch__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: #b8c7e6;
+}
+
+.tree-branch__header h3 {
+  font-size: 16px;
+  color: #f5c7d5;
+}
+
+.tree-branch__nodes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.lore-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.lore-era {
+  background: rgba(16, 20, 34, 0.7);
+  border-radius: 16px;
+  border: 1px solid rgba(92, 104, 142, 0.3);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.lore-era__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #b8c7e6;
+}
+
+.lore-era__header h3 {
+  font-size: 18px;
+  color: #f5c7d5;
+}
+
+.lore-era__summary {
+  font-size: 13px;
+  color: #cfd8f0;
+}
+
+.lore-chapters {
+  display: grid;
+  gap: 12px;
+}
+
+.lore-chapter {
+  background: rgba(18, 22, 36, 0.65);
+  border-radius: 12px;
+  border: 1px solid rgba(92, 104, 142, 0.2);
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.lore-chapter h4 {
+  font-size: 15px;
+  color: #f1c2ce;
+}
+
+.lore-chapter p {
+  font-size: 13px;
+  color: #d1dbf5;
+  line-height: 1.6;
+}
+
+.combat-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 14, 0.82);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+  padding: 20px;
+}
+
+.combat-overlay__card {
+  width: min(720px, 100%);
+  background: rgba(11, 13, 22, 0.95);
+  border-radius: 18px;
+  border: 1px solid rgba(92, 104, 142, 0.4);
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  box-shadow: 0 16px 30px rgba(4, 6, 12, 0.45);
+}
+
+.tutorial-card {
+  display: grid;
+  gap: 10px;
+  background: rgba(18, 22, 36, 0.75);
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid rgba(92, 104, 142, 0.3);
+}
+
+.tutorial-card__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tutorial-card__title {
+  font-size: 16px;
+  color: #f5c7d5;
+}
+
+.tutorial-card__text {
+  color: #cfd8f0;
+}
+
+.tutorial-card__hint {
+  background: rgba(24, 28, 44, 0.9);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #a7c1ff;
+  font-size: 13px;
+}
+
+.tutorial-card__locked {
+  font-size: 12px;
+  color: #ffb7c6;
+}
+
+.research-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.research-card {
+  background: rgba(20, 25, 42, 0.8);
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid rgba(85, 97, 134, 0.4);
+  display: grid;
+  gap: 10px;
+}
+
+.research-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.achievement-card {
+  background: rgba(18, 22, 36, 0.8);
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid rgba(92, 104, 142, 0.3);
+  display: grid;
+  gap: 8px;
+}
+
+.achievement-card--unlocked {
+  border-color: rgba(118, 232, 170, 0.6);
+}
+
+.achievement-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.achievement-card__progress {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: #c4d4f5;
 }
 
 .training__toggle {
@@ -686,11 +961,15 @@
   .panel--modules,
   .panel--combat,
   .panel--doctrine,
+  .panel--research,
   .panel--save,
   .panel--faq,
   .panel--log,
   .panel--notifications,
-  .panel--training {
+  .panel--training,
+  .panel--achievements,
+  .panel--tutorial,
+  .panel--lore {
     grid-column: span 12;
   }
 }
