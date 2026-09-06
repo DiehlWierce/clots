@@ -16,7 +16,11 @@ body {
   line-height: 1.5;
   color: var(--c-text);
   background:
-    radial-gradient(ellipse 120% 80% at 50% -10%, hsl(var(--hue-blood) 40% 14%) 0%, transparent 60%),
+    radial-gradient(
+      ellipse 120% 80% at 50% -10%,
+      hsl(var(--hue-blood) 40% 14%) 0%,
+      transparent 60%
+    ),
     var(--c-bg);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;

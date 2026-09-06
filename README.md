@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="./clots.png" width="560" alt="Clots: Hem Empire">
-</p>
-
 <h1 align="center">Clots: Hem Empire</h1>
 
 <p align="center">
@@ -14,6 +10,10 @@
   <img alt="TypeScript strict" src="https://img.shields.io/badge/TypeScript-strict-3178c6">
   <img alt="Vite 7" src="https://img.shields.io/badge/Vite-7-646cff">
   <img alt="Тесты" src="https://img.shields.io/badge/тестов-79-brightgreen">
+</p>
+
+<p align="center">
+  <img src="./docs/screenshot-map.png" width="880" alt="Карта сосудистой сети: регионы, секторы, доход и шум">
 </p>
 
 ---
@@ -44,6 +44,10 @@
 | **Угроза и рейды**   | Маскировка снижает прирост угрозы, но не более чем на 75% — давление не отключается никакой сборкой.                                            |
 | **Летопись**         | 12 глав, открывающихся по ходу партии, а не выложенных стеной на старте.                                                                        |
 | **Достижения**       | 32 штуки, включая накопительные и секретные.                                                                                                    |
+
+<p align="center">
+  <img src="./docs/screenshot-command.png" width="880" alt="Экран командования: действия цикла и характеристики цитадели">
+</p>
 
 ### Ключевые тактики
 

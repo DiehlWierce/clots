@@ -86,12 +86,8 @@ function playout(seed: number, cycles: number): GameState {
     // Расширяемся, но в штурм не лезем на низкой целостности.
     if (s.phase === 'command') {
       const healthy = s.integrity > derive(s).maxIntegrity * 0.85
-      const target = SECTORS.find(
-        sec => isSectorReachable(s, sec.id) && (healthy || !sec.garrison),
-      )
-      const need = target?.garrison
-        ? BALANCE.actions.assault.energy
-        : BALANCE.actions.occupy.energy
+      const target = SECTORS.find(sec => isSectorReachable(s, sec.id) && (healthy || !sec.garrison))
+      const need = target?.garrison ? BALANCE.actions.assault.energy : BALANCE.actions.occupy.energy
       if (target && s.energy >= need) act({ type: 'map/capture', sectorId: target.id })
     }
 

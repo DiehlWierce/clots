@@ -6,8 +6,7 @@
   min-height: 100dvh;
   max-width: 1180px;
   margin: 0 auto;
-  padding:
-    calc(var(--safe-top) + var(--sp-3)) calc(var(--safe-right) + var(--sp-3))
+  padding: calc(var(--safe-top) + var(--sp-3)) calc(var(--safe-right) + var(--sp-3))
     calc(var(--safe-bottom) + var(--sp-3)) calc(var(--safe-left) + var(--sp-3));
   gap: var(--sp-3);
 }
@@ -124,13 +123,27 @@
   font-variant-numeric: tabular-nums;
 }
 
-.res--plasma .res__value { color: var(--c-plasma); }
-.res--clots .res__value { color: var(--c-clots); }
-.res--essence .res__value { color: var(--c-essence); }
-.res--energy .res__value { color: var(--c-energy); }
-.res--integrity .res__value { color: var(--c-integrity); }
-.res--threat .res__value { color: var(--c-threat); }
-.res--masking .res__value { color: var(--c-masking); }
+.res--plasma .res__value {
+  color: var(--c-plasma);
+}
+.res--clots .res__value {
+  color: var(--c-clots);
+}
+.res--essence .res__value {
+  color: var(--c-essence);
+}
+.res--energy .res__value {
+  color: var(--c-energy);
+}
+.res--integrity .res__value {
+  color: var(--c-integrity);
+}
+.res--threat .res__value {
+  color: var(--c-threat);
+}
+.res--masking .res__value {
+  color: var(--c-masking);
+}
 
 .meter {
   height: 3px;
@@ -414,10 +427,22 @@
   border: 1px solid var(--c-border);
 }
 
-.tag--good { color: var(--c-good); border-color: color-mix(in srgb, var(--c-good) 40%, transparent); }
-.tag--bad { color: var(--c-bad); border-color: color-mix(in srgb, var(--c-bad) 40%, transparent); }
-.tag--warn { color: var(--c-warn); border-color: color-mix(in srgb, var(--c-warn) 40%, transparent); }
-.tag--info { color: var(--c-plasma); border-color: color-mix(in srgb, var(--c-plasma) 40%, transparent); }
+.tag--good {
+  color: var(--c-good);
+  border-color: color-mix(in srgb, var(--c-good) 40%, transparent);
+}
+.tag--bad {
+  color: var(--c-bad);
+  border-color: color-mix(in srgb, var(--c-bad) 40%, transparent);
+}
+.tag--warn {
+  color: var(--c-warn);
+  border-color: color-mix(in srgb, var(--c-warn) 40%, transparent);
+}
+.tag--info {
+  color: var(--c-plasma);
+  border-color: color-mix(in srgb, var(--c-plasma) 40%, transparent);
+}
 
 /* ─── Дерево развития ─────────────────────────────────────────────────────── */
 
@@ -518,8 +543,12 @@
   border-left: 2px solid var(--c-border);
 }
 
-.log__row--good { border-left-color: var(--c-good); }
-.log__row--bad { border-left-color: var(--c-bad); }
+.log__row--good {
+  border-left-color: var(--c-good);
+}
+.log__row--bad {
+  border-left-color: var(--c-bad);
+}
 
 .log__cycle {
   font-family: var(--font-mono);
@@ -637,9 +666,15 @@
   animation: toast-in 0.2s ease;
 }
 
-.toast--good { border-left: 3px solid var(--c-good); }
-.toast--bad { border-left: 3px solid var(--c-bad); }
-.toast--info { border-left: 3px solid var(--c-plasma); }
+.toast--good {
+  border-left: 3px solid var(--c-good);
+}
+.toast--bad {
+  border-left: 3px solid var(--c-bad);
+}
+.toast--info {
+  border-left: 3px solid var(--c-plasma);
+}
 
 @keyframes toast-in {
   from {
