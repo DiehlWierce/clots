@@ -1,0 +1,92 @@
+/*
+ * Токены дизайн-системы. В v1 было 72 захардкоженных hex-значения в одном
+ * файле и ни одной переменной — тему нельзя было тронуть. Здесь все цвета,
+ * отступы и радиусы объявлены один раз.
+ */
+:root {
+  color-scheme: dark light;
+
+  /* Палитра */
+  --hue-blood: 348;
+  --c-bg: hsl(var(--hue-blood) 30% 5%);
+  --c-bg-elevated: hsl(var(--hue-blood) 24% 9%);
+  --c-surface: hsl(var(--hue-blood) 20% 12%);
+  --c-surface-hover: hsl(var(--hue-blood) 20% 16%);
+  --c-border: hsl(var(--hue-blood) 18% 22%);
+  --c-border-strong: hsl(var(--hue-blood) 22% 32%);
+
+  --c-text: hsl(350 20% 94%);
+  --c-text-muted: hsl(350 12% 68%);
+  --c-text-faint: hsl(350 10% 52%);
+
+  --c-accent: hsl(348 78% 52%);
+  --c-accent-soft: hsl(348 60% 62%);
+  --c-accent-bg: hsl(348 60% 20%);
+
+  --c-plasma: hsl(198 82% 60%);
+  --c-clots: hsl(348 78% 60%);
+  --c-essence: hsl(272 70% 70%);
+  --c-energy: hsl(45 92% 60%);
+  --c-integrity: hsl(4 74% 58%);
+  --c-threat: hsl(28 88% 58%);
+  --c-masking: hsl(168 60% 50%);
+
+  --c-good: hsl(148 58% 50%);
+  --c-bad: hsl(2 76% 60%);
+  --c-warn: hsl(38 88% 58%);
+
+  /* Геометрия */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  --shadow-1: 0 1px 2px hsl(0 0% 0% / 0.4);
+  --shadow-2: 0 8px 24px hsl(0 0% 0% / 0.45);
+
+  --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'SF Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  /* Безопасные зоны для мобильных: в v1 их не было при viewport-fit=cover. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* Светлая тема для тех, у кого системная тема светлая. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --c-bg: hsl(350 30% 97%);
+    --c-bg-elevated: hsl(350 26% 99%);
+    --c-surface: hsl(350 24% 100%);
+    --c-surface-hover: hsl(350 30% 96%);
+    --c-border: hsl(350 18% 86%);
+    --c-border-strong: hsl(350 20% 74%);
+    --c-text: hsl(348 30% 12%);
+    --c-text-muted: hsl(348 12% 38%);
+    --c-text-faint: hsl(348 10% 52%);
+    --c-accent-bg: hsl(348 70% 92%);
+    --c-plasma: hsl(198 78% 38%);
+    --c-clots: hsl(348 72% 46%);
+    --c-essence: hsl(272 58% 48%);
+    --c-energy: hsl(38 88% 40%);
+    --c-masking: hsl(168 60% 32%);
+    --shadow-2: 0 8px 24px hsl(348 30% 40% / 0.14);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
