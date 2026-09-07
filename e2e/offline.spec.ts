@@ -20,14 +20,20 @@ async function waitForServiceWorker(page: Page): Promise<void> {
 }
 
 test.describe('офлайн', () => {
+  // Первый прогон поднимает сборку и регистрирует worker с нуля — это дольше
+  // обычной проверки интерфейса.
+  test.setTimeout(60_000)
+
   test('игра поднимается без сети уже после первого открытия', async ({ page, context }) => {
     // Самый жёсткий случай: игрок открыл мини-приложение один раз и потерял
     // сеть, ни разу не перезагрузив страницу. Раньше worker кэшировал только
     // оболочку — код и стили в кэш не попадали, и экран оставался пустым.
     await page.goto('./?playtest=hem')
-    await page.waitForFunction(
-      async () => 'serviceWorker' in navigator && Boolean(await navigator.serviceWorker.ready),
-    )
+    // Ждать нужно не установки, а именно контроля над страницей: пока
+    // controller не назначен, перезагрузка идёт в сеть мимо worker'а, и
+    // офлайн даёт пустой экран. На тёплом прогоне это происходит мгновенно,
+    // на холодном — нет, из-за чего проверка мигала.
+    await waitForServiceWorker(page)
 
     await context.setOffline(true)
     await page.reload()
