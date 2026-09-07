@@ -5,6 +5,7 @@ import { useScrollLock } from '@/ui/hooks/useScrollLock'
 import { useTheme } from '@/ui/hooks/useTheme'
 import { useBackButton } from '@/ui/hooks/useBackButton'
 import { useMainButton } from '@/ui/hooks/useMainButton'
+import { useDictionary } from '@/ui/hooks/useDictionary'
 import { Hud } from '@/ui/components/Hud'
 import { CommandTab } from '@/ui/components/CommandTab'
 import { MapTab } from '@/ui/components/MapTab'
@@ -32,13 +33,15 @@ import { haptics, initWebApp, isPlaytest, isTelegram, watchViewport } from '@/te
 type TabId = 'command' | 'map' | 'development' | 'chronicle' | 'settings'
 
 /** Пять пунктов — предел для нижней панели на телефоне. */
-const TABS: { id: TabId; icon: string; label: string }[] = [
-  { id: 'command', icon: '🎛️', label: 'Штаб' },
-  { id: 'map', icon: '🗺️', label: 'Карта' },
-  { id: 'development', icon: '⚗️', label: 'Развитие' },
-  { id: 'chronicle', icon: '📜', label: 'Хроника' },
-  { id: 'settings', icon: '⚙️', label: 'Настройки' },
-]
+const TAB_ICONS: Record<TabId, string> = {
+  command: '🎛️',
+  map: '🗺️',
+  development: '⚗️',
+  chronicle: '📜',
+  settings: '⚙️',
+}
+
+const TAB_ORDER: TabId[] = ['command', 'map', 'development', 'chronicle', 'settings']
 
 const HOME: TabId = 'command'
 
@@ -56,6 +59,7 @@ export default function App() {
 
   const [tab, setTab] = useState<TabId>(HOME)
   const { mode: themeMode, setMode: setThemeMode } = useTheme()
+  const t = useDictionary()
   const stats = useDerived(state)
 
   // Инициализация мини-приложения: разворот окна, безопасные зоны, свайпы.
@@ -114,7 +118,7 @@ export default function App() {
   const nativeButton = useMainButton({
     visible: !busyPhase,
     enabled: !busyPhase,
-    text: `Завершить цикл ${state.cycle}`,
+    text: `${t.cycle.end} ${state.cycle}`,
     onClick: endCycle,
   })
 
@@ -163,30 +167,31 @@ export default function App() {
             disabled={busyPhase}
             onClick={endCycle}
           >
-            ⏭️ Завершить цикл {state.cycle}
+            ⏭️ {t.cycle.end} {state.cycle}
           </button>
         )}
         <div className="cycle-bar__hint">
-          Доход +{stats.income.plasma}💧 · энергия {stats.maxEnergy}⚡ · угроза +{stats.threatGain}%
+          {t.cycle.income} +{stats.income.plasma}💧 · {t.cycle.energy} {stats.maxEnergy}⚡ ·{' '}
+          {t.cycle.threat} +{stats.threatGain}%
         </div>
       </div>
 
       {/* Ни одна вкладка не блокируется: интерфейс всегда доступен целиком. */}
       <nav className="nav" role="tablist" aria-label="Разделы игры">
-        {TABS.map(item => (
+        {TAB_ORDER.map(id => (
           <button
-            key={item.id}
+            key={id}
             type="button"
             role="tab"
             className="nav__item"
-            aria-selected={tab === item.id}
-            onClick={() => selectTab(item.id)}
+            aria-selected={tab === id}
+            onClick={() => selectTab(id)}
           >
             <span className="nav__icon" aria-hidden="true">
-              {item.icon}
+              {TAB_ICONS[id]}
             </span>
-            <span className="nav__label">{item.label}</span>
-            {badges[item.id] ? <span className="nav__badge">{badges[item.id]}</span> : null}
+            <span className="nav__label">{t.nav[id]}</span>
+            {badges[id] ? <span className="nav__badge">{badges[id]}</span> : null}
           </button>
         ))}
       </nav>

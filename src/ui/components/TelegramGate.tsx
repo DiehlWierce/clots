@@ -1,4 +1,5 @@
 import { TELEGRAM_BOT_URL } from '@/config'
+import { dictionary } from '@/i18n'
 
 /**
  * Экран для запуска вне Telegram.
@@ -8,15 +9,17 @@ import { TELEGRAM_BOT_URL } from '@/config'
  * частично рабочей версии показываем ссылку.
  */
 export function TelegramGate() {
+  const t = dictionary()
+
   return (
     <div className="gate">
       <div className="gate__icon" aria-hidden="true">
         🩸
       </div>
-      <h1>Clots: Hem Empire</h1>
-      <p>Игра запускается только в Telegram — как мини-приложение.</p>
+      <h1>{t.gate.title}</h1>
+      <p>{t.gate.text}</p>
       <a className="btn btn--primary" href={TELEGRAM_BOT_URL} target="_blank" rel="noreferrer">
-        Открыть в Telegram
+        {t.gate.open}
       </a>
       <p className="muted">{TELEGRAM_BOT_URL.replace('https://', '')}</p>
     </div>
