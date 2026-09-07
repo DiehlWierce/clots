@@ -113,3 +113,28 @@ test('сохранение: код генерируется и загружае�
     .click()
   await expect(page.locator('.muted', { hasText: 'Сохранение загружено' })).toBeVisible()
 })
+
+test('сортировка развития выстраивает один общий список, а не сортирует внутри веток', async ({
+  page,
+}) => {
+  await page.getByRole('tab', { name: 'Развитие' }).click()
+
+  // По умолчанию — ветки с заголовками.
+  await expect(page.locator('.branch__name').first()).toBeVisible()
+
+  await page.getByRole('radio', { name: /Дешевле/ }).click()
+
+  // Регресс: раньше сортировка применялась внутри каждой ветки, заголовки
+  // оставались, и до дешёвой покупки всё равно приходилось мотать список.
+  await expect(page.locator('.branch__name')).toHaveCount(0)
+
+  const costs = await page.locator('.node .btn--block').allTextContents()
+  const numbers = costs
+    .map(text => Number(text.replace(/[^\d]/g, '')))
+    .filter(value => Number.isFinite(value) && value > 0)
+  expect(numbers.length).toBeGreaterThan(1)
+  expect(numbers[0]).toBeLessThanOrEqual(numbers[numbers.length - 1] as number)
+
+  // Ветка не теряется: она подписана на самой карточке.
+  await expect(page.locator('.node__branch').first()).toBeVisible()
+})

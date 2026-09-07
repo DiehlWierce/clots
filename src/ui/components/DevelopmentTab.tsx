@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { DOCTRINES, DOCTRINE_PATHS, MODULES, TECHS } from '@/engine/content'
 import { canAfford, doctrineForkBlocked, nextCost, requirementsMet } from '@/engine/selectors'
 import { usePersistentState } from '../hooks/usePersistentState'
@@ -21,9 +22,11 @@ type Section = 'modules' | 'doctrines' | 'techs'
 /**
  * Порядок вывода дерева.
  *
- * «По веткам» — исходная структура. «Доступные» поднимает наверх то, что уже
- * по карману, чтобы не мотать список в поисках доступной покупки.
- * «Дешевле» упорядочивает по стоимости следующего уровня.
+ * «По веткам» — исходная структура с заголовками. Два других режима
+ * распускают ветки и выстраивают ОДИН общий список: «Доступные» поднимает
+ * наверх то, что уже по карману, «Дешевле» — самое дешёвое. Сортировка
+ * внутри веток смысла не имеет: игрок всё равно мотал бы список до нужной
+ * ветки, ради чего сортировка и затевалась.
  */
 type SortMode = 'branch' | 'available' | 'cheapest'
 
@@ -106,6 +109,7 @@ function UpgradeCard({
   name,
   description,
   labels,
+  branchLabel,
 }: {
   item: UpgradeLike
   level: number
@@ -118,6 +122,8 @@ function UpgradeCard({
   name: string
   description: string
   labels: Record<string, string>
+  /** Ветка, к которой относится улучшение: подписывается в общем списке. */
+  branchLabel?: string | undefined
 }) {
   const maxed = level >= item.maxLevel
   const cost = nextCost(item.costs, level)
@@ -129,6 +135,9 @@ function UpgradeCard({
     <div className={`node${level > 0 ? ' node--owned' : ''}${locked ? ' node--locked' : ''}`}>
       <div className="node__head">
         <div>
+          {branchLabel !== undefined && branchLabel !== '' ? (
+            <div className="node__branch">{branchLabel}</div>
+          ) : null}
           <div className="node__name">{name}</div>
           <div className="node__desc">{description}</div>
         </div>
@@ -170,17 +179,76 @@ function UpgradeCard({
   )
 }
 
-function groupByBranch<T extends { branch: string; tier: number }>(items: T[]): [string, T[]][] {
+/**
+ * Раскладывает элементы по веткам.
+ *
+ * Название ветки берётся уже переведённым: раньше группировка шла по
+ * исходной русской строке, и в английской версии заголовки веток
+ * оставались русскими.
+ */
+function groupByBranch<T extends { tier: number }>(
+  items: T[],
+  branchOf: (item: T) => string,
+): [string, T[]][] {
   const map = new Map<string, T[]>()
   for (const item of items) {
-    const list = map.get(item.branch) ?? []
+    const branch = branchOf(item)
+    const list = map.get(branch) ?? []
     list.push(item)
-    map.set(item.branch, list)
+    map.set(branch, list)
   }
   return [...map.entries()].map(([branch, list]) => [
     branch,
     [...list].sort((a, b) => a.tier - b.tier),
   ])
+}
+
+/**
+ * Раскладка раздела: либо ветки с заголовками, либо один общий список.
+ *
+ * В общем списке у каждой карточки подписана ветка — иначе, вырвав элемент
+ * из заголовка, мы отняли бы у игрока понимание, куда он вкладывается.
+ */
+function Listing<T extends Sortable>({
+  branches,
+  sort,
+  levels,
+  state,
+  render,
+}: {
+  branches: [string, T[]][]
+  sort: SortMode
+  levels: Record<string, number>
+  state: GameState
+  render: (item: T, branch: string) => ReactNode
+}) {
+  if (sort === 'branch') {
+    return (
+      <>
+        {branches.map(([branch, items]) => (
+          <div key={branch} className="branch">
+            <div className="branch__name">{branch}</div>
+            <div className="grid">{items.map(item => render(item, branch))}</div>
+          </div>
+        ))}
+      </>
+    )
+  }
+
+  const branchOf = new Map<string, string>()
+  const flat: T[] = []
+  for (const [branch, items] of branches) {
+    for (const item of items) {
+      branchOf.set(item.id, branch)
+      flat.push(item)
+    }
+  }
+
+  return (
+    <div className="grid">
+      {sortItems(flat, sort, levels, state).map(item => render(item, branchOf.get(item.id) ?? ''))}
+    </div>
+  )
 }
 
 export function DevelopmentTab({ state, dispatch, tc, t }: Props) {
@@ -191,8 +259,14 @@ export function DevelopmentTab({ state, dispatch, tc, t }: Props) {
   // Выбор сортировки — предпочтение игрока, а не часть партии: живёт отдельно.
   const [sort, setSort] = usePersistentState<SortMode>('clots:dev-sort', 'branch', SORT_MODES)
 
-  const moduleBranches = useMemo(() => groupByBranch(MODULES), [])
-  const techBranches = useMemo(() => groupByBranch(TECHS), [])
+  const moduleBranches = useMemo(
+    () => groupByBranch(MODULES, item => tc.module(item.id, 'branch', item.branch)),
+    [tc],
+  )
+  const techBranches = useMemo(
+    () => groupByBranch(TECHS, item => tc.tech(item.id, 'branch', item.branch)),
+    [tc],
+  )
 
   const sections: { id: Section; label: string; count: number }[] = [
     { id: 'modules', label: 'Модули', count: Object.keys(state.modules).length },
@@ -252,49 +326,51 @@ export function DevelopmentTab({ state, dispatch, tc, t }: Props) {
         ))}
       </div>
 
-      {section === 'modules' &&
-        moduleBranches.map(([branch, items]) => (
-          <div key={branch} className="branch">
-            <div className="branch__name">{branch}</div>
-            <div className="grid">
-              {sortItems(items, sort, state.modules, state).map(item => (
-                <UpgradeCard
-                  key={item.id}
-                  item={item}
-                  level={state.modules[item.id] ?? 0}
-                  levels={state.modules}
-                  state={state}
-                  labels={t.effects}
-                  name={tc.module(item.id, 'name', item.name)}
-                  description={tc.module(item.id, 'description', item.description)}
-                  onBuy={() => dispatch({ type: 'module/buy', id: item.id })}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+      {section === 'modules' && (
+        <Listing
+          branches={moduleBranches}
+          sort={sort}
+          levels={state.modules}
+          state={state}
+          render={(item, branch) => (
+            <UpgradeCard
+              key={item.id}
+              item={item}
+              level={state.modules[item.id] ?? 0}
+              levels={state.modules}
+              state={state}
+              labels={t.effects}
+              name={tc.module(item.id, 'name', item.name)}
+              description={tc.module(item.id, 'description', item.description)}
+              onBuy={() => dispatch({ type: 'module/buy', id: item.id })}
+              {...(sort === 'branch' ? {} : { branchLabel: branch })}
+            />
+          )}
+        />
+      )}
 
-      {section === 'techs' &&
-        techBranches.map(([branch, items]) => (
-          <div key={branch} className="branch">
-            <div className="branch__name">{branch}</div>
-            <div className="grid">
-              {sortItems(items, sort, state.techs, state).map(item => (
-                <UpgradeCard
-                  key={item.id}
-                  item={item}
-                  level={state.techs[item.id] ?? 0}
-                  levels={state.techs}
-                  state={state}
-                  labels={t.effects}
-                  name={tc.tech(item.id, 'name', item.name)}
-                  description={tc.tech(item.id, 'description', item.description)}
-                  onBuy={() => dispatch({ type: 'tech/buy', id: item.id })}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+      {section === 'techs' && (
+        <Listing
+          branches={techBranches}
+          sort={sort}
+          levels={state.techs}
+          state={state}
+          render={(item, branch) => (
+            <UpgradeCard
+              key={item.id}
+              item={item}
+              level={state.techs[item.id] ?? 0}
+              levels={state.techs}
+              state={state}
+              labels={t.effects}
+              name={tc.tech(item.id, 'name', item.name)}
+              description={tc.tech(item.id, 'description', item.description)}
+              onBuy={() => dispatch({ type: 'tech/buy', id: item.id })}
+              {...(sort === 'branch' ? {} : { branchLabel: branch })}
+            />
+          )}
+        />
+      )}
 
       {section === 'doctrines' && (
         <>

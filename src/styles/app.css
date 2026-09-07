@@ -579,6 +579,14 @@
   font-size: 0.875rem;
 }
 
+.node__branch {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-text-faint);
+  margin-bottom: 2px;
+}
+
 .node__desc {
   font-size: 0.75rem;
   color: var(--c-text-muted);
