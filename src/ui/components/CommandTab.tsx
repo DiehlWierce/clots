@@ -1,4 +1,5 @@
 import { BALANCE } from '@/engine/balance'
+import { EPOCH_MODIFIER_BY_ID, epochName } from '@/engine/content'
 import { canAfford } from '@/engine/selectors'
 import { raidChance, reclaimChance } from '@/engine/systems/threat'
 import { formatCost } from '../format'
@@ -135,6 +136,25 @@ export function CommandTab({ state, stats, dispatch }: Props) {
           })}
         </div>
       </section>
+
+      {state.epochModifiers.length > 0 ? (
+        <section className="panel">
+          <div className="panel__head">
+            <h2>{epochName(state.epoch)}</h2>
+            <p>Правила, которые система ввела по ходу партии. Они не отменяются.</p>
+          </div>
+          {state.epochModifiers.map(id => {
+            const modifier = EPOCH_MODIFIER_BY_ID.get(id)
+            if (!modifier) return null
+            return (
+              <div key={id} className="node" style={{ marginBottom: 'var(--sp-2)' }}>
+                <div className="node__name">{modifier.name}</div>
+                <div className="node__desc">{modifier.description}</div>
+              </div>
+            )
+          })}
+        </section>
+      ) : null}
 
       <section className="panel">
         <div className="panel__head">

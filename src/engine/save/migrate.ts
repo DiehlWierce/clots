@@ -26,6 +26,8 @@ const MIGRATIONS: Record<number, Migration> = {
     seenEvents: [],
     siegeCyclesLeft: 0,
     ngPlus: 0,
+    epoch: 0,
+    epochModifiers: [],
     version: 2,
   }),
 }

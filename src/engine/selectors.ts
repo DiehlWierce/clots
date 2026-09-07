@@ -3,6 +3,7 @@ import {
   ACHIEVEMENT_BY_ID,
   DOCTRINES,
   DOCTRINE_BY_ID,
+  EPOCH_MODIFIER_BY_ID,
   MUTATION_BY_ID,
   MODULE_BY_ID,
   SECTORS,
@@ -109,6 +110,12 @@ export function collectEffects(state: GameState): EffectTotals {
   if (state.mutation) {
     const mutation = MUTATION_BY_ID.get(state.mutation)
     if (mutation) addScaled(total, mutation.effects, 1)
+  }
+
+  // Модификаторы эпох накапливаются и действуют до конца партии.
+  for (const id of state.epochModifiers) {
+    const modifier = EPOCH_MODIFIER_BY_ID.get(id)
+    if (modifier?.effects) addScaled(total, modifier.effects, 1)
   }
 
   // Бонусы за уровень цитадели.
@@ -220,6 +227,18 @@ export function territoryHeat(state: GameState): number {
   return heat * mutationHeatMultiplier(state)
 }
 
+/** Произведение множителей активных эпох по указанному полю. */
+export function epochMultiplier(
+  state: GameState,
+  key: 'combatDamage' | 'threatMultiplier' | 'incomeMultiplier' | 'enemyRegen',
+): number {
+  let value = 1
+  for (const id of state.epochModifiers) {
+    value *= EPOCH_MODIFIER_BY_ID.get(id)?.[key] ?? 1
+  }
+  return value
+}
+
 /** Множитель шума от стартовой мутации. */
 export function mutationHeatMultiplier(state: GameState): number {
   if (!state.mutation) return 1
@@ -245,7 +264,7 @@ export function threatGain(state: GameState, effects = collectEffects(state)): n
   const fromMasking = Math.min(t.maskingCap, state.masking / t.maskingDivisor)
   const fromUpgrades = Math.min(t.maskingCap, Math.max(0, effects.suppression))
   const reduction = Math.min(t.maskingCap, fromMasking + fromUpgrades)
-  return round2(raw * (1 - reduction))
+  return round2(raw * (1 - reduction) * epochMultiplier(state, 'threatMultiplier'))
 }
 
 export function derive(state: GameState): DerivedStats {
@@ -256,6 +275,7 @@ export function derive(state: GameState): DerivedStats {
   const nextThreshold = xpForNextLevel(level)
   const radius = Math.round(effects.logistics + BALANCE.logistics.relayRadius)
   const income = baseIncome(state, radius)
+  const incomeScale = epochMultiplier(state, 'incomeMultiplier')
 
   return {
     level,
@@ -274,9 +294,9 @@ export function derive(state: GameState): DerivedStats {
     essenceYield: round2(effects.essenceYield),
     xpYield: round2(effects.xpYield),
     income: {
-      plasma: Math.round(income.plasma * (1 + effects.plasmaYield)),
-      clots: Math.round(income.clots * (1 + effects.clotYield)),
-      essence: Math.round(income.essence * (1 + effects.essenceYield)),
+      plasma: Math.round(income.plasma * (1 + effects.plasmaYield) * incomeScale),
+      clots: Math.round(income.clots * (1 + effects.clotYield) * incomeScale),
+      essence: Math.round(income.essence * (1 + effects.essenceYield) * incomeScale),
     },
     threatGain: threatGain(state, effects),
     logistics: radius,

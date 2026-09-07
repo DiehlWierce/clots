@@ -4,8 +4,10 @@ import {
   ACHIEVEMENTS,
   ALL_CHAPTERS,
   DOCTRINE_BY_ID,
+  EPOCH_MODIFIERS,
   EVENTS,
   EVENT_BY_ID,
+  epochName,
   MODULE_BY_ID,
   MUTATION_BY_ID,
   REGIONS,
@@ -24,6 +26,7 @@ import {
   isAchievementEarned,
   isSectorReachable,
   doctrineForkBlocked,
+  epochMultiplier,
   nextCost,
   requirementsMet,
   VAULT_ENERGY,
@@ -636,7 +639,13 @@ function doCombatAction(
     )
   }
 
-  const hit = resolvePlayerHit(combat, stats, action, ctx.rng)
+  const hit = resolvePlayerHit(
+    combat,
+    stats,
+    action,
+    ctx.rng,
+    epochMultiplier(ctx.s, 'combatDamage'),
+  )
 
   if (hit.absorbed > 0) {
     combat.shield = Math.max(0, combat.shield - hit.absorbed)
@@ -679,7 +688,12 @@ function enemyTurn(ctx: Ctx): void {
   const combat = ctx.s.combat
   if (!combat) return
   const stats = derive(ctx.s)
-  const result = resolveEnemyTurn(combat, stats)
+  const result = resolveEnemyTurn(
+    combat,
+    stats,
+    epochMultiplier(ctx.s, 'combatDamage'),
+    epochMultiplier(ctx.s, 'enemyRegen'),
+  )
   const enemy = getEnemy(combat.enemyId)
 
   if (result.damage > 0) damageCitadel(ctx, result.damage)
@@ -906,11 +920,14 @@ function doEndCycle(ctx: Ctx): void {
     }
   }
 
-  // 8. Событие — только если цикл не занят боем: два оверлея подряд
+  // 8. Смена эпохи: система меняет правила до конца партии.
+  advanceEpoch(ctx)
+
+  // 9. Событие — только если цикл не занят боем: два оверлея подряд
   //    превращают ход в череду модальных окон.
   if (s.phase === 'command') rollEvent(ctx)
 
-  // 9. Отсчёт осады. Выстоял — партия выиграна.
+  // 10. Отсчёт осады. Выстоял — партия выиграна.
   if (siege) {
     s.siegeCyclesLeft -= 1
     if (s.siegeCyclesLeft <= 0) {
@@ -925,6 +942,28 @@ function doEndCycle(ctx: Ctx): void {
 
   if (s.cycle >= 50) unlock(ctx, 'cycle-50')
   advanceTutorial(ctx, 6)
+}
+
+/**
+ * Переход в новую эпоху.
+ *
+ * Каждые BALANCE.epochs.length циклов добавляется глобальный модификатор,
+ * который действует до конца партии и не отменяется. Модификаторы не
+ * повторяются, поэтому поздняя игра постепенно становится другой игрой.
+ */
+function advanceEpoch(ctx: Ctx): void {
+  const s = ctx.s
+  const target = Math.floor((s.cycle - 1) / BALANCE.epochs.length)
+  if (target <= s.epoch) return
+
+  s.epoch = target
+  const pool = EPOCH_MODIFIERS.filter(m => !s.epochModifiers.includes(m.id))
+  if (pool.length === 0) return
+
+  const picked = ctx.rng.pick(pool)
+  s.epochModifiers.push(picked.id)
+  ctx.log(`Наступила ${epochName(target)}. ${picked.name}: ${picked.description}`, 'bad')
+  ctx.notices.push({ message: `${epochName(target)}: ${picked.name}`, tone: 'bad' })
 }
 
 // ─── События ────────────────────────────────────────────────────────────────

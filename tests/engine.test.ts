@@ -24,7 +24,7 @@ import { pickReclaimTarget, raidChance, reclaimChance } from '@/engine/systems/t
 import { Rng } from '@/engine/rng'
 import type { GameAction } from '@/engine/actions'
 import type { GameState } from '@/engine/types'
-import { newGame } from './helpers'
+import { advanceCycles, answerEvent, newGame } from './helpers'
 
 const start = () => newGame(1234)
 
@@ -467,10 +467,7 @@ describe('события', () => {
     for (let i = 0; i < 400; i += 1) {
       if (s.phase === 'event' && s.pendingEvent) {
         seen.push(s.pendingEvent)
-        const event = EVENT_BY_ID.get(s.pendingEvent)
-        const option = event?.options.find(o => !o.requires && !o.fight) ?? event?.options[0]
-        if (!option) break
-        s = reduce(s, { type: 'event/choose', optionId: option.id }).state
+        s = answerEvent(s)
         continue
       }
       if (s.phase === 'combat') {
@@ -736,5 +733,58 @@ describe('развилки доктрин', () => {
     const wave = derive(build('reaver-3b'))
     expect(slaughter.pierce).toBeGreaterThan(wave.pierce)
     expect(wave.suppression).toBeGreaterThan(slaughter.suppression)
+  })
+})
+
+/**
+ * Эпохи: каждые N циклов система меняет правила до конца партии.
+ * Раньше сотый цикл отличался от десятого только величиной чисел.
+ */
+describe('эпохи', () => {
+  it('в начале партии эпоха нулевая и модификаторов нет', () => {
+    const s = newGame(1)
+    expect(s.epoch).toBe(0)
+    expect(s.epochModifiers).toEqual([])
+  })
+
+  it('через длину эпохи появляется модификатор', () => {
+    const s = advanceCycles(newGame(31), BALANCE.epochs.length + 2)
+    expect(s.epoch).toBeGreaterThan(0)
+    expect(s.epochModifiers.length).toBeGreaterThan(0)
+  })
+
+  it('модификаторы накапливаются и не повторяются', () => {
+    const s = advanceCycles(newGame(31), BALANCE.epochs.length * 3 + 2)
+    expect(s.epochModifiers.length).toBeGreaterThan(1)
+    expect(new Set(s.epochModifiers).size).toBe(s.epochModifiers.length)
+  })
+
+  it('множители эпох влияют на угрозу и доход', () => {
+    const base: GameState = { ...newGame(1), controlled: SECTORS.slice(0, 6).map(s => s.id) }
+    const thrombosis: GameState = { ...base, epochModifiers: ['thrombosis'] }
+    expect(derive(thrombosis).threatGain).toBeLessThan(derive(base).threatGain)
+    expect(derive(thrombosis).income.plasma).toBeLessThan(derive(base).income.plasma)
+
+    const inflammation: GameState = { ...base, epochModifiers: ['inflammation'] }
+    expect(derive(inflammation).threatGain).toBeGreaterThan(derive(base).threatGain)
+    expect(derive(inflammation).income.plasma).toBeGreaterThan(derive(base).income.plasma)
+  })
+
+  it('модификатор с эффектами меняет характеристики', () => {
+    const base = newGame(1)
+    const storm: GameState = { ...base, epochModifiers: ['adrenal-storm'] }
+    expect(derive(storm).maxEnergy).toBe(derive(base).maxEnergy + 2)
+  })
+
+  it('лихорадка усиливает урон в бою', () => {
+    const setup = (modifiers: string[]): number => {
+      let s: GameState = { ...newGame(3), energy: 99, epochModifiers: modifiers }
+      s = reduce(s, { type: 'map/capture', sectorId: 'cap-drift' }).state
+      s = reduce(s, { type: 'map/capture', sectorId: 'cap-weave' }).state
+      const before = s.combat?.hp ?? 0
+      s = reduce(s, { type: 'combat/act', action: 'strike' }).state
+      return before - (s.combat?.hp ?? 0)
+    }
+    expect(setup(['fever'])).toBeGreaterThan(setup([]))
   })
 })

@@ -2,6 +2,7 @@ import { BALANCE } from '../balance'
 import {
   ACHIEVEMENT_BY_ID,
   DOCTRINE_BY_ID,
+  EPOCH_MODIFIER_BY_ID,
   EVENT_BY_ID,
   MUTATION_BY_ID,
   MODULE_BY_ID,
@@ -144,6 +145,9 @@ export function sanitizeState(input: unknown): GameState | null {
 
     siegeCyclesLeft: int(raw.siegeCyclesLeft, 0, 0, 999),
     ngPlus: int(raw.ngPlus, 0, 0, 999),
+
+    epoch: int(raw.epoch, 0, 0, 999),
+    epochModifiers: idList(raw.epochModifiers, new Set(EPOCH_MODIFIER_BY_ID.keys())),
 
     combat: null,
     pendingVault:

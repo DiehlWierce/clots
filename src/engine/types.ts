@@ -235,6 +235,26 @@ export interface EventDef {
   options: EventOption[]
 }
 
+/**
+ * Глобальный модификатор эпохи: правило, которое действует до конца партии.
+ * Эпохи синхронизируют лор с механикой — поздние циклы перестают быть
+ * повторением ранних с большими числами.
+ */
+export interface EpochModifierDef {
+  id: string
+  name: string
+  description: string
+  effects?: CitadelEffects
+  /** Множитель урона в бою — и своего, и вражеского. */
+  combatDamage?: number
+  /** Множитель прироста угрозы. */
+  threatMultiplier?: number
+  /** Множитель дохода с секторов. */
+  incomeMultiplier?: number
+  /** Множитель лечения врагов. */
+  enemyRegen?: number
+}
+
 export interface MutationDef {
   id: string
   name: string
@@ -355,6 +375,11 @@ export interface GameState {
   siegeCyclesLeft: number
   /** Номер прохождения: 0 — первый забег, дальше New Game+. */
   ngPlus: number
+
+  /** Номер текущей эпохи (0 — первая). */
+  epoch: number
+  /** Накопленные модификаторы эпох: действуют до конца партии. */
+  epochModifiers: string[]
 
   achievements: LevelMap
   log: LogEntry[]

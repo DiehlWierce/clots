@@ -75,6 +75,7 @@ export function resolvePlayerHit(
   stats: DerivedStats,
   action: PlayerCombatAction,
   rng: Rng,
+  damageScale = 1,
 ): PlayerHitResult {
   const c = BALANCE.combat
   const enemy = getEnemy(combat.enemyId)
@@ -92,6 +93,7 @@ export function resolvePlayerHit(
   if (crit) raw *= c.critMultiplier
 
   raw *= 1 + rng.float(-c.variance, c.variance)
+  raw *= damageScale
 
   // Броня режет урон, пробитие её частично игнорирует.
   const armor = Math.max(0, effectiveArmor(combat) - stats.pierce)
@@ -115,7 +117,12 @@ export interface EnemyTurnResult {
 }
 
 /** Считает ход врага по его текущему намерению. */
-export function resolveEnemyTurn(combat: CombatState, stats: DerivedStats): EnemyTurnResult {
+export function resolveEnemyTurn(
+  combat: CombatState,
+  stats: DerivedStats,
+  damageScale = 1,
+  regenScale = 1,
+): EnemyTurnResult {
   const intent = currentIntent(combat)
   const enemy = getEnemy(combat.enemyId)
 
@@ -125,11 +132,11 @@ export function resolveEnemyTurn(combat: CombatState, stats: DerivedStats): Enem
     const defenseApplied = stats.defense * (1 - (intent.ignoreDefense ?? 0))
     damage = Math.max(1, raw - defenseApplied)
     if (combat.guarded) damage *= 1 - BALANCE.combat.guard.reduction
-    damage = Math.max(1, Math.round(damage))
+    damage = Math.max(1, Math.round(damage * damageScale))
   }
 
   // Лечение врага ограничено долей его максимума за ход: см. enemyHealCap.
-  const rawHeal = (intent.healSelf ?? 0) + (enemy?.regen ?? 0)
+  const rawHeal = ((intent.healSelf ?? 0) + (enemy?.regen ?? 0)) * regenScale
   const healed = Math.min(rawHeal, Math.round(combat.maxHp * BALANCE.combat.enemyHealCap))
 
   return {
