@@ -11,7 +11,7 @@ import { runSuite } from '../src/engine/sim/run'
 import { getSector } from '../src/engine/content'
 import { MUTATIONS } from '../src/engine/content/mutations'
 
-const runs = Number(process.argv[2] ?? 60)
+const runs = Number(process.argv[2] ?? 50)
 if (!Number.isFinite(runs) || runs <= 0) {
   console.error('Укажите положительное число забегов.')
   process.exit(1)

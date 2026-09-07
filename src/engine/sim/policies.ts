@@ -18,7 +18,7 @@ import {
 } from '../selectors'
 import { currentIntent, momentumCost } from '../systems/combat'
 import type { GameAction } from '../actions'
-import type { DoctrinePath, GameState } from '../types'
+import type { DoctrinePath, GameState, SectorDef } from '../types'
 
 /**
  * Политики игры для симуляции.
@@ -27,14 +27,48 @@ import type { DoctrinePath, GameState } from '../types'
  * ощущениями. Здесь описаны разные стили игры, чтобы измерять, а не
  * угадывать: что происходит с каждым подходом на одних и тех же зёрнах.
  *
- * Три первых стиля — активные: развиваются и расширяются, каждый по своему
- * пути доктрин. Два последних — накопительные: они откладывают выбор пути
- * или не делают его вовсе, вкладываясь в модули, технологии и ресурсы.
- * Такой игрок существует всегда, и без него измерения показывали только ту
- * половину игроков, которая идёт вперёд.
+ * Стили намеренно разведены до крайностей — измеряется не «средний игрок»,
+ * а границы того, что игра допускает:
+ *
+ * - активные (агрессивная, экономическая, осторожная) — развиваются и
+ *   расширяются, каждый по своему пути доктрин;
+ * - накопительные (накопитель, крепость, гриндер) — откладывают выбор пути
+ *   или не делают его вовсе, вкладываясь в дерево и ресурсы;
+ * - крайности (берсерк, призрак, фермер рейдов, пацифист, стрела) — доводят
+ *   одно решение до предела: не лечиться вовсе, не поднимать угрозу вовсе,
+ *   жить рейдами, не воевать, идти только к трону;
+ * - однобокие (технократ, инженер) — покупают только половину дерева.
+ *
+ * Если крайность выигрывает так же часто, как взвешенная игра, значит
+ * соответствующая система на баланс не влияет.
  */
 
-export type PolicyId = 'aggressive' | 'economic' | 'cautious' | 'hoarder' | 'grinder' | 'fortress'
+export type PolicyId =
+  | 'aggressive'
+  | 'economic'
+  | 'cautious'
+  | 'hoarder'
+  | 'grinder'
+  | 'fortress'
+  | 'berserk'
+  | 'ghost'
+  | 'raider'
+  | 'pacifist'
+  | 'spear'
+  | 'technocrat'
+  | 'engineer'
+
+/** Что стиль вообще покупает. */
+export type BuyScope = 'all' | 'techs' | 'modules'
+
+/**
+ * Как выбирается следующий сектор.
+ *
+ * 'order' — в порядке контента, то есть по регионам подряд;
+ * 'frontier' — самый сложный из доступных: движение к трону, а не вширь;
+ * 'safest' — самый простой из доступных: расширение без риска.
+ */
+export type TargetOrder = 'order' | 'frontier' | 'safest'
 
 export interface Policy {
   id: PolicyId
@@ -74,6 +108,23 @@ export interface Policy {
    * недооснащёнными и гибли, ни разу не проиграв бой.
    */
   difficultyMargin: number
+  /** Какую часть дерева стиль покупает. */
+  buy: BuyScope
+  /** Как выбирается следующий сектор. */
+  target: TargetOrder
+  /**
+   * Не штурмовать сектора с гарнизоном и отступать из навязанных боёв.
+   * Рейд отступлением не отменяется — он бьёт по ядру, — но пацифист
+   * платит именно эту цену, а не дерётся.
+   */
+  avoidCombat: boolean
+  /**
+   * Не тратить ходы на маскировку вовсе.
+   *
+   * Отдельный рычаг, а не «высокий expandBelowThreat»: фермеру рейдов
+   * угроза нужна, он живёт с неё, и путать это с безрассудством нельзя.
+   */
+  neverMask: boolean
 }
 
 export const POLICIES: Record<PolicyId, Policy> = {
@@ -91,6 +142,10 @@ export const POLICIES: Record<PolicyId, Policy> = {
     expandEvery: 1,
     refineBias: 0.3,
     difficultyMargin: 2,
+    buy: 'all',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: false,
   },
   economic: {
     id: 'economic',
@@ -103,6 +158,10 @@ export const POLICIES: Record<PolicyId, Policy> = {
     expandEvery: 1,
     refineBias: 0.7,
     difficultyMargin: 0,
+    buy: 'all',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: false,
   },
   cautious: {
     id: 'cautious',
@@ -115,6 +174,10 @@ export const POLICIES: Record<PolicyId, Policy> = {
     expandEvery: 1,
     refineBias: 0.5,
     difficultyMargin: -1,
+    buy: 'all',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: false,
   },
   // Накопитель: сперва выкупает всё, что можно выкупить, и только глубоко
   // за середину партии определяется с путём. Проверяет, не наказывает ли
@@ -130,6 +193,10 @@ export const POLICIES: Record<PolicyId, Policy> = {
     expandEvery: 1,
     refineBias: 0.85,
     difficultyMargin: -1,
+    buy: 'all',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: false,
   },
   // Крепость: сначала скупает всё дерево и держит оборону — маскировка,
   // лечение, отбитые рейды, — и лишь потом идёт завоёвывать карту. Проверяет,
@@ -145,6 +212,10 @@ export const POLICIES: Record<PolicyId, Policy> = {
     expandEvery: 3,
     refineBias: 0.8,
     difficultyMargin: 0,
+    buy: 'all',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: false,
   },
   // Гриндер: доктрину не берёт вовсе. Территория расширяется редко и только
   // наверняка. Это проверка на то, проходима ли игра без главного выбора —
@@ -160,6 +231,146 @@ export const POLICIES: Record<PolicyId, Policy> = {
     expandEvery: 1,
     refineBias: 0.75,
     difficultyMargin: -2,
+    buy: 'all',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: false,
+  },
+  // ─── Крайности ────────────────────────────────────────────────────────────
+
+  // Берсерк: угроза игнорируется полностью, лечение — только на грани смерти.
+  // Прямая противоположность осторожной игре: проверяет, наказывает ли игра
+  // за отказ от управления угрозой или это управление можно пропустить.
+  berserk: {
+    id: 'berserk',
+    name: 'Берсерк',
+    expandBelowThreat: 100,
+    assaultAboveHealth: 0.15,
+    healUpTo: 0.25,
+    path: 'reaver',
+    doctrineFrom: 1,
+    expandEvery: 1,
+    refineBias: 0.1,
+    difficultyMargin: 2,
+    buy: 'all',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: true,
+  },
+
+  // Призрак: угроза держится у нуля любой ценой, расширение редкое и только
+  // в самые простые сектора. Противоположность берсерку.
+  ghost: {
+    id: 'ghost',
+    name: 'Призрак',
+    expandBelowThreat: 18,
+    assaultAboveHealth: 0.95,
+    healUpTo: 0.98,
+    path: 'warden',
+    doctrineFrom: 1,
+    expandEvery: 2,
+    refineBias: 0.6,
+    difficultyMargin: -2,
+    buy: 'all',
+    target: 'safest',
+    avoidCombat: false,
+    neverMask: false,
+  },
+
+  // Фермер рейдов: угроза не сбивается намеренно — рейд даёт 45 опыта против
+  // 12 за захват. Проверяет, выгоднее ли жить с рейдов, чем расширяться.
+  raider: {
+    id: 'raider',
+    name: 'Фермер рейдов',
+    expandBelowThreat: 100,
+    assaultAboveHealth: 0.8,
+    healUpTo: 0.95,
+    path: 'reaver',
+    doctrineFrom: 1,
+    expandEvery: 6,
+    refineBias: 0.6,
+    difficultyMargin: 0,
+    buy: 'all',
+    target: 'safest',
+    avoidCombat: false,
+    neverMask: true,
+  },
+
+  // Пацифист: не штурмует гарнизоны и отступает из боёв. Берёт только пустые
+  // сектора. Проверяет, проходима ли игра без боя вообще.
+  pacifist: {
+    id: 'pacifist',
+    name: 'Пацифист',
+    expandBelowThreat: 44,
+    assaultAboveHealth: 0.9,
+    healUpTo: 0.95,
+    path: 'weaver',
+    doctrineFrom: 1,
+    expandEvery: 1,
+    refineBias: 0.7,
+    difficultyMargin: 0,
+    buy: 'all',
+    target: 'safest',
+    avoidCombat: true,
+    neverMask: false,
+  },
+
+  // Стрела: не расширяется вширь, а идёт к трону кратчайшим путём — каждый
+  // раз берёт самый сложный доступный сектор. Проверяет, можно ли выиграть
+  // малой территорией.
+  spear: {
+    id: 'spear',
+    name: 'Стрела',
+    expandBelowThreat: 55,
+    assaultAboveHealth: 0.75,
+    healUpTo: 0.8,
+    path: 'reaver',
+    doctrineFrom: 1,
+    expandEvery: 1,
+    refineBias: 0.4,
+    difficultyMargin: 0,
+    buy: 'all',
+    target: 'frontier',
+    avoidCombat: false,
+    neverMask: false,
+  },
+
+  // ─── Однобокие ────────────────────────────────────────────────────────────
+
+  // Технократ покупает только технологии, инженер — только модули. Вместе они
+  // отвечают на вопрос, какая половина дерева на самом деле решает партию.
+  technocrat: {
+    id: 'technocrat',
+    name: 'Технократ',
+    expandBelowThreat: 48,
+    assaultAboveHealth: 0.85,
+    healUpTo: 0.9,
+    path: 'weaver',
+    doctrineFrom: 1,
+    expandEvery: 1,
+    refineBias: 0.8,
+    difficultyMargin: 0,
+    buy: 'techs',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: false,
+  },
+
+  engineer: {
+    id: 'engineer',
+    name: 'Инженер',
+    expandBelowThreat: 48,
+    assaultAboveHealth: 0.85,
+    healUpTo: 0.9,
+    path: 'warden',
+    doctrineFrom: 1,
+    expandEvery: 1,
+    refineBias: 0.4,
+    difficultyMargin: 0,
+    buy: 'modules',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: false,
   },
 }
 
@@ -193,6 +404,36 @@ function readyToExpand(s: GameState, policy: Policy): boolean {
   return s.cycle % policy.expandEvery === 0
 }
 
+/**
+ * Следующий сектор для захвата.
+ *
+ * Порядок обхода — часть стиля, а не мелочь: «стрела» ломится к трону через
+ * самый сложный доступный сектор, «призрак» и «пацифист» берут самый
+ * простой, остальные идут в порядке контента, то есть по регионам подряд.
+ */
+function pickTarget(
+  s: GameState,
+  policy: Policy,
+  withinReach: (difficulty: number) => boolean,
+  healthy: boolean,
+): SectorDef | undefined {
+  const candidates = SECTORS.filter(sec => {
+    if (!isSectorReachable(s, sec.id) || !withinReach(sec.difficulty)) return false
+    // Пацифист не штурмует гарнизоны вовсе — только пустые сектора.
+    if (policy.avoidCombat && sec.garrison) return false
+    return healthy || !sec.garrison
+  })
+  if (candidates.length === 0) return undefined
+
+  if (policy.target === 'frontier') {
+    return candidates.reduce((best, sec) => (sec.difficulty > best.difficulty ? sec : best))
+  }
+  if (policy.target === 'safest') {
+    return candidates.reduce((best, sec) => (sec.difficulty < best.difficulty ? sec : best))
+  }
+  return candidates[0]
+}
+
 const act = (state: GameState, action: GameAction): GameState => reduce(state, action).state
 
 /**
@@ -214,6 +455,9 @@ export function step(state: GameState, policy: Policy): GameState {
   }
 
   if (s.phase === 'combat' && s.combat) {
+    // Пацифист не дерётся. Из навязанного рейда отступление стоит удара по
+    // ядру — это и есть цена стиля, а не лазейка.
+    if (policy.avoidCombat) return act(s, { type: 'combat/withdraw' })
     return fightStep(s, policy)
   }
 
@@ -234,7 +478,9 @@ export function step(state: GameState, policy: Policy): GameState {
   const stats = derive(s)
 
   // Угроза под контролем — иначе рейды и потеря секторов съедают партию.
-  if (s.threat > policy.expandBelowThreat && s.energy >= 1) {
+  // Берсерк и фермер рейдов этот шаг пропускают: одному угроза безразлична,
+  // другому она нужна.
+  if (!policy.neverMask && s.threat > policy.expandBelowThreat && s.energy >= 1) {
     return s.plasma >= BALANCE.masking.actionCost.plasma
       ? act(s, { type: 'action/mask' })
       : act(s, { type: 'action/scan' })
@@ -264,12 +510,7 @@ export function step(state: GameState, policy: Policy): GameState {
   // в третий регион недооснащёнными и гибли, ни разу не проиграв бой.
   const withinReach = (difficulty: number): boolean =>
     stats.level + policy.difficultyMargin >= recommendedLevel(difficulty)
-  const target = readyToExpand(s, policy)
-    ? SECTORS.find(
-        sec =>
-          isSectorReachable(s, sec.id) && withinReach(sec.difficulty) && (healthy || !sec.garrison),
-      )
-    : undefined
+  const target = readyToExpand(s, policy) ? pickTarget(s, policy, withinReach, healthy) : undefined
   if (target && s.energy >= BALANCE.actions.assault.energy) {
     return act(s, { type: 'map/capture', sectorId: target.id })
   }
@@ -292,19 +533,23 @@ export function step(state: GameState, policy: Policy): GameState {
 }
 
 function pickPurchase(s: GameState, policy: Policy): GameAction | null {
-  for (const def of TECHS) {
-    const level = s.techs[def.id] ?? 0
-    if (level >= def.maxLevel) continue
-    if (!requirementsMet(s.techs, def.requires)) continue
-    const cost = nextCost(def.costs, level)
-    if (cost && canAfford(s, cost)) return { type: 'tech/buy', id: def.id }
+  if (policy.buy !== 'modules') {
+    for (const def of TECHS) {
+      const level = s.techs[def.id] ?? 0
+      if (level >= def.maxLevel) continue
+      if (!requirementsMet(s.techs, def.requires)) continue
+      const cost = nextCost(def.costs, level)
+      if (cost && canAfford(s, cost)) return { type: 'tech/buy', id: def.id }
+    }
   }
-  for (const def of MODULES) {
-    const level = s.modules[def.id] ?? 0
-    if (level >= def.maxLevel) continue
-    if (!requirementsMet(s.modules, def.requires)) continue
-    const cost = nextCost(def.costs, level)
-    if (cost && canAfford(s, cost)) return { type: 'module/buy', id: def.id }
+  if (policy.buy !== 'techs') {
+    for (const def of MODULES) {
+      const level = s.modules[def.id] ?? 0
+      if (level >= def.maxLevel) continue
+      if (!requirementsMet(s.modules, def.requires)) continue
+      const cost = nextCost(def.costs, level)
+      if (cost && canAfford(s, cost)) return { type: 'module/buy', id: def.id }
+    }
   }
   // Доктрины покупаются только когда стиль до них дозрел. Накопительные
   // политики держат путь незакрытым: у grinder — до конца партии.
