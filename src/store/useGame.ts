@@ -1,8 +1,16 @@
 import { create } from 'zustand'
-import { haptics } from '@/telegram'
+import { cloudGetLarge, cloudSetLarge, haptics, isCloudAvailable } from '@/telegram'
 import { reduce } from '@/engine/engine'
 import { createSeed } from '@/engine/rng'
-import { clearPersisted, loadPersisted, persist } from '@/engine/save'
+import {
+  CLOUD_KEY,
+  clearPersisted,
+  compareSaves,
+  fromCloudPayload,
+  loadPersisted,
+  persist,
+  toCloudPayload,
+} from '@/engine/save'
 import { createInitialState } from '@/engine/state'
 import type { GameAction } from '@/engine/actions'
 import type { GameState } from '@/engine/types'
@@ -15,11 +23,17 @@ export interface Toast extends Notice {
 interface GameStore {
   state: GameState
   toasts: Toast[]
+  /** Идёт ли обмен с облаком: показывается в настройках. */
+  cloudBusy: boolean
   dispatch: (action: GameAction) => void
   restart: () => void
   newGamePlus: () => void
   loadState: (state: GameState) => void
   dismissToast: (id: number) => void
+  /** Подтянуть партию из облака, если она новее локальной. */
+  syncFromCloud: () => Promise<void>
+  /** Выгрузить текущую партию в облако. */
+  pushToCloud: () => Promise<boolean>
 }
 
 /**
@@ -87,6 +101,7 @@ function reportHaptics(before: GameState, after: GameState, notices: Notice[]): 
 export const useGame = create<GameStore>((set, get) => ({
   state: loadPersisted() ?? createInitialState(createSeed()),
   toasts: [],
+  cloudBusy: false,
 
   dispatch: action => {
     const before = get().state
@@ -122,6 +137,43 @@ export const useGame = create<GameStore>((set, get) => ({
   },
 
   dismissToast: id => set(prev => ({ toasts: prev.toasts.filter(t => t.id !== id) })),
+
+  syncFromCloud: async () => {
+    if (!isCloudAvailable()) return
+    set({ cloudBusy: true })
+    try {
+      const payload = await cloudGetLarge(CLOUD_KEY)
+      if (!payload) return
+      const cloud = fromCloudPayload(payload)
+      const local = get().state
+      // Побеждает более поздняя партия — та, у которой больше цикл.
+      if (compareSaves(local, cloud) !== 'cloud' || !cloud) return
+      schedulePersist(cloud)
+      set(prev => ({
+        state: cloud,
+        toasts: [
+          ...prev.toasts,
+          {
+            id: (toastId += 1),
+            message: `Загружена партия из облака: цикл ${cloud.cycle}`,
+            tone: 'good' as const,
+          },
+        ],
+      }))
+    } finally {
+      set({ cloudBusy: false })
+    }
+  },
+
+  pushToCloud: async () => {
+    if (!isCloudAvailable()) return false
+    set({ cloudBusy: true })
+    try {
+      return await cloudSetLarge(CLOUD_KEY, toCloudPayload(get().state))
+    } finally {
+      set({ cloudBusy: false })
+    }
+  },
 }))
 
 /** Удобные точечные селекторы, чтобы компоненты не перерисовывались лишний раз. */

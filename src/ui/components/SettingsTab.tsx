@@ -1,11 +1,21 @@
 import { useState } from 'react'
 import { decodeSaveCode, encodeSaveCode } from '@/engine/save'
-import { getWebApp, haptics, isHapticsEnabled, isTelegram, setHapticsEnabled } from '@/telegram'
+import {
+  getWebApp,
+  haptics,
+  isCloudAvailable,
+  isHapticsEnabled,
+  isTelegram,
+  setHapticsEnabled,
+} from '@/telegram'
 import type { ThemeMode } from '@/telegram'
 import type { GameState } from '@/engine/types'
 
 interface Props {
   state: GameState
+  cloudBusy: boolean
+  onCloudPush: () => Promise<boolean>
+  onCloudPull: () => Promise<void>
   themeMode: ThemeMode
   onThemeChange: (mode: ThemeMode) => void
   onLoad: (state: GameState) => void
@@ -47,7 +57,16 @@ function Switch({
   )
 }
 
-export function SettingsTab({ state, themeMode, onThemeChange, onLoad, onRestart }: Props) {
+export function SettingsTab({
+  state,
+  cloudBusy,
+  onCloudPush,
+  onCloudPull,
+  themeMode,
+  onThemeChange,
+  onLoad,
+  onRestart,
+}: Props) {
   const [code, setCode] = useState('')
   const [status, setStatus] = useState<{ text: string; ok: boolean } | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -170,6 +189,49 @@ export function SettingsTab({ state, themeMode, onThemeChange, onLoad, onRestart
               {status.text}
             </p>
           ) : null}
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <h2>Облако Telegram</h2>
+          <p>
+            {isCloudAvailable()
+              ? 'Партия выгружается в облако в конце каждого цикла и подтягивается при запуске.'
+              : 'Недоступно: нужен Telegram версии 6.9 или новее.'}
+          </p>
+        </div>
+        <div className="row">
+          <button
+            type="button"
+            className="btn"
+            disabled={!isCloudAvailable() || cloudBusy}
+            onClick={() => {
+              void onCloudPush().then(ok => {
+                setStatus({
+                  text: ok ? 'Партия выгружена в облако.' : 'Не удалось выгрузить партию.',
+                  ok,
+                })
+                if (ok) haptics.success()
+                else haptics.error()
+              })
+            }}
+          >
+            ☁️ Выгрузить
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={!isCloudAvailable() || cloudBusy}
+            onClick={() => {
+              void onCloudPull().then(() => {
+                setStatus({ text: 'Проверено: загружается только более поздняя партия.', ok: true })
+                haptics.tap()
+              })
+            }}
+          >
+            ⬇️ Загрузить
+          </button>
         </div>
       </section>
 

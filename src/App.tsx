@@ -43,6 +43,9 @@ export default function App() {
   const newGamePlus = useGame(s => s.newGamePlus)
   const loadState = useGame(s => s.loadState)
   const dismissToast = useGame(s => s.dismissToast)
+  const syncFromCloud = useGame(s => s.syncFromCloud)
+  const pushToCloud = useGame(s => s.pushToCloud)
+  const cloudBusy = useGame(s => s.cloudBusy)
 
   const [tab, setTab] = useState<TabId>(HOME)
   const { mode: themeMode, setMode: setThemeMode } = useTheme()
@@ -53,6 +56,19 @@ export default function App() {
     initWebApp()
     return watchViewport()
   }, [])
+
+  // При запуске подтягиваем партию из облака, если она новее локальной:
+  // мини-приложение открывают и с телефона, и с десктопа.
+  useEffect(() => {
+    void syncFromCloud()
+  }, [syncFromCloud])
+
+  // Выгружаем прогресс в облако по завершении цикла — это естественная точка
+  // сохранения и достаточно редкая, чтобы не упереться в лимиты Telegram.
+  useEffect(() => {
+    if (state.cycle <= 1) return
+    void pushToCloud()
+  }, [state.cycle, pushToCloud])
 
   // Системная кнопка «Назад» возвращает на главную вкладку.
   const goHome = useCallback(() => setTab(HOME), [])
@@ -107,6 +123,9 @@ export default function App() {
         {tab === 'settings' && (
           <SettingsTab
             state={state}
+            cloudBusy={cloudBusy}
+            onCloudPush={pushToCloud}
+            onCloudPull={syncFromCloud}
             themeMode={themeMode}
             onThemeChange={setThemeMode}
             onLoad={loadState}

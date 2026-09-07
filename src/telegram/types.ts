@@ -42,6 +42,16 @@ export interface TelegramSafeAreaInset {
   right: number
 }
 
+export interface TelegramCloudStorage {
+  setItem?: (
+    key: string,
+    value: string,
+    callback?: (error: string | null, stored?: boolean) => void,
+  ) => void
+  getItem?: (key: string, callback: (error: string | null, value?: string) => void) => void
+  removeItem?: (key: string, callback?: (error: string | null, removed?: boolean) => void) => void
+}
+
 export interface TelegramWebApp {
   version?: string
   platform?: string
@@ -54,6 +64,7 @@ export interface TelegramWebApp {
   contentSafeAreaInset?: TelegramSafeAreaInset
   initData?: string
   HapticFeedback?: TelegramHapticFeedback
+  CloudStorage?: TelegramCloudStorage
   BackButton?: TelegramBackButton
 
   ready?: () => void

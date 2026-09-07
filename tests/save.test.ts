@@ -1,10 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { decodeSaveCode, encodeSaveCode, fromUnknown, serialize } from '@/engine/save'
+import {
+  compareSaves,
+  decodeSaveCode,
+  encodeSaveCode,
+  fromCloudPayload,
+  fromUnknown,
+  serialize,
+  toCloudPayload,
+} from '@/engine/save'
 import { decodeText, encodeText } from '@/engine/save/codec'
 import { sanitizeState } from '@/engine/save/schema'
 import { STATE_VERSION } from '@/engine/state'
 import { reduce } from '@/engine/engine'
 import type { GameState } from '@/engine/types'
+import {
+  ACHIEVEMENTS,
+  ALL_CHAPTERS,
+  DOCTRINES,
+  EPOCH_MODIFIERS,
+  EVENTS,
+  MODULES,
+  SECTORS,
+  TECHS,
+} from '@/engine/content'
+import { CLOUD_CHUNK_SIZE, CLOUD_VALUE_LIMIT } from '@/telegram/cloud'
 import { newGame } from './helpers'
 
 function midGame(): GameState {
@@ -178,4 +197,68 @@ describe('РЕГРЕСС #6: валидация недоверенного се�
     expect(state.log.length).toBeLessThanOrEqual(60)
     expect(state.log.every(e => e.tone === 'info')).toBe(true)
   })
+})
+
+/**
+ * Синхронизация с облаком Telegram: прогресс не должен быть привязан к
+ * устройству, но и «откатить» партию облако не имеет права.
+ */
+describe('разрешение конфликта партий', () => {
+  const at = (cycle: number): GameState => ({ ...newGame(1), cycle })
+
+  it('без облачной партии остаётся локальная', () => {
+    expect(compareSaves(at(5), null)).toBe('local')
+  })
+
+  it('без локальной берётся облачная', () => {
+    expect(compareSaves(null, at(5))).toBe('cloud')
+  })
+
+  it('побеждает более поздняя партия', () => {
+    expect(compareSaves(at(10), at(20))).toBe('cloud')
+    expect(compareSaves(at(20), at(10))).toBe('local')
+  })
+
+  it('при равенстве облако не перетирает локальную партию', () => {
+    // Иначе перезагрузка страницы могла бы откатить только что сделанный ход.
+    expect(compareSaves(at(10), at(10))).toBe('equal')
+  })
+
+  it('облачная нагрузка — тот же код сохранения и читается обратно', () => {
+    const state = midGame()
+    const payload = toCloudPayload(state)
+    const restored = fromCloudPayload(payload)
+    expect(restored).not.toBeNull()
+    expect(restored?.cycle).toBe(state.cycle)
+  })
+
+  it('мусор из облака не ломает игру', () => {
+    expect(fromCloudPayload('не код')).toBeNull()
+    expect(fromCloudPayload('')).toBeNull()
+  })
+})
+
+it('даже предельно прокачанная партия влезает в лимит облака Telegram', () => {
+  // CloudStorage не принимает значения длиннее 4096 символов. Если контент
+  // вырастет и сейв перестанет помещаться, синхронизация молча отключится —
+  // поэтому запас проверяется тестом, а не на глаз.
+  const maxed: GameState = {
+    ...newGame(1),
+    controlled: SECTORS.map(s => s.id),
+    revealed: [],
+    modules: Object.fromEntries(MODULES.map(m => [m.id, m.maxLevel])),
+    techs: Object.fromEntries(TECHS.map(t => [t.id, t.maxLevel])),
+    doctrines: Object.fromEntries(DOCTRINES.map(d => [d.id, d.maxLevel])),
+    achievements: Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a.target ?? 1])),
+    lore: ALL_CHAPTERS.map(c => c.id),
+    seenEvents: EVENTS.map(e => e.id),
+    epochModifiers: EPOCH_MODIFIERS.map(m => m.id),
+    cycle: 999,
+  }
+  // Одного ключа уже не хватает — именно поэтому запись идёт по частям.
+  const code = encodeSaveCode(maxed)
+  const chunks = Math.ceil(code.length / CLOUD_CHUNK_SIZE)
+  expect(chunks).toBeGreaterThan(0)
+  expect(chunks).toBeLessThanOrEqual(32)
+  expect(CLOUD_CHUNK_SIZE).toBeLessThanOrEqual(CLOUD_VALUE_LIMIT)
 })

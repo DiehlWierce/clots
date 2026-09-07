@@ -87,3 +87,5 @@ export function clearPersisted(): void {
 }
 
 export { sanitizeState, encodeText, decodeText }
+export { CLOUD_KEY, compareSaves, toCloudPayload, fromCloudPayload } from './sync'
+export type { SyncDecision } from './sync'
