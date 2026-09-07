@@ -432,8 +432,9 @@ function doMend(ctx: Ctx): void {
     ctx.s.energy += cfg.energy
     return
   }
-  ctx.s.integrity += cfg.heal
-  ctx.log(`Ядро восстановлено: +${cfg.heal} целостности.`, 'good')
+  const healed = Math.max(cfg.heal, Math.round(stats.maxIntegrity * cfg.healShare))
+  ctx.s.integrity += healed
+  ctx.log(`Ядро восстановлено: +${healed} целостности.`, 'good')
   unlock(ctx, 'first-blood')
 }
 

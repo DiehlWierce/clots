@@ -80,7 +80,12 @@ export const BALANCE = {
     refine: { energy: 1, cost: { plasma: 22 }, gain: 9 },
     transmute: { energy: 2, cost: { clots: 14 }, gain: 3 },
     scan: { energy: 1, threatRelief: 4 },
-    mend: { energy: 2, cost: { plasma: 40 }, heal: 26 },
+    /**
+     * Восстановление ядра. Доля от максимума, а не фиксированное число:
+     * плоское лечение обесценивается к середине партии, когда целостность
+     * вырастает втрое, а урон рейдов растёт вместе с ней.
+     */
+    mend: { energy: 2, cost: { plasma: 40 }, heal: 26, healShare: 0.14 },
     /** Захват сектора без гарнизона. */
     occupy: { energy: 2 },
     /** Штурм сектора с гарнизоном. */

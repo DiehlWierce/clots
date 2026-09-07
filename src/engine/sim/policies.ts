@@ -44,35 +44,48 @@ export interface Policy {
   path: DoctrinePath
   /** Доля энергии, отдаваемая на переработку вместо добычи. */
   refineBias: number
+  /**
+   * На сколько сложность сектора может превышать уровень цитадели.
+   * Живой игрок читает «сложность 10» на карточке и не лезет туда
+   * с седьмым уровнем; без этого правила боты уходили в третий регион
+   * недооснащёнными и гибли, ни разу не проиграв бой.
+   */
+  difficultyMargin: number
 }
 
 export const POLICIES: Record<PolicyId, Policy> = {
   aggressive: {
     id: 'aggressive',
     name: 'Агрессивная',
-    expandBelowThreat: 85,
-    assaultAboveHealth: 0.5,
-    healUpTo: 0.6,
+    // Порог держится ниже зоны рейдов: расширение «пока пускают» приводило
+    // к постоянной угрозе 100% и гибели к пятнадцатому циклу. Агрессия —
+    // это быстрый захват, а не отказ от управления угрозой.
+    expandBelowThreat: 52,
+    assaultAboveHealth: 0.65,
+    healUpTo: 0.75,
     path: 'reaver',
     refineBias: 0.3,
+    difficultyMargin: 2,
   },
   economic: {
     id: 'economic',
     name: 'Экономическая',
-    expandBelowThreat: 65,
+    expandBelowThreat: 50,
     assaultAboveHealth: 0.8,
     healUpTo: 0.85,
     path: 'weaver',
     refineBias: 0.7,
+    difficultyMargin: 0,
   },
   cautious: {
     id: 'cautious',
     name: 'Осторожная',
-    expandBelowThreat: 50,
+    expandBelowThreat: 44,
     assaultAboveHealth: 0.9,
     healUpTo: 0.95,
     path: 'warden',
     refineBias: 0.5,
+    difficultyMargin: -1,
   },
 }
 
@@ -123,9 +136,13 @@ export function step(state: GameState, policy: Policy): GameState {
       : act(s, { type: 'action/scan' })
   }
 
-  // Лечение до порога политики.
+  // Лечение до порога политики. Когда угроза дошла до зоны рейдов, порог
+  // поднимается почти до полного: рейд навязан и приходит в любой момент,
+  // поэтому встречать его на половине целостности — не стиль игры, а ошибка.
+  const healTarget =
+    s.threat >= BALANCE.threat.raidThreshold ? Math.max(policy.healUpTo, 0.92) : policy.healUpTo
   if (
-    s.integrity < stats.maxIntegrity * policy.healUpTo &&
+    s.integrity < stats.maxIntegrity * healTarget &&
     s.energy >= BALANCE.actions.mend.energy &&
     s.plasma >= BALANCE.actions.mend.cost.plasma
   ) {

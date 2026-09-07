@@ -23,8 +23,21 @@ export interface RunResult {
   mutation: string | null
 }
 
+/**
+ * Предел длины забега.
+ *
+ * Победа осторожной игрой приходит к 250-му циклу, поэтому предел ниже
+ * трёхсот делал отчёт бессмысленным: партии обрывались до финала и
+ * показывали нулевую долю побед у стиля, который на самом деле выигрывает.
+ */
+export const DEFAULT_MAX_CYCLES = 400
+
 /** Один забег до конца или до предела циклов. */
-export function simulateRun(policyId: PolicyId, seed: number, maxCycles = 220): RunResult {
+export function simulateRun(
+  policyId: PolicyId,
+  seed: number,
+  maxCycles = DEFAULT_MAX_CYCLES,
+): RunResult {
   const policy = POLICIES[policyId]
   let s: GameState = createInitialState(seed)
   let guard = 0

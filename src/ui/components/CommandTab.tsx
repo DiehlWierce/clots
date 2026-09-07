@@ -62,7 +62,7 @@ export function CommandTab({ state, stats, dispatch }: Props) {
     {
       action: { type: 'action/mend' },
       title: '🫀 Восстановить ядро',
-      desc: `Возвращает ${a.mend.heal} целостности.`,
+      desc: `Возвращает ${Math.max(a.mend.heal, Math.round(stats.maxIntegrity * a.mend.healShare))} целостности.`,
       energy: a.mend.energy,
       cost: a.mend.cost,
       disabled: state.integrity >= stats.maxIntegrity,
