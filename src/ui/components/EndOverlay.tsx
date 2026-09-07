@@ -4,6 +4,7 @@ import type { GameState } from '@/engine/types'
 interface Props {
   state: GameState
   onRestart: () => void
+  onNewGamePlus: () => void
 }
 
 /**
@@ -14,7 +15,7 @@ interface Props {
  * ещё. В v1 сообщение «запустите сброс» показывалось при заблокированной
  * вкладке со сбросом, и сейв становился невосстановимым.
  */
-export function EndOverlay({ state, onRestart }: Props) {
+export function EndOverlay({ state, onRestart, onNewGamePlus }: Props) {
   const victory = state.phase === 'victory'
   const s = state.stats
 
@@ -34,6 +35,12 @@ export function EndOverlay({ state, onRestart }: Props) {
             <dt>Циклов</dt>
             <dd>{state.cycle}</dd>
           </div>
+          {state.ngPlus > 0 ? (
+            <div>
+              <dt>Порядок цикла</dt>
+              <dd>{state.ngPlus + 1}</dd>
+            </div>
+          ) : null}
           <div>
             <dt>Секторов</dt>
             <dd>
@@ -70,8 +77,27 @@ export function EndOverlay({ state, onRestart }: Props) {
           </div>
         </dl>
 
-        <button type="button" className="btn btn--primary btn--block" onClick={onRestart}>
-          🔄 Начать новый цикл
+        {victory ? (
+          <>
+            <button
+              type="button"
+              className="btn btn--primary btn--block"
+              onClick={onNewGamePlus}
+              style={{ marginBottom: 'var(--sp-2)' }}
+            >
+              ♾️ Цикл {state.ngPlus + 2}-го порядка
+            </button>
+            <p className="muted" style={{ marginBottom: 'var(--sp-3)', textAlign: 'center' }}>
+              Половина технологий переносится, гарнизоны становятся тяжелее.
+            </p>
+          </>
+        ) : null}
+        <button
+          type="button"
+          className={`btn btn--block${victory ? '' : ' btn--primary'}`}
+          onClick={onRestart}
+        >
+          🔄 Начать с чистого листа
         </button>
       </div>
     </div>

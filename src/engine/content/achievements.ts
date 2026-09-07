@@ -30,6 +30,16 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Пробейте гемато-энцефалический барьер.',
   },
   { id: 'sovereign', title: 'Суверен', description: 'Одолейте Суверена Иммунис в Тронном синусе.' },
+  {
+    id: 'siege-survivor',
+    title: 'Выстоявший',
+    description: 'Переживите осаду после низложения Суверена.',
+  },
+  {
+    id: 'second-cycle',
+    title: 'Цикл второго порядка',
+    description: 'Начните забег заново с перенесённым прогрессом.',
+  },
 
   { id: 'sectors-10', title: 'Держава', description: 'Контролируйте 10 секторов.', target: 10 },
   { id: 'sectors-20', title: 'Империя', description: 'Контролируйте 20 секторов.', target: 20 },

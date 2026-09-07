@@ -45,7 +45,7 @@ import {
   reclaimChance,
 } from './systems/threat'
 import type { GameAction } from './actions'
-import type { GameState, LoreUnlock, ResourceBag, SectorDef } from './types'
+import type { GameState, LevelMap, LoreUnlock, ResourceBag, SectorDef } from './types'
 
 /** Результат применения действия: новое состояние + что показать игроку. */
 export interface ReduceResult {
@@ -72,6 +72,10 @@ export function reduce(state: GameState, action: GameAction): ReduceResult {
 
     if (action.type === 'game/reset') {
       return createInitialState(action.seed)
+    }
+
+    if (action.type === 'game/newGamePlus') {
+      return startNewGamePlus(draft, action.seed)
     }
 
     // Пока идёт бой или ждёт выбора хранилище — остальные действия заблокированы.
@@ -157,6 +161,42 @@ export function reduce(state: GameState, action: GameAction): ReduceResult {
   })
 
   return { state: next, notices }
+}
+
+/**
+ * Новый забег с переносом части прогресса.
+ *
+ * Переносится половина уровней технологий — экономический задел, который
+ * позволяет сразу играть в более сложную игру, — но не боевые модули и не
+ * доктрины: путь выбирается заново, иначе следующий забег повторял бы
+ * предыдущий. Гарнизоны и угроза становятся тяжелее с каждым прохождением.
+ */
+function startNewGamePlus(previous: GameState, seed: number): GameState {
+  const fresh = createInitialState(seed)
+  const carry = BALANCE.ngPlus.techCarry
+
+  const techs: LevelMap = {}
+  for (const [id, level] of Object.entries(previous.techs)) {
+    const kept = Math.floor(level * carry)
+    if (kept > 0) techs[id] = kept
+  }
+
+  return {
+    ...fresh,
+    ngPlus: previous.ngPlus + 1,
+    techs,
+    // Достижения — свойство игрока, а не забега: они не сбрасываются.
+    achievements: { ...previous.achievements, 'second-cycle': 1 },
+    lore: [...previous.lore],
+    log: [
+      {
+        id: 1,
+        cycle: 1,
+        message: `Цикл ${previous.ngPlus + 2}-го порядка. Система помнит прошлую империю и готовилась.`,
+        tone: 'info',
+      },
+    ],
+  }
 }
 
 // ─── Контекст выполнения ────────────────────────────────────────────────────
@@ -413,7 +453,7 @@ function doCapture(ctx: Ctx, sectorId: string): void {
   if (sector.garrison) {
     const cfg = BALANCE.actions.assault
     if (!spendEnergy(ctx, cfg.energy)) return
-    const combat = createSectorCombat(sectorId, ctx.rng)
+    const combat = createSectorCombat(sectorId, ctx.rng, ctx.s.ngPlus)
     if (!combat) {
       ctx.warn('Гарнизон не найден.')
       ctx.s.energy += cfg.energy
@@ -478,8 +518,16 @@ function completeCapture(ctx: Ctx, sector: SectorDef): void {
 
   if (sector.id === 'ctx-throne') {
     unlock(ctx, 'sovereign')
-    ctx.s.phase = 'victory'
-    ctx.log('Суверен Иммунис низложен. Империя крови стала системой.', 'good')
+    // Партия не заканчивается низложением Суверена: система переходит в
+    // контрнаступление, и победа засчитывается только тем, кто его переживёт.
+    ctx.s.siegeCyclesLeft = BALANCE.siege.cycles
+    ctx.s.threat = clampThreat(Math.max(ctx.s.threat, 80))
+    ctx.log(
+      `Суверен Иммунис низложен, но система не признала поражения. Осада: продержитесь ${BALANCE.siege.cycles} циклов.`,
+      'bad',
+    )
+    ctx.notices.push({ message: `Началась осада: ${BALANCE.siege.cycles} циклов`, tone: 'bad' })
+    ctx.s.phase = 'command'
     return
   }
 
@@ -810,8 +858,9 @@ function doEndCycle(ctx: Ctx): void {
   // 3. Маскировка: прирост от модулей минус естественная деградация.
   s.masking += stats.maskingGain - BALANCE.masking.decay
 
-  // 4. Угроза.
-  s.threat = clampThreat(s.threat + stats.threatGain)
+  // 4. Угроза. Во время осады давление резко возрастает.
+  const siege = s.siegeCyclesLeft > 0
+  s.threat = clampThreat(s.threat + stats.threatGain * (siege ? BALANCE.siege.threatMultiplier : 1))
 
   // 5. Энергия восстанавливается полностью — цикл и есть «ход».
   s.energy = stats.maxEnergy
@@ -821,7 +870,8 @@ function doEndCycle(ctx: Ctx): void {
   )
 
   // 6. Иммунитет отбивает периферийный сектор, если угроза слишком высока.
-  const reclaim = reclaimChance(s.threat)
+  const pressure = siege ? BALANCE.siege.pressure : 1
+  const reclaim = reclaimChance(s.threat) * pressure
   if (reclaim > 0 && ctx.rng.chance(reclaim)) {
     const lost = pickReclaimTarget(s, ctx.rng)
     if (lost) {
@@ -837,11 +887,13 @@ function doEndCycle(ctx: Ctx): void {
   }
 
   // 7. Проверка рейда.
-  const chance = raidChance(s.threat)
+  const chance = raidChance(s.threat) * pressure
   if (chance > 0 && ctx.rng.chance(chance)) {
     const raider = pickRaider(s.threat, s.regions.length, ctx.rng)
     if (raider) {
-      const difficulty = Math.round(raidDifficulty(s.threat, stats.level) * mutationRaidPower(s))
+      const difficulty = Math.round(
+        raidDifficulty(s.threat, stats.level) * mutationRaidPower(s) * pressure,
+      )
       s.combat = createRaidCombat(raider, difficulty, ctx.rng)
       s.phase = 'combat'
       ctx.log(`Иммунный рейд: ${raider.name} прорвался к цитадели.`, 'bad')
@@ -852,6 +904,19 @@ function doEndCycle(ctx: Ctx): void {
   // 8. Событие — только если цикл не занят боем: два оверлея подряд
   //    превращают ход в череду модальных окон.
   if (s.phase === 'command') rollEvent(ctx)
+
+  // 9. Отсчёт осады. Выстоял — партия выиграна.
+  if (siege) {
+    s.siegeCyclesLeft -= 1
+    if (s.siegeCyclesLeft <= 0) {
+      s.phase = 'victory'
+      unlock(ctx, 'siege-survivor')
+      ctx.log('Осада выдержана. Система признала нового распорядителя.', 'good')
+      ctx.notices.push({ message: 'Победа: осада выдержана', tone: 'good' })
+    } else {
+      ctx.log(`Осада: продержаться ещё ${s.siegeCyclesLeft} циклов.`, 'bad')
+    }
+  }
 
   if (s.cycle >= 50) unlock(ctx, 'cycle-50')
   advanceTutorial(ctx, 6)

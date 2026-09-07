@@ -40,6 +40,7 @@ export default function App() {
   const toasts = useGame(s => s.toasts)
   const dispatch = useGame(s => s.dispatch)
   const restart = useGame(s => s.restart)
+  const newGamePlus = useGame(s => s.newGamePlus)
   const loadState = useGame(s => s.loadState)
   const dismissToast = useGame(s => s.dismissToast)
 
@@ -161,7 +162,7 @@ export default function App() {
         <VaultOverlay sectorId={state.pendingVault} dispatch={dispatch} />
       ) : null}
       {state.phase === 'collapsed' || state.phase === 'victory' ? (
-        <EndOverlay state={state} onRestart={restart} />
+        <EndOverlay state={state} onRestart={restart} onNewGamePlus={newGamePlus} />
       ) : null}
 
       <Toasts toasts={toasts} onDismiss={handleDismiss} />

@@ -505,3 +505,97 @@ describe('события', () => {
     }
   })
 })
+
+/**
+ * Эндгейм: победа над Сувереном не завершает партию, а запускает осаду.
+ * Раньше игра не заканчивалась, а затухала — цель исчерпана, а делать
+ * по-прежнему что-то надо.
+ */
+describe('осада и New Game+', () => {
+  /** Состояние на пороге финального нексуса. */
+  function atThrone(): GameState {
+    return {
+      ...newGame(4242),
+      controlled: SECTORS.filter(s => s.id !== 'ctx-throne').map(s => s.id),
+      regions: ['capillary', 'venous', 'arterial', 'cortex'],
+      energy: 99,
+      xp: 20000,
+      modules: { 'hem-arsenal': 3, 'apex-lance': 3, 'aegis-core': 3 },
+    }
+  }
+
+  it('победа над троном запускает осаду, а не завершает игру', () => {
+    let s = atThrone()
+    s = reduce(s, { type: 'map/capture', sectorId: 'ctx-throne' }).state
+    expect(s.phase).toBe('combat')
+    // Проверяем переход к осаде, а не выживаемость: держим ядро целым,
+    // иначе Суверен успевает добить цитадель раньше, чем она его.
+    for (let i = 0; i < 400 && s.phase === 'combat'; i += 1) {
+      s = { ...s, integrity: 9999 }
+      s = reduce(s, { type: 'combat/act', action: 'strike' }).state
+    }
+    expect(s.controlled).toContain('ctx-throne')
+    expect(s.phase).not.toBe('victory')
+    expect(s.siegeCyclesLeft).toBe(BALANCE.siege.cycles)
+    expect(isAchievementEarned(s, 'sovereign')).toBe(true)
+  })
+
+  it('осада ускоряет рост угрозы', () => {
+    const calm: GameState = { ...newGame(1), threat: 10 }
+    const siege: GameState = { ...calm, siegeCyclesLeft: 10 }
+    const afterCalm = reduce(calm, { type: 'cycle/end' }).state
+    const afterSiege = reduce(siege, { type: 'cycle/end' }).state
+    expect(afterSiege.threat).toBeGreaterThan(afterCalm.threat)
+  })
+
+  it('выстоянная осада приносит победу', () => {
+    let s: GameState = { ...newGame(5), siegeCyclesLeft: 2, integrity: 9999, threat: 0 }
+    for (let i = 0; i < 12 && s.phase !== 'victory'; i += 1) {
+      if (s.phase === 'combat') {
+        s = reduce(s, { type: 'combat/withdraw' }).state
+        continue
+      }
+      if (s.phase !== 'command') break
+      s = { ...s, integrity: 9999 }
+      s = reduce(s, { type: 'cycle/end' }).state
+    }
+    expect(s.phase).toBe('victory')
+    expect(isAchievementEarned(s, 'siege-survivor')).toBe(true)
+  })
+
+  it('New Game+ переносит половину технологий и не переносит модули', () => {
+    const finished: GameState = {
+      ...newGame(1),
+      phase: 'victory',
+      techs: { 'flux-cores': 3, granulation: 2, 'essence-distill': 1 },
+      modules: { 'hem-arsenal': 3 },
+      doctrines: { 'reaver-1': 2 },
+      doctrinePath: 'reaver',
+      achievements: { 'first-blood': 1 },
+    }
+    const next = reduce(finished, { type: 'game/newGamePlus', seed: 77 }).state
+
+    expect(next.ngPlus).toBe(1)
+    expect(next.techs['flux-cores']).toBe(1)
+    expect(next.techs['granulation']).toBe(1)
+    // Уровень 1 при переносе половины округляется вниз до нуля и не сохраняется.
+    expect(next.techs['essence-distill']).toBeUndefined()
+    expect(next.modules).toEqual({})
+    expect(next.doctrines).toEqual({})
+    expect(next.doctrinePath).toBeNull()
+    // Достижения принадлежат игроку, а не забегу.
+    expect(next.achievements['first-blood']).toBe(1)
+    expect(isAchievementEarned(next, 'second-cycle')).toBe(true)
+  })
+
+  it('в New Game+ гарнизоны тяжелее', () => {
+    const base = { ...newGame(9), energy: 99 }
+    const plus = { ...base, ngPlus: 2 }
+    const fight = (s: GameState) => {
+      let next = reduce(s, { type: 'map/capture', sectorId: 'cap-drift' }).state
+      next = reduce(next, { type: 'map/capture', sectorId: 'cap-weave' }).state
+      return next.combat?.maxHp ?? 0
+    }
+    expect(fight(plus)).toBeGreaterThan(fight(base))
+  })
+})

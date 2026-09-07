@@ -4,12 +4,15 @@ import type { Rng } from '../rng'
 import type { CombatState, DerivedStats, EnemyDef, IntentDef, PlayerCombatAction } from '../types'
 
 /** Создаёт бой за сектор: сила гарнизона масштабируется сложностью сектора. */
-export function createSectorCombat(sectorId: string, rng: Rng): CombatState | null {
+export function createSectorCombat(sectorId: string, rng: Rng, ngPlus = 0): CombatState | null {
   const sector = getSector(sectorId)
   if (!sector?.garrison) return null
   const enemy = getEnemy(sector.garrison)
   if (!enemy) return null
-  return buildCombat(sectorId, enemy, sector.difficulty, false, rng)
+  // Каждое прохождение делает гарнизоны тяжелее: иначе New Game+ был бы
+  // повторением уже решённой задачи с готовым заделом технологий.
+  const difficulty = sector.difficulty + ngPlus * BALANCE.ngPlus.difficultyPerRun
+  return buildCombat(sectorId, enemy, difficulty, false, rng)
 }
 
 /** Создаёт навязанный бой с рейдом: отступить нельзя. */

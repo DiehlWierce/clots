@@ -29,3 +29,5 @@ export type GameAction =
   | { type: 'cycle/end' }
   | { type: 'tutorial/dismiss' }
   | { type: 'game/reset'; seed: number }
+  /** Новый забег с переносом части прогресса. */
+  | { type: 'game/newGamePlus'; seed: number }

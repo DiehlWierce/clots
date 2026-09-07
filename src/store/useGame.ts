@@ -17,6 +17,7 @@ interface GameStore {
   toasts: Toast[]
   dispatch: (action: GameAction) => void
   restart: () => void
+  newGamePlus: () => void
   loadState: (state: GameState) => void
   dismissToast: (id: number) => void
 }
@@ -104,6 +105,13 @@ export const useGame = create<GameStore>((set, get) => ({
     const seed = createSeed()
     clearPersisted()
     const state = createInitialState(seed)
+    schedulePersist(state)
+    set({ state, toasts: [] })
+  },
+
+  newGamePlus: () => {
+    const seed = createSeed()
+    const { state } = reduce(get().state, { type: 'game/newGamePlus', seed })
     schedulePersist(state)
     set({ state, toasts: [] })
   },

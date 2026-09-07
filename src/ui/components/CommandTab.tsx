@@ -73,6 +73,19 @@ export function CommandTab({ state, stats, dispatch }: Props) {
 
   return (
     <>
+      {state.siegeCyclesLeft > 0 ? (
+        <div className="hint" style={{ borderColor: 'var(--c-bad)' }}>
+          <span aria-hidden="true">🛡️</span>
+          <div className="hint__body">
+            <div className="hint__title">Осада: продержаться {state.siegeCyclesLeft} циклов</div>
+            <div className="hint__text">
+              Суверен низложен, но система перешла в контрнаступление: угроза растёт вдвое быстрее,
+              рейды сильнее, окраины отбивают чаще. Выстоите — победа ваша.
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {chance > 0 ? (
         <div className="hint" style={{ borderColor: 'var(--c-warn)' }}>
           <span aria-hidden="true">🚨</span>

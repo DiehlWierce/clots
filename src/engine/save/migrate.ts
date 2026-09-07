@@ -24,6 +24,8 @@ const MIGRATIONS: Record<number, Migration> = {
     pendingEvent: null,
     lastEventCycle: 0,
     seenEvents: [],
+    siegeCyclesLeft: 0,
+    ngPlus: 0,
     version: 2,
   }),
 }

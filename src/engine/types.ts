@@ -341,6 +341,11 @@ export interface GameState {
   /** Уже случившиеся события: одно и то же не повторяется. */
   seenEvents: string[]
 
+  /** Сколько циклов осталось продержаться в осаде. 0 — осады нет. */
+  siegeCyclesLeft: number
+  /** Номер прохождения: 0 — первый забег, дальше New Game+. */
+  ngPlus: number
+
   achievements: LevelMap
   log: LogEntry[]
   /** Открытые главы лора. */

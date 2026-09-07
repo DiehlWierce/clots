@@ -142,6 +142,9 @@ export function sanitizeState(input: unknown): GameState | null {
     lastEventCycle: int(raw.lastEventCycle, 0, 0),
     seenEvents: idList(raw.seenEvents, new Set(EVENT_BY_ID.keys())),
 
+    siegeCyclesLeft: int(raw.siegeCyclesLeft, 0, 0, 999),
+    ngPlus: int(raw.ngPlus, 0, 0, 999),
+
     combat: null,
     pendingVault:
       typeof raw.pendingVault === 'string' && SECTOR_IDS.has(raw.pendingVault)
