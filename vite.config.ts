@@ -16,7 +16,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // Медленные балансные прогоны вынесены отдельно: они занимают десятки
+    // секунд и не должны гейтить каждый коммит.
     include: ['tests/**/*.test.ts'],
+    exclude: ['tests/**/*.slow.test.ts', 'node_modules/**'],
     coverage: { provider: 'v8', include: ['src/engine/**'] },
   },
 })

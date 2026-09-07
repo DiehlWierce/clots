@@ -37,9 +37,12 @@ export function simulateRun(
   policyId: PolicyId,
   seed: number,
   maxCycles = DEFAULT_MAX_CYCLES,
+  /** Принудительная мутация: нужна, чтобы мерить их по отдельности. */
+  forceMutation?: string,
 ): RunResult {
   const policy = POLICIES[policyId]
   let s: GameState = createInitialState(seed)
+  if (forceMutation) s = { ...s, mutationOffer: [forceMutation] }
   let guard = 0
   const limit = maxCycles * 40
 

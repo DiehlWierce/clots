@@ -40,6 +40,24 @@ jobs:
       - name: Сборка
         run: npx vite build
 
+  balance:
+    name: Балансные прогоны
+    needs: verify
+    runs-on: ubuntu-latest
+    # Проверка баланса — не гейт корректности: она измеряет игру, а не ловит
+    # поломку кода. Её падение не должно останавливать деплой.
+    continue-on-error: true
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Симуляции
+        run: npm run test:balance
+
   e2e:
     name: E2E-проверки интерфейса
     needs: verify

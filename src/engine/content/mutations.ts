@@ -14,7 +14,9 @@ export const MUTATIONS: MutationDef[] = [
     name: 'Густая кровь',
     tagline: 'Прочнее, но медлительнее',
     description: 'Ядро держит удар заметно лучше, но действий за цикл меньше.',
-    effects: { maxIntegrity: 45, defense: 3, maxEnergy: -2 },
+    // Замер показал доминирование (83% побед против 0% у слабейших):
+    // выживаемость — самый ценный ресурс, и её цена была занижена.
+    effects: { maxIntegrity: 26, defense: 2, maxEnergy: -2 },
   },
   {
     id: 'thin-walls',
@@ -35,8 +37,10 @@ export const MUTATIONS: MutationDef[] = [
     id: 'hypercoagulation',
     name: 'Гиперкоагуляция',
     tagline: 'Сгустки вместо потока',
-    description: 'Переработка идёт втрое живее, зато плазмы приходит меньше.',
-    effects: { clotYield: 0.9, plasmaYield: -0.3 },
+    description: 'Переработка идёт втрое живее, а плотная кровь сама затягивает раны.',
+    // Прежний набор не давал ничего для выживания и не выигрывал ни разу:
+    // экономика сгустков не конвертировалась в способность держать удар.
+    effects: { clotYield: 0.9, plasmaYield: -0.15, regen: 6, defense: 2 },
   },
   {
     id: 'predatory-pulse',
@@ -49,8 +53,21 @@ export const MUTATIONS: MutationDef[] = [
     id: 'branched-network',
     name: 'Разветвлённая сеть',
     tagline: 'Много действий, мало добычи',
-    description: 'Больше энергии на цикл ценой общей продуктивности.',
-    effects: { maxEnergy: 3, plasmaYield: -0.2, clotYield: -0.2, essenceYield: -0.2 },
+    description: 'Больше действий за цикл и быстрее рост — ценой общей продуктивности.',
+    /*
+     * Замер показал ноль побед: три лишних действия не окупали минус пятую
+     * часть всей добычи и вдобавок подталкивали расширяться быстрее, чем
+     * цитадель способна удержать. Штраф смягчён, добавлены опыт и запас
+     * прочности, а число действий снижено до двух.
+     */
+    effects: {
+      maxEnergy: 2,
+      plasmaYield: -0.08,
+      clotYield: -0.08,
+      essenceYield: -0.08,
+      xpYield: 0.2,
+      maxIntegrity: 18,
+    },
   },
   {
     id: 'immune-blindness',
