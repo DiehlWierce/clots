@@ -5,6 +5,7 @@ import { EVENT_BY_ID, MODULES, SECTORS, TECHS, getSector } from '@/engine/conten
 import { BALANCE } from '@/engine/balance'
 import { currentIntent, momentumCost } from '@/engine/systems/combat'
 import type { GameState } from '@/engine/types'
+import { simulateRun, summarize } from '@/engine/sim/run'
 import { newGame } from './helpers'
 
 /**
@@ -186,5 +187,46 @@ describe('баланс: игра проходима и не тривиальна
       expect(s.integrity).toBeGreaterThanOrEqual(0)
       expect(['command', 'combat', 'vault', 'event', 'collapsed', 'victory']).toContain(s.phase)
     }
+  })
+})
+
+/**
+ * Симулятор политик: проверяем сам инструмент, а не конкретные числа
+ * баланса — они меняются, а харнесс должен продолжать работать.
+ */
+describe('балансный харнесс', () => {
+  it('забег завершается и возвращает осмысленный результат', () => {
+    const result = simulateRun('cautious', 1, 40)
+    expect(['victory', 'collapsed', 'timeout']).toContain(result.outcome)
+    expect(result.cycles).toBeGreaterThan(1)
+    expect(result.sectors).toBeGreaterThanOrEqual(1)
+    expect(result.mutation).not.toBeNull()
+  })
+
+  it('забег воспроизводим по зерну', () => {
+    expect(simulateRun('economic', 42, 30)).toEqual(simulateRun('economic', 42, 30))
+  })
+
+  it('разные политики играют по-разному', () => {
+    const cautious = simulateRun('cautious', 5, 60)
+    const aggressive = simulateRun('aggressive', 5, 60)
+    expect(cautious.doctrinePath).not.toBe(aggressive.doctrinePath)
+  })
+
+  it('сводка считает доли и медианы', () => {
+    const results = [1, 2, 3].map(seed => simulateRun('cautious', seed, 20))
+    const summary = summarize(results)
+    expect(summary.runs).toBe(3)
+    expect(summary.winRate).toBeGreaterThanOrEqual(0)
+    expect(summary.winRate).toBeLessThanOrEqual(1)
+    expect(summary.medianCycles).toBeGreaterThan(0)
+  })
+
+  it('симуляция не зацикливается на неразрешимом состоянии', () => {
+    // Ограничение по числу шагов обязано срабатывать: без него любая
+    // политика, не умеющая сделать ход, повесила бы прогон.
+    const started = Date.now()
+    simulateRun('aggressive', 99, 80)
+    expect(Date.now() - started).toBeLessThan(5000)
   })
 })

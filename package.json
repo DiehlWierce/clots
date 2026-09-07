@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "verify": "npm run typecheck && npm run lint && npm run test && vite build",
-    "deploy": "npm run build && gh-pages -d dist"
+    "deploy": "npm run build && gh-pages -d dist",
+    "balance": "vite-node scripts/balance.ts"
   },
   "dependencies": {
     "immer": "^10.1.1",
@@ -38,6 +39,7 @@
     "typescript-eslint": "^8.46.2",
     "vite": "^7.2.4",
     "vitest": "^3.2.4",
-    "@types/node": "^24.10.1"
+    "@types/node": "^24.10.1",
+    "vite-node": "^4.0.0"
   }
 }

@@ -33,4 +33,9 @@ export default tseslint.config(
     files: ['*.config.{js,ts}', 'tests/**/*.ts'],
     extends: [tseslint.configs.disableTypeChecked],
   },
+  {
+    // Скрипты для терминала: печать в консоль — их прямое назначение.
+    files: ['scripts/**/*.ts'],
+    rules: { 'no-console': 'off' },
+  },
 )
