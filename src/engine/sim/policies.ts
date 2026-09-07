@@ -58,6 +58,11 @@ export type PolicyId =
   | 'spear'
   | 'technocrat'
   | 'engineer'
+  | 'medic'
+  | 'reckless'
+  | 'scout'
+  | 'overdriver'
+  | 'opportunist'
 
 /** Что стиль вообще покупает. */
 export type BuyScope = 'all' | 'techs' | 'modules'
@@ -126,6 +131,20 @@ export interface Policy {
    * угроза нужна, он живёт с неё, и путать это с безрассудством нельзя.
    */
   neverMask: boolean
+  /**
+   * Не лечиться вовсе.
+   *
+   * Замер показал, что лечение — единственный настоящий гейт выживания:
+   * стиль, отличавшийся от агрессивного только отказом от лечения, погибал
+   * на седьмом цикле в 50 забегах из 50. Рычаг нужен, чтобы проверять это
+   * отдельно от отношения к угрозе.
+   */
+  neverHeal: boolean
+  /**
+   * Тратить излишки в перегрузку ядра, не дожидаясь выкупа дерева.
+   * Проверяет, не оказывается ли бесконечный сток выгоднее самого дерева.
+   */
+  overdriveFirst: boolean
 }
 
 export const POLICIES: Record<PolicyId, Policy> = {
@@ -147,6 +166,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'order',
     avoidCombat: false,
     neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
   },
   economic: {
     id: 'economic',
@@ -163,6 +184,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'order',
     avoidCombat: false,
     neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
   },
   cautious: {
     id: 'cautious',
@@ -179,6 +202,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'order',
     avoidCombat: false,
     neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
   },
   // Накопитель: сперва выкупает всё, что можно выкупить, и только глубоко
   // за середину партии определяется с путём. Проверяет, не наказывает ли
@@ -198,6 +223,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'order',
     avoidCombat: false,
     neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
   },
   // Крепость: сначала скупает всё дерево и держит оборону — маскировка,
   // лечение, отбитые рейды, — и лишь потом идёт завоёвывать карту. Проверяет,
@@ -217,6 +244,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'order',
     avoidCombat: false,
     neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
   },
   // Гриндер: доктрину не берёт вовсе. Территория расширяется редко и только
   // наверняка. Это проверка на то, проходима ли игра без главного выбора —
@@ -236,6 +265,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'order',
     avoidCombat: false,
     neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
   },
   // ─── Крайности ────────────────────────────────────────────────────────────
 
@@ -257,6 +288,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'order',
     avoidCombat: false,
     neverMask: true,
+    neverHeal: false,
+    overdriveFirst: false,
   },
 
   // Призрак: угроза держится у нуля любой ценой, расширение редкое и только
@@ -276,6 +309,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'safest',
     avoidCombat: false,
     neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
   },
 
   // Фермер рейдов: угроза не сбивается намеренно — рейд даёт 45 опыта против
@@ -295,6 +330,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'safest',
     avoidCombat: false,
     neverMask: true,
+    neverHeal: false,
+    overdriveFirst: false,
   },
 
   // Пацифист: не штурмует гарнизоны и отступает из боёв. Берёт только пустые
@@ -314,6 +351,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'safest',
     avoidCombat: true,
     neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
   },
 
   // Стрела: не расширяется вширь, а идёт к трону кратчайшим путём — каждый
@@ -334,6 +373,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'frontier',
     avoidCombat: false,
     neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
   },
 
   // ─── Однобокие ────────────────────────────────────────────────────────────
@@ -355,6 +396,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'order',
     avoidCombat: false,
     neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
   },
 
   engineer: {
@@ -372,6 +415,117 @@ export const POLICIES: Record<PolicyId, Policy> = {
     target: 'order',
     avoidCombat: false,
     neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
+  },
+  // ─── Проверка отдельных систем ────────────────────────────────────────────
+
+  // Медик: лечится до полного всегда и раньше всего остального. Замер
+  // показал, что лечение — единственный настоящий гейт выживания; этот
+  // стиль проверяет, достаточно ли одного лечения, чтобы дойти до конца.
+  medic: {
+    id: 'medic',
+    name: 'Медик',
+    expandBelowThreat: 50,
+    assaultAboveHealth: 0.98,
+    healUpTo: 1,
+    path: 'warden',
+    doctrineFrom: 1,
+    expandEvery: 1,
+    refineBias: 0.5,
+    difficultyMargin: 0,
+    buy: 'all',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
+  },
+
+  // Безрассудный: не лечится вовсе, но угрозу держит. Пара к «Медику»:
+  // вместе они разделяют вклад лечения и вклад управления угрозой, которые
+  // у «Берсерка» были смешаны.
+  reckless: {
+    id: 'reckless',
+    name: 'Безрассудный',
+    expandBelowThreat: 46,
+    assaultAboveHealth: 0.4,
+    healUpTo: 0,
+    path: 'reaver',
+    doctrineFrom: 1,
+    expandEvery: 1,
+    refineBias: 0.3,
+    difficultyMargin: 1,
+    buy: 'all',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: false,
+    neverHeal: true,
+    overdriveFirst: false,
+  },
+
+  // Разведчик: сбивает угрозу разведкой при первой возможности. Проверяет,
+  // не стал ли новый предел снижения угрозы за цикл слишком мягким.
+  scout: {
+    id: 'scout',
+    name: 'Разведчик',
+    expandBelowThreat: 25,
+    assaultAboveHealth: 0.8,
+    healUpTo: 0.9,
+    path: 'weaver',
+    doctrineFrom: 1,
+    expandEvery: 1,
+    refineBias: 0.5,
+    difficultyMargin: 0,
+    buy: 'all',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: true,
+    neverHeal: false,
+    overdriveFirst: false,
+  },
+
+  // Перегрузчик: топит излишки в бесконечный сток вместо дерева развития.
+  // Проверяет, не оказалась ли перегрузка выгоднее обычных покупок.
+  overdriver: {
+    id: 'overdriver',
+    name: 'Перегрузчик',
+    expandBelowThreat: 48,
+    assaultAboveHealth: 0.85,
+    healUpTo: 0.9,
+    path: 'reaver',
+    doctrineFrom: 1,
+    expandEvery: 1,
+    refineBias: 0.5,
+    difficultyMargin: 0,
+    buy: 'all',
+    target: 'order',
+    avoidCombat: false,
+    neverMask: false,
+    neverHeal: false,
+    overdriveFirst: true,
+  },
+
+  // Оппортунист: расширяется только в пустые сектора, но угрозу держит и
+  // лечится. Мягкая версия пацифиста — проверяет, где именно проходит
+  // граница между «не воевать вовсе» и «воевать только по необходимости».
+  opportunist: {
+    id: 'opportunist',
+    name: 'Оппортунист',
+    expandBelowThreat: 44,
+    assaultAboveHealth: 0.95,
+    healUpTo: 0.95,
+    path: 'weaver',
+    doctrineFrom: 1,
+    expandEvery: 1,
+    refineBias: 0.7,
+    difficultyMargin: -1,
+    buy: 'all',
+    target: 'safest',
+    avoidCombat: false,
+    neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
   },
 }
 
@@ -499,6 +653,7 @@ export function step(state: GameState, policy: Policy): GameState {
   const healTarget =
     s.threat >= BALANCE.threat.raidThreshold ? Math.max(policy.healUpTo, 0.92) : policy.healUpTo
   if (
+    !policy.neverHeal &&
     s.integrity < stats.maxIntegrity * healTarget &&
     s.energy >= BALANCE.actions.mend.energy &&
     s.plasma >= BALANCE.actions.mend.cost.plasma
@@ -540,6 +695,11 @@ export function step(state: GameState, policy: Policy): GameState {
 }
 
 function pickPurchase(s: GameState, policy: Policy): GameAction | null {
+  // Перегрузчик топит излишки в бесконечный сток раньше дерева развития.
+  if (policy.overdriveFirst && canAfford(s, overdriveCost(s.overdrive))) {
+    return { type: 'overdrive/buy' }
+  }
+
   if (policy.buy !== 'modules') {
     for (const def of TECHS) {
       const level = s.techs[def.id] ?? 0
