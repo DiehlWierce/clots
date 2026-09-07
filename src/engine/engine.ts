@@ -28,6 +28,7 @@ import {
   epochMultiplier,
   nextCost,
   ngPlusPressure,
+  scanOutcome,
   overdriveCost,
   overdriveUnlocked,
   requirementsMet,
@@ -407,6 +408,13 @@ function doMask(ctx: Ctx): void {
 
 function doScan(ctx: Ctx): void {
   const cfg = BALANCE.actions.scan
+  // Ход, который ничего не изменит, не должен стоить энергии: бюджет
+  // снижения угрозы исчерпан и раскрывать больше нечего.
+  const outcome = scanOutcome(ctx.s)
+  if (outcome.relief <= 0 && outcome.reveals === 0) {
+    ctx.warn('Угроза уже сбита до предела цикла, а раскрывать нечего.')
+    return
+  }
   if (!spendEnergy(ctx, cfg.energy)) return
   // Снижение угрозы ограничено бюджетом цикла: иначе поздняя энергия
   // позволяет сбить угрозу в ноль одним ходом. Разведка при этом остаётся

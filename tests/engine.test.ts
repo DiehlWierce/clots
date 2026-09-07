@@ -7,7 +7,9 @@ import {
   doctrineForkBlocked,
   hopsToHub,
   isAchievementEarned,
+  mendOutcome,
   ngPlusPressure,
+  scanOutcome,
   overdriveCost,
   overdriveUnlocked,
   sectorDelivery,
@@ -1038,5 +1040,70 @@ describe('давление NG+', () => {
     const plain = derive(base).threatGain
     const harder = derive({ ...base, ngPlus: 1 }).threatGain
     expect(harder).toBeGreaterThan(plain)
+  })
+})
+
+describe('бюджеты цикла видны заранее', () => {
+  /** Партия с запасом ресурсов и энергии — чтобы мешал только бюджет. */
+  const rich = (): GameState => ({
+    ...newGame(21),
+    xp: 20_000,
+    plasma: 100_000,
+    energy: 30,
+    integrity: 1,
+  })
+
+  it('разведка обещает ровно то, что снимет', () => {
+    // Игрок жал разведку, угроза падала один раз, а дальше уходила только
+    // энергия: бюджет цикла исчерпывался молча.
+    let s: GameState = { ...rich(), threat: 90 }
+    for (let i = 0; i < 6; i += 1) {
+      const promised = scanOutcome(s).relief
+      const before = s.threat
+      const next = reduce(s, { type: 'action/scan' }).state
+      expect(Math.round((before - next.threat) * 10) / 10, `клик ${i + 1}`).toBe(promised)
+      s = next
+    }
+  })
+
+  it('исчерпанная разведка не отнимает энергию', () => {
+    let s: GameState = { ...rich(), threat: 90, revealed: SECTORS.map(sec => sec.id) }
+    s = run(s, ...Array.from({ length: 4 }, () => ({ type: 'action/scan' }) as GameAction))
+    const outcome = scanOutcome(s)
+    expect(outcome.relief).toBe(0)
+    expect(outcome.reveals).toBe(0)
+
+    const before = s.energy
+    const after = reduce(s, { type: 'action/scan' }).state
+    expect(after.energy, 'энергия за пустой ход').toBe(before)
+    expect(after.threat).toBe(s.threat)
+  })
+
+  it('лечение обещает ровно то, что вернёт', () => {
+    let s = rich()
+    for (let i = 0; i < 5; i += 1) {
+      const promised = mendOutcome(s).heal
+      const before = s.integrity
+      const next = reduce(s, { type: 'action/mend' }).state
+      expect(next.integrity - before, `клик ${i + 1}`).toBe(promised)
+      if (promised === 0) break
+      s = next
+    }
+  })
+
+  it('когда лечить больше нельзя, действие обещает ноль', () => {
+    // Кнопка выключается по этому же значению: разойтись они не могут.
+    let s = rich()
+    for (let i = 0; i < 10 && mendOutcome(s).heal > 0; i += 1) {
+      s = reduce(s, { type: 'action/mend' }).state
+    }
+    expect(mendOutcome(s).heal).toBe(0)
+    expect(s.energy).toBeGreaterThan(0)
+
+    const before = s.energy
+    expect(reduce(s, { type: 'action/mend' }).state.energy, 'энергия за отказ').toBe(before)
+
+    s = reduce(s, { type: 'cycle/end' }).state
+    expect(mendOutcome(s).heal, 'новый цикл возвращает бюджет').toBeGreaterThan(0)
   })
 })

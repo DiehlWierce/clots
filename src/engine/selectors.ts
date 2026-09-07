@@ -251,6 +251,49 @@ export function projectedDelivery(
   return { hops: best, factor: deliveryFactor(best) }
 }
 
+/**
+ * Что разведка сделает прямо сейчас.
+ *
+ * Снижение угрозы ограничено бюджетом цикла, а раскрывать бывает уже нечего.
+ * Один источник правды на движок и интерфейс: кнопка обязана быть доступной
+ * ровно тогда, когда нажатие что-то даёт. Иначе игрок жмёт, теряет энергию
+ * и не понимает, почему угроза стоит на месте.
+ */
+export function scanOutcome(state: GameState): { relief: number; reveals: number } {
+  const room = Math.max(0, BALANCE.threat.reliefCapPerCycle - state.reliefUsed)
+  const relief = Math.min(BALANCE.actions.scan.threatRelief, room)
+
+  let reveals = 0
+  const seen = new Set([...state.controlled, ...state.revealed])
+  for (const owned of state.controlled) {
+    for (const neighbor of neighborsOf(owned)) {
+      if (seen.has(neighbor)) continue
+      const sector = getSector(neighbor)
+      if (!sector || !state.regions.includes(sector.region)) continue
+      seen.add(neighbor)
+      reveals += 1
+    }
+  }
+  return { relief, reveals }
+}
+
+/**
+ * Сколько целостности вернёт лечение прямо сейчас.
+ *
+ * За цикл ядро принимает не больше доли максимума; сверх бюджета лечение
+ * не проходит вовсе. Кнопка обязана об этом знать заранее.
+ */
+export function mendOutcome(
+  state: GameState,
+  stats = derive(state),
+): { heal: number; budget: number; left: number } {
+  const cfg = BALANCE.actions.mend
+  const budget = Math.max(cfg.heal, Math.round(stats.maxIntegrity * cfg.cyclePerCycle))
+  const left = Math.max(0, budget - state.healedThisCycle)
+  const perAction = Math.max(cfg.heal, Math.round(stats.maxIntegrity * cfg.healShare))
+  return { heal: Math.min(perAction, left, stats.maxIntegrity - state.integrity), budget, left }
+}
+
 /** Суммарный «шум» от захваченных секторов — основной драйвер угрозы. */
 export function territoryHeat(state: GameState): number {
   let heat = 0

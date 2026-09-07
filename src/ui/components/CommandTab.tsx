@@ -1,6 +1,6 @@
 import { BALANCE } from '@/engine/balance'
 import { EPOCH_MODIFIER_BY_ID, epochName } from '@/engine/content'
-import { canAfford, ngPlusPressure } from '@/engine/selectors'
+import { canAfford, mendOutcome, ngPlusPressure, scanOutcome } from '@/engine/selectors'
 import { raidChance, reclaimChance } from '@/engine/systems/threat'
 import { formatCost } from '../format'
 import type { GameAction } from '@/engine/actions'
@@ -25,6 +25,11 @@ interface ActionSpec {
 
 export function CommandTab({ state, stats, dispatch, tc }: Props) {
   const a = BALANCE.actions
+  // Бюджеты цикла: и разведка, и лечение упираются в предел. Кнопка обязана
+  // выключаться ровно тогда, когда нажатие ничего не даст, — иначе игрок
+  // тратит энергию и не понимает, почему ничего не произошло.
+  const scan = scanOutcome(state)
+  const mend = mendOutcome(state, stats)
 
   const specs: ActionSpec[] = [
     {
@@ -58,16 +63,27 @@ export function CommandTab({ state, stats, dispatch, tc }: Props) {
     {
       action: { type: 'action/scan' },
       title: '👁️ Разведка потока',
-      desc: `Снимает ${a.scan.threatRelief}% угрозы и раскрывает соседние секторы.`,
+      desc:
+        scan.relief > 0
+          ? `Снимает ${scan.relief}% угрозы и раскрывает соседние секторы. За цикл можно снять не больше ${BALANCE.threat.reliefCapPerCycle}%.`
+          : scan.reveals > 0
+            ? `Угроза в этом цикле уже сбита до предела — разведка только раскроет карту (новых секторов: ${scan.reveals}).`
+            : 'Угроза сбита до предела цикла, раскрывать нечего. Завершите цикл — предел обнулится.',
       energy: a.scan.energy,
+      disabled: scan.relief <= 0 && scan.reveals === 0,
     },
     {
       action: { type: 'action/mend' },
       title: '🫀 Восстановить ядро',
-      desc: `Возвращает ${Math.max(a.mend.heal, Math.round(stats.maxIntegrity * a.mend.healShare))} целостности.`,
+      desc:
+        state.integrity >= stats.maxIntegrity
+          ? 'Целостность полная.'
+          : mend.heal > 0
+            ? `Возвращает ${mend.heal} целостности. За цикл ядро принимает не больше ${mend.budget} — осталось ${mend.left}.`
+            : `Ядро приняло весь ремонт этого цикла (${mend.budget}). Завершите цикл, чтобы лечить дальше.`,
       energy: a.mend.energy,
       cost: a.mend.cost,
-      disabled: state.integrity >= stats.maxIntegrity,
+      disabled: mend.heal <= 0,
     },
   ]
 
