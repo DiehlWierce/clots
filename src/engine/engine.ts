@@ -23,7 +23,6 @@ import {
   collectEffects,
   derive,
   mutationRaidPower,
-  isAchievementEarned,
   isSectorReachable,
   doctrineForkBlocked,
   epochMultiplier,
@@ -33,6 +32,7 @@ import {
   VAULT_INTEGRITY,
 } from './selectors'
 import { createInitialState } from './state'
+import { isChapterUnlocked } from './systems/lore'
 import {
   bleedDamage,
   createRaidCombat,
@@ -52,14 +52,7 @@ import {
   reclaimChance,
 } from './systems/threat'
 import type { GameAction } from './actions'
-import type {
-  GameState,
-  LevelMap,
-  LoreUnlock,
-  PlayerCombatAction,
-  ResourceBag,
-  SectorDef,
-} from './types'
+import type { GameState, LevelMap, PlayerCombatAction, ResourceBag, SectorDef } from './types'
 
 /** Результат применения действия: новое состояние + что показать игроку. */
 export interface ReduceResult {
@@ -337,7 +330,7 @@ function syncDerived(ctx: Ctx): void {
   s.xp = Math.max(0, Math.round(s.xp))
 
   checkAchievements(ctx, stats.level)
-  unlockLore(ctx, stats.level)
+  unlockLore(ctx)
 
   if (s.integrity <= 0 && s.phase !== 'collapsed') {
     s.phase = 'collapsed'
@@ -1166,27 +1159,10 @@ function checkAchievements(ctx: Ctx, level: number): void {
   }
 }
 
-function loreUnlocked(state: GameState, unlockRule: LoreUnlock, level: number): boolean {
-  switch (unlockRule.kind) {
-    case 'always':
-      return true
-    case 'cycle':
-      return state.cycle >= unlockRule.value
-    case 'level':
-      return level >= unlockRule.value
-    case 'region':
-      return state.regions.includes(unlockRule.value)
-    case 'sector':
-      return state.controlled.includes(unlockRule.value)
-    case 'achievement':
-      return isAchievementEarned(state, unlockRule.value)
-  }
-}
-
-function unlockLore(ctx: Ctx, level: number): void {
+function unlockLore(ctx: Ctx): void {
   for (const chapter of ALL_CHAPTERS) {
     if (ctx.s.lore.includes(chapter.id)) continue
-    if (!loreUnlocked(ctx.s, chapter.unlock, level)) continue
+    if (!isChapterUnlocked(ctx.s, chapter.unlock)) continue
     ctx.s.lore.push(chapter.id)
     if (chapter.unlock.kind !== 'always') {
       ctx.log(`Открыта глава лора: «${chapter.title}».`, 'good')

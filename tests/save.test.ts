@@ -262,3 +262,52 @@ it('даже предельно прокачанная партия влезае
   expect(chunks).toBeLessThanOrEqual(32)
   expect(CLOUD_CHUNK_SIZE).toBeLessThanOrEqual(CLOUD_VALUE_LIMIT)
 })
+
+/**
+ * Список открытых глав хранится в сейве, поэтому глава, открытая по ошибке
+ * прошлой версией игры, осталась бы навсегда. При загрузке список
+ * пересобирается по правилам — сейв лечит себя сам.
+ */
+describe('самолечение летописи', () => {
+  it('глава без выполненного условия убирается при загрузке', () => {
+    const state = sanitizeState({
+      version: STATE_VERSION,
+      cycle: 8,
+      xp: 120,
+      controlled: ['cap-core', 'cap-drift', 'cap-silt', 'cap-weave'],
+      achievements: { 'sectors-10': 4, 'first-module': 1 },
+      // forge-cost требует достижения sectors-10, а взято лишь 4 сектора.
+      lore: ['origin-spark', 'origin-hunger', 'origin-shape', 'forge-cost'],
+    })
+    expect(state?.lore).not.toContain('forge-cost')
+  })
+
+  it('законно открытые главы сохраняются', () => {
+    const state = sanitizeState({
+      version: STATE_VERSION,
+      controlled: ['cap-core', 'cap-drift'],
+      achievements: { 'first-module': 1 },
+      lore: ['origin-spark', 'origin-hunger', 'origin-shape'],
+    })
+    // Первая открыта всегда, вторая — за захват пролива, третья — за модуль.
+    expect(state?.lore).toEqual(['origin-spark', 'origin-hunger', 'origin-shape'])
+  })
+
+  it('несуществующая глава отбрасывается', () => {
+    const state = sanitizeState({
+      version: STATE_VERSION,
+      lore: ['origin-spark', 'глава-которой-нет'],
+    })
+    expect(state?.lore).toEqual(['origin-spark'])
+  })
+
+  it('глава возвращается, когда условие действительно выполнено', () => {
+    const state = sanitizeState({
+      version: STATE_VERSION,
+      controlled: ['cap-core', 'cap-drift'],
+      achievements: { 'sectors-10': 10 },
+      lore: ['origin-spark', 'forge-cost'],
+    })
+    expect(state?.lore).toContain('forge-cost')
+  })
+})

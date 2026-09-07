@@ -12,6 +12,7 @@ import {
   getEnemy,
 } from '../content'
 import { VAULT_ENERGY, VAULT_INTEGRITY } from '../selectors'
+import { pruneLore } from '../systems/lore'
 import { STATE_VERSION, createInitialState } from '../state'
 import type { CombatState, DoctrinePath, GameState, LevelMap, Phase, RegionId } from '../types'
 
@@ -157,6 +158,8 @@ export function sanitizeState(input: unknown): GameState | null {
 
     achievements,
     log: sanitizeLog(raw.log),
+    // Список глав приводится в соответствие с правилами ниже, после того
+    // как остальное состояние собрано: условия зависят от него.
     lore: Array.isArray(raw.lore) ? raw.lore.filter((x): x is string => typeof x === 'string') : [],
 
     tutorialStep: int(raw.tutorialStep, 0, 0, 99),
@@ -179,6 +182,10 @@ export function sanitizeState(input: unknown): GameState | null {
     state.phase = 'collapsed'
     state.combat = null
   }
+
+  // Самолечение: глава, открытая по ошибке в прошлой версии игры, хранится
+  // в сейве и иначе осталась бы навсегда. Список пересобирается по правилам.
+  state.lore = pruneLore(state)
 
   return state
 }
