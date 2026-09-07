@@ -19,9 +19,10 @@ import { decodeText, encodeText } from '@/engine/save/codec'
 import { sanitizeState } from '@/engine/save/schema'
 import { STATE_VERSION } from '@/engine/state'
 import { reduce } from '@/engine/engine'
-import type { GameState } from '@/engine/types'
+import type { GameState, Phase } from '@/engine/types'
 import {
   ACHIEVEMENTS,
+  EVENT_BY_ID,
   ALL_CHAPTERS,
   DOCTRINES,
   EPOCH_MODIFIERS,
@@ -379,5 +380,42 @@ describe('автослоты', () => {
       indexOf(SLOT_INTERVAL * 3),
     ])
     expect(used.size).toBe(SLOT_COUNT)
+  })
+})
+
+describe('фазы переживают перезагрузку', () => {
+  const reload = (state: GameState): GameState => {
+    const result = fromUnknown(JSON.parse(serialize(state)))
+    if (!result.ok) throw new Error('сейв не прочитался')
+    return result.state
+  }
+
+  it('ждущее событие остаётся ждущим', () => {
+    // Регресс: фаза 'event' отсутствовала в списке допустимых, поэтому любое
+    // случайное событие пропадало при обновлении страницы — бесплатная
+    // возможность переиграть неудачный бросок.
+    const eventId = [...EVENT_BY_ID.keys()][0] as string
+    const state: GameState = { ...newGame(7), phase: 'event', pendingEvent: eventId }
+    const loaded = reload(state)
+    expect(loaded.phase).toBe('event')
+    expect(loaded.pendingEvent).toBe(eventId)
+  })
+
+  it('все фазы игры считаются допустимыми при загрузке', () => {
+    const phases: Phase[] = ['mutation', 'command', 'combat', 'vault', 'event', 'collapsed']
+    for (const phase of phases) {
+      const raw = { ...(JSON.parse(serialize(newGame(3))) as Record<string, unknown>), phase }
+      const loaded = sanitizeState(raw)
+      expect(loaded, phase).not.toBeNull()
+      // Фаза либо сохраняется, либо осознанно понижается до 'command'
+      // правилами восстановления — но не из-за того, что её нет в списке.
+      expect(['command', phase], phase).toContain(loaded?.phase)
+    }
+  })
+
+  it('событие без своей фазы не остаётся висеть в состоянии', () => {
+    const eventId = [...EVENT_BY_ID.keys()][0] as string
+    const loaded = reload({ ...newGame(7), phase: 'command', pendingEvent: eventId })
+    expect(loaded.pendingEvent).toBeNull()
   })
 })

@@ -16,7 +16,7 @@ import {
 } from '@/engine/save'
 import { createInitialState } from '@/engine/state'
 import type { GameAction } from '@/engine/actions'
-import type { GameState } from '@/engine/types'
+import type { GameState, Phase } from '@/engine/types'
 import type { Notice } from '@/engine/engine'
 
 export interface Toast extends Notice {
@@ -49,6 +49,8 @@ interface GameStore {
 /** Не удалось записать партию на устройство — игрок должен узнать об этом. */
 let onPersistFailure: (() => void) | null = null
 
+const BLOCKING_PHASES: ReadonlySet<Phase> = new Set<Phase>(['event', 'combat', 'vault', 'mutation'])
+
 const schedulePersist = (() => {
   let pending: GameState | null = null
   let scheduled = false
@@ -75,6 +77,13 @@ const schedulePersist = (() => {
 
   return (state: GameState) => {
     pending = state
+    // Блокирующая фаза — то, что игрок обязан разрешить: событие, бой,
+    // хранилище, выбор мутации. Отложить её запись значит подарить способ
+    // «переиграть» бросок обновлением страницы. Пишем сразу.
+    if (BLOCKING_PHASES.has(state.phase)) {
+      flush()
+      return
+    }
     if (scheduled) return
     scheduled = true
     if (typeof requestIdleCallback === 'function') requestIdleCallback(flush, { timeout: 500 })

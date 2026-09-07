@@ -24,7 +24,20 @@ import type { CombatState, DoctrinePath, GameState, LevelMap, Phase, RegionId } 
  * попадает в состояние как NaN. Именно на этом ломалась прошлая версия.
  */
 
-const PHASES: readonly Phase[] = ['mutation', 'command', 'combat', 'vault', 'collapsed', 'victory']
+// Ключи, а не массив: Record<Phase, true> заставляет TypeScript ругаться,
+// если в игре появится новая фаза, а здесь её забудут. Раньше список был
+// массивом, из него выпала фаза 'event' — и каждое случайное событие
+// пропадало при перезагрузке страницы.
+const PHASE_SET: Record<Phase, true> = {
+  mutation: true,
+  command: true,
+  combat: true,
+  vault: true,
+  event: true,
+  collapsed: true,
+  victory: true,
+}
+const PHASES: readonly Phase[] = Object.keys(PHASE_SET) as Phase[]
 const PATHS: readonly DoctrinePath[] = ['reaver', 'warden', 'weaver']
 const REGION_IDS: readonly RegionId[] = REGIONS.map(r => r.id)
 
@@ -177,6 +190,9 @@ export function sanitizeState(input: unknown): GameState | null {
   if (state.phase === 'mutation' && state.mutationOffer.length === 0) state.phase = 'command'
   // Фаза события без самого события заперла бы игру на пустом оверлее.
   if (state.phase === 'event' && state.pendingEvent === null) state.phase = 'command'
+  // И наоборот: событие без своей фазы — мусор из старого сейва. Оставить его
+  // значит держать в состоянии ссылку, которую уже никто не покажет.
+  if (state.phase !== 'event') state.pendingEvent = null
   if (state.mutation !== null && state.phase === 'mutation') state.phase = 'command'
   if (state.integrity <= 0) {
     state.phase = 'collapsed'
