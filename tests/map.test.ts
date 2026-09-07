@@ -9,6 +9,7 @@ import {
 } from '@/engine/content'
 import { ENEMIES, ENEMY_BY_ID } from '@/engine/content/enemies'
 import { MODULES, DOCTRINES, TECHS } from '@/engine/content/upgrades'
+import { MAP_LAYOUT, buildLayout } from '@/engine/systems/layout'
 
 describe('целостность карты', () => {
   it('все рёбра ведут к существующим секторам', () => {
@@ -120,6 +121,53 @@ describe('целостность контента развития', () => {
   it('паттерны врагов не пустые', () => {
     for (const enemy of ENEMIES) {
       expect(enemy.pattern.length, `${enemy.id}: пустой паттерн`).toBeGreaterThan(0)
+    }
+  })
+})
+
+/**
+ * Раскладка графа считается из структуры карты, а не задаётся руками:
+ * добавление сектора не требует подбора координат.
+ */
+describe('раскладка карты', () => {
+  it('в раскладке есть каждый сектор', () => {
+    expect(MAP_LAYOUT.nodes.size).toBe(SECTORS.length)
+    for (const sector of SECTORS) {
+      expect(MAP_LAYOUT.nodes.has(sector.id), `нет узла ${sector.id}`).toBe(true)
+    }
+  })
+
+  it('рёбра раскладки совпадают с рёбрами карты', () => {
+    expect(MAP_LAYOUT.edges.length).toBe(SECTOR_EDGES.length)
+    for (const edge of MAP_LAYOUT.edges) {
+      expect(MAP_LAYOUT.nodes.has(edge.from)).toBe(true)
+      expect(MAP_LAYOUT.nodes.has(edge.to)).toBe(true)
+    }
+  })
+
+  it('стартовый сектор на нулевой глубине, остальные глубже', () => {
+    expect(MAP_LAYOUT.nodes.get(START_SECTOR)?.y).toBe(0)
+    const throne = MAP_LAYOUT.nodes.get('ctx-throne')
+    expect(throne?.y).toBeGreaterThan(10)
+  })
+
+  it('карта вытянута вниз, а не вбок: так она читается на телефоне', () => {
+    expect(MAP_LAYOUT.height).toBeGreaterThan(MAP_LAYOUT.width)
+  })
+
+  it('регионы не перемешаны: каждый занимает свою полосу глубины', () => {
+    const capillary = MAP_LAYOUT.regionBounds.get('capillary')
+    const cortex = MAP_LAYOUT.regionBounds.get('cortex')
+    expect(capillary).toBeDefined()
+    expect(cortex).toBeDefined()
+    if (!capillary || !cortex) return
+    expect(cortex.minY).toBeGreaterThan(capillary.maxY)
+  })
+
+  it('раскладка стабильна: повторный расчёт даёт те же координаты', () => {
+    const again = buildLayout()
+    for (const [id, node] of MAP_LAYOUT.nodes) {
+      expect(again.nodes.get(id)).toEqual(node)
     }
   })
 })

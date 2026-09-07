@@ -1238,3 +1238,73 @@
   font-variant-numeric: tabular-nums;
   color: var(--c-text-muted);
 }
+
+/* ─── Карта-граф ──────────────────────────────────────────────────────────── */
+
+.graph {
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  max-height: 62dvh;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-bg);
+}
+
+.graph__svg {
+  display: block;
+  /* Карта шире экрана телефона: прокручиваем её, а не сжимаем до нечитаемости. */
+  min-width: 100%;
+}
+
+.graph__node {
+  cursor: pointer;
+}
+
+.graph__node:focus-visible {
+  outline: 2px solid var(--c-accent-soft);
+  outline-offset: 2px;
+}
+
+.graph__icon {
+  font-size: 16px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.graph__label {
+  font-size: 10px;
+  text-anchor: middle;
+  fill: var(--c-text-muted);
+  pointer-events: none;
+}
+
+.graph__region {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--c-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  font-size: 0.6875rem;
+  color: var(--c-text-muted);
+}
+
+.graph-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.graph-legend__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--c-border);
+}

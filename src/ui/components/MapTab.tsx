@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { BALANCE } from '@/engine/balance'
 import { REGIONS, SECTORS, getEnemy, getSector, neighborsOf } from '@/engine/content'
 import { isSectorReachable, sectorDelivery } from '@/engine/selectors'
 import { SECTOR_TYPE_ICON, SECTOR_TYPE_LABEL, formatIncome } from '../format'
+import { SectorGraph } from './SectorGraph'
+import { haptics } from '@/telegram'
 import type { GameAction } from '@/engine/actions'
 import type { GameState, SectorDef } from '@/engine/types'
 
@@ -70,6 +73,7 @@ function SectorCard({
 }
 
 export function MapTab({ state, dispatch }: Props) {
+  const [view, setView] = useState<'graph' | 'list'>('graph')
   const selected = state.selectedSector ? getSector(state.selectedSector) : null
   const selectedOwned = selected ? state.controlled.includes(selected.id) : false
   const selectedReachable = selected ? isSectorReachable(state, selected.id) : false
@@ -89,39 +93,106 @@ export function MapTab({ state, dispatch }: Props) {
           </p>
         </div>
 
-        {REGIONS.filter(region => state.regions.includes(region.id)).map(region => {
-          const visible = SECTORS.filter(
-            s =>
-              s.region === region.id &&
-              (state.controlled.includes(s.id) || state.revealed.includes(s.id)),
-          )
-          const owned = SECTORS.filter(
-            s => s.region === region.id && state.controlled.includes(s.id),
-          ).length
-          const total = SECTORS.filter(s => s.region === region.id).length
+        <div className="segmented" role="tablist" style={{ marginBottom: 'var(--sp-3)' }}>
+          <button
+            type="button"
+            role="tab"
+            className="segmented__item"
+            aria-selected={view === 'graph'}
+            onClick={() => {
+              setView('graph')
+              haptics.select()
+            }}
+          >
+            Схема
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className="segmented__item"
+            aria-selected={view === 'list'}
+            onClick={() => {
+              setView('list')
+              haptics.select()
+            }}
+          >
+            Список
+          </button>
+        </div>
 
-          return (
-            <div key={region.id} className="region">
-              <div className="region__title">
-                <h3>{region.name}</h3>
-                <span className="region__meta">
-                  {region.subtitle} · {owned} / {total}
-                </span>
-              </div>
-              <p className="region__desc">{region.description}</p>
-              <div className="grid">
-                {visible.map(sector => (
-                  <SectorCard
-                    key={sector.id}
-                    sector={sector}
-                    state={state}
-                    onSelect={() => dispatch({ type: 'map/select', sectorId: sector.id })}
-                  />
-                ))}
-              </div>
+        {view === 'graph' ? (
+          <>
+            <SectorGraph
+              state={state}
+              onSelect={id => {
+                haptics.select()
+                dispatch({ type: 'map/select', sectorId: id })
+              }}
+            />
+            <div className="graph-legend">
+              <span className="graph-legend__item">
+                <span
+                  className="graph-legend__dot"
+                  style={{ borderColor: 'var(--c-good)', background: 'transparent' }}
+                />
+                под контролем
+              </span>
+              <span className="graph-legend__item">
+                <span
+                  className="graph-legend__dot"
+                  style={{ borderColor: 'var(--c-accent)', background: 'transparent' }}
+                />
+                доступен
+              </span>
+              <span className="graph-legend__item">
+                <span className="graph-legend__dot" />
+                разведан
+              </span>
+              <span className="graph-legend__item">
+                <span
+                  className="graph-legend__dot"
+                  style={{ background: 'var(--c-bad)', borderColor: 'var(--c-bad)' }}
+                />
+                гарнизон
+              </span>
             </div>
-          )
-        })}
+          </>
+        ) : null}
+
+        {view === 'list' &&
+          REGIONS.filter(region => state.regions.includes(region.id)).map(region => {
+            const visible = SECTORS.filter(
+              s =>
+                s.region === region.id &&
+                (state.controlled.includes(s.id) || state.revealed.includes(s.id)),
+            )
+            const owned = SECTORS.filter(
+              s => s.region === region.id && state.controlled.includes(s.id),
+            ).length
+            const total = SECTORS.filter(s => s.region === region.id).length
+
+            return (
+              <div key={region.id} className="region">
+                <div className="region__title">
+                  <h3>{region.name}</h3>
+                  <span className="region__meta">
+                    {region.subtitle} · {owned} / {total}
+                  </span>
+                </div>
+                <p className="region__desc">{region.description}</p>
+                <div className="grid">
+                  {visible.map(sector => (
+                    <SectorCard
+                      key={sector.id}
+                      sector={sector}
+                      state={state}
+                      onSelect={() => dispatch({ type: 'map/select', sectorId: sector.id })}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
       </section>
 
       {selected ? (
