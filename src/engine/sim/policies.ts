@@ -24,12 +24,17 @@ import type { DoctrinePath, GameState } from '../types'
  * Политики игры для симуляции.
  *
  * Балансировка была занятием на глаз: любая правка чисел проверялась
- * ощущениями. Здесь описаны три разных стиля игры, чтобы измерять, а не
- * угадывать: что происходит с агрессивным, экономическим и осторожным
- * подходом на одних и тех же зёрнах.
+ * ощущениями. Здесь описаны разные стили игры, чтобы измерять, а не
+ * угадывать: что происходит с каждым подходом на одних и тех же зёрнах.
+ *
+ * Три первых стиля — активные: развиваются и расширяются, каждый по своему
+ * пути доктрин. Два последних — накопительные: они откладывают выбор пути
+ * или не делают его вовсе, вкладываясь в модули, технологии и ресурсы.
+ * Такой игрок существует всегда, и без него измерения показывали только ту
+ * половину игроков, которая идёт вперёд.
  */
 
-export type PolicyId = 'aggressive' | 'economic' | 'cautious'
+export type PolicyId = 'aggressive' | 'economic' | 'cautious' | 'hoarder' | 'grinder'
 
 export interface Policy {
   id: PolicyId
@@ -42,6 +47,11 @@ export interface Policy {
   healUpTo: number
   /** Предпочитаемый путь доктрин. */
   path: DoctrinePath
+  /**
+   * Цикл, раньше которого доктрины не покупаются. null — не покупаются
+   * никогда: партия проходится на одних модулях и технологиях.
+   */
+  doctrineFrom: number | null
   /** Доля энергии, отдаваемая на переработку вместо добычи. */
   refineBias: number
   /**
@@ -64,6 +74,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     assaultAboveHealth: 0.65,
     healUpTo: 0.75,
     path: 'reaver',
+    doctrineFrom: 1,
     refineBias: 0.3,
     difficultyMargin: 2,
   },
@@ -74,6 +85,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     assaultAboveHealth: 0.8,
     healUpTo: 0.85,
     path: 'weaver',
+    doctrineFrom: 1,
     refineBias: 0.7,
     difficultyMargin: 0,
   },
@@ -84,9 +96,55 @@ export const POLICIES: Record<PolicyId, Policy> = {
     assaultAboveHealth: 0.9,
     healUpTo: 0.95,
     path: 'warden',
+    doctrineFrom: 1,
     refineBias: 0.5,
     difficultyMargin: -1,
   },
+  // Накопитель: сперва выкупает всё, что можно выкупить, и только глубоко
+  // за середину партии определяется с путём. Проверяет, не наказывает ли
+  // игра за отложенное решение сильнее, чем за неудачное.
+  hoarder: {
+    id: 'hoarder',
+    name: 'Накопитель',
+    expandBelowThreat: 42,
+    assaultAboveHealth: 0.9,
+    healUpTo: 0.9,
+    path: 'weaver',
+    doctrineFrom: 120,
+    refineBias: 0.85,
+    difficultyMargin: -1,
+  },
+  // Гриндер: доктрину не берёт вовсе. Территория расширяется редко и только
+  // наверняка. Это проверка на то, проходима ли игра без главного выбора —
+  // и не оказывается ли отказ от него выгоднее самого выбора.
+  grinder: {
+    id: 'grinder',
+    name: 'Гриндер',
+    expandBelowThreat: 40,
+    assaultAboveHealth: 0.92,
+    healUpTo: 0.92,
+    path: 'weaver',
+    doctrineFrom: null,
+    refineBias: 0.75,
+    difficultyMargin: -2,
+  },
+}
+
+/**
+ * Уровень, на котором сектор такой сложности перестаёт быть авантюрой.
+ *
+ * Сложность секторов идёт до 17, а уровень цитадели — до 12: сравнивать их
+ * напрямую нельзя. Правило «сложность не выше уровня» закрывало последние
+ * сектора навсегда, и победа становилась недостижимой для всех политик
+ * разом. Шкала сложности растягивается на шкалу уровней с запасом в два
+ * уровня — чтобы осторожным стилям с отрицательным запасом хватало потолка.
+ */
+const MAX_DIFFICULTY = Math.max(...SECTORS.map(sec => sec.difficulty))
+const FAIR_LEVEL_FOR_HARDEST = BALANCE.progression.xpCurve.length - 2
+
+function recommendedLevel(difficulty: number): number {
+  if (MAX_DIFFICULTY <= 0) return 1
+  return 1 + (difficulty / MAX_DIFFICULTY) * (FAIR_LEVEL_FOR_HARDEST - 1)
 }
 
 const act = (state: GameState, action: GameAction): GameState => reduce(state, action).state
@@ -155,7 +213,15 @@ export function step(state: GameState, policy: Policy): GameState {
 
   // Расширение.
   const healthy = s.integrity > stats.maxIntegrity * policy.assaultAboveHealth
-  const target = SECTORS.find(sec => isSectorReachable(s, sec.id) && (healthy || !sec.garrison))
+  // Живой игрок читает «сложность 10» на карточке и не лезет туда с седьмым
+  // уровнем. Правило было описано, но нигде не применялось: боты уходили
+  // в третий регион недооснащёнными и гибли, ни разу не проиграв бой.
+  const withinReach = (difficulty: number): boolean =>
+    stats.level + policy.difficultyMargin >= recommendedLevel(difficulty)
+  const target = SECTORS.find(
+    sec =>
+      isSectorReachable(s, sec.id) && withinReach(sec.difficulty) && (healthy || !sec.garrison),
+  )
   if (target && s.energy >= BALANCE.actions.assault.energy) {
     return act(s, { type: 'map/capture', sectorId: target.id })
   }
@@ -192,6 +258,9 @@ function pickPurchase(s: GameState, policy: Policy): GameAction | null {
     const cost = nextCost(def.costs, level)
     if (cost && canAfford(s, cost)) return { type: 'module/buy', id: def.id }
   }
+  // Доктрины покупаются только когда стиль до них дозрел. Накопительные
+  // политики держат путь незакрытым: у grinder — до конца партии.
+  if (policy.doctrineFrom === null || s.cycle < policy.doctrineFrom) return null
   for (const def of DOCTRINE_ORDER) {
     if (def.path !== policy.path) continue
     if (s.doctrinePath !== null && s.doctrinePath !== def.path) continue
