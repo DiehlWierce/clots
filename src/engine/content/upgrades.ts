@@ -269,7 +269,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 130, clots: 26 },
       { plasma: 260, clots: 55 },
     ],
-    effects: { masking: 3, suppression: 0.05 },
+    effects: { masking: 0.66, suppression: 0.05 },
   },
   {
     id: 'silent-veil',
@@ -283,7 +283,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 350, clots: 75, essence: 4 },
       { plasma: 620, clots: 135, essence: 8 },
     ],
-    effects: { masking: 4, suppression: 0.07 },
+    effects: { masking: 0.88, suppression: 0.07 },
     requires: ['veil-shroud'],
   },
   {
@@ -298,7 +298,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 720, clots: 160, essence: 12 },
       { plasma: 1200, clots: 270, essence: 20 },
     ],
-    effects: { masking: 5, suppression: 0.08, defense: 3 },
+    effects: { masking: 1.1, suppression: 0.08, defense: 3 },
     requires: ['silent-veil'],
   },
   {
@@ -313,7 +313,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 1500, clots: 340, essence: 26 },
       { plasma: 2400, clots: 560, essence: 42 },
     ],
-    effects: { masking: 7, suppression: 0.1 },
+    effects: { masking: 1.54, suppression: 0.1 },
     requires: ['phase-screen'],
   },
 
@@ -406,7 +406,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 560, clots: 130, essence: 8 },
       { plasma: 950, clots: 220, essence: 14 },
     ],
-    effects: { xpYield: 0.042, masking: 1 },
+    effects: { xpYield: 0.042, masking: 0.22 },
     requires: ['energy-loop'],
   },
   {

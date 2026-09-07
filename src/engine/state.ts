@@ -85,7 +85,6 @@ export function createInitialState(seed: number): GameState {
     ],
     lore: [],
 
-    tutorialStep: 0,
     tutorialDismissed: false,
 
     stats: {

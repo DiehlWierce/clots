@@ -190,7 +190,6 @@ export function sanitizeState(input: unknown): GameState | null {
     // как остальное состояние собрано: условия зависят от него.
     lore: Array.isArray(raw.lore) ? raw.lore.filter((x): x is string => typeof x === 'string') : [],
 
-    tutorialStep: int(raw.tutorialStep, 0, 0, 99),
     tutorialDismissed: bool(raw.tutorialDismissed, false),
 
     stats: sanitizeStats(raw.stats, base.stats),

@@ -225,6 +225,32 @@ export function sectorDelivery(
   return { hops, factor: deliveryFactor(hops) }
 }
 
+/**
+ * Сколько дохода дойдёт с сектора, если его захватить.
+ *
+ * До захвата игрок видел полный доход сектора, а долю доставки — только
+ * после. То есть узнавал, что дальний сектор отдаёт сорок процентов
+ * обещанного, уже заплатив за него. Расстояние считается по кратчайшему
+ * пути через уже свои узлы: захваченный сектор станет на шаг дальше
+ * ближайшего своего соседа.
+ */
+export function projectedDelivery(
+  state: GameState,
+  sectorId: string,
+): { hops: number; factor: number } | null {
+  if (state.controlled.includes(sectorId)) return sectorDelivery(state, sectorId)
+  const radius = Math.round(collectEffects(state).logistics + BALANCE.logistics.relayRadius)
+  const hops = hopsToHub(state, radius)
+  let best: number | null = null
+  for (const neighbor of neighborsOf(sectorId)) {
+    const distance = hops.get(neighbor)
+    if (distance === undefined) continue
+    if (best === null || distance + 1 < best) best = distance + 1
+  }
+  if (best === null) return null
+  return { hops: best, factor: deliveryFactor(best) }
+}
+
 /** Суммарный «шум» от захваченных секторов — основной драйвер угрозы. */
 export function territoryHeat(state: GameState): number {
   let heat = 0

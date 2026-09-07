@@ -1,7 +1,7 @@
 import { memo, useMemo, useState } from 'react'
 import { BALANCE } from '@/engine/balance'
 import { REGIONS, SECTORS, getEnemy, getSector, neighborsOf } from '@/engine/content'
-import { isSectorReachable, sectorDelivery } from '@/engine/selectors'
+import { isSectorReachable, projectedDelivery } from '@/engine/selectors'
 import { SECTOR_TYPE_ICON, SECTOR_TYPE_LABEL, formatIncome } from '../format'
 import { SectorGraph } from './SectorGraph'
 import { Empty } from './Empty'
@@ -36,7 +36,9 @@ const SectorCard = memo(function SectorCard({
   const income = useMemo(() => (sector.income ? formatIncome(sector.income) : []), [sector.income])
   // Доход физически идёт по сети: показываем, сколько реально доходит,
   // иначе потери на доставке выглядели бы как «числа какие-то не те».
-  const delivery = owned && sector.income ? sectorDelivery(state, sector.id) : null
+  // Показываем и до захвата: игрок должен видеть, сколько реально дойдёт,
+  // прежде чем платить за сектор, а не после.
+  const delivery = sector.income ? projectedDelivery(state, sector.id) : null
 
   return (
     <button
@@ -80,8 +82,8 @@ const SectorCard = memo(function SectorCard({
           ))}
           {delivery && delivery.factor < 1 ? (
             <span className="tag tag--warn">
-              {t.map.delivered} {Math.round(delivery.factor * 100)}% · {delivery.hops}{' '}
-              {t.map.hopsToHub}
+              {owned ? t.map.delivered : t.map.willDeliver} {Math.round(delivery.factor * 100)}% ·{' '}
+              {delivery.hops} {t.map.hopsToHub}
             </span>
           ) : null}
         </span>

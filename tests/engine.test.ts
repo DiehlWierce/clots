@@ -140,7 +140,7 @@ describe('регрессии v1', () => {
   })
 
   it('РЕГРЕСС #1: после коллапса сброс всегда доступен', () => {
-    let s = { ...start(), integrity: 1, tutorialStep: 0 }
+    let s = { ...start(), integrity: 1 }
     s = reduce(s, { type: 'action/harvest' }).state
     s = { ...s, integrity: 0 }
     s = reduce(s, { type: 'action/harvest' }).state
@@ -155,7 +155,7 @@ describe('регрессии v1', () => {
   })
 
   it('РЕГРЕСС #2: обучение не блокирует ни одно действие', () => {
-    const s = { ...start(), tutorialStep: 0 }
+    const s = { ...start() }
     // Любое действие проходит вне зависимости от шага обучения.
     const after = reduce(s, { type: 'cycle/end' }).state
     expect(after.cycle).toBe(2)

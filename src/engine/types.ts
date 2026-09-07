@@ -430,7 +430,6 @@ export interface GameState {
   /** Открытые главы лора. */
   lore: string[]
 
-  tutorialStep: number
   tutorialDismissed: boolean
 
   stats: RunStats

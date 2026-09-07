@@ -104,6 +104,7 @@ export const ru = {
     difficulty: 'сложность',
     noise: 'шум',
     delivered: 'доходит',
+    willDeliver: 'дойдёт',
     hopsToHub: 'шагов до узла',
     occupy: '🚩 Занять сектор',
     assault: '⚔️ Штурмовать',

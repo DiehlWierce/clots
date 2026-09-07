@@ -100,6 +100,7 @@ export const en: Dictionary = {
     difficulty: 'difficulty',
     noise: 'noise',
     delivered: 'delivered',
+    willDeliver: 'will deliver',
     hopsToHub: 'hops to hub',
     occupy: '🚩 Occupy sector',
     assault: '⚔️ Assault',

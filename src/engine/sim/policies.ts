@@ -682,16 +682,30 @@ export function step(state: GameState, policy: Policy): GameState {
   // Угроза под контролем — иначе рейды и потеря секторов съедают партию.
   // Берсерк и фермер рейдов этот шаг пропускают: одному угроза безразлична,
   // другому она нужна.
-  if (!policy.neverMask && s.threat > policy.expandBelowThreat && s.energy >= 1) {
+  // Угроза выше порога стиля — расширяться нельзя, даже если сбить её уже
+  // нечем: захват поднимет её ещё выше. Раньше эту роль играла сама ветка
+  // ниже, потому что она всегда возвращала ход; теперь она умеет ничего не
+  // делать, и запрет на расширение приходится держать отдельно.
+  const overThreat = !policy.neverMask && s.threat > policy.expandBelowThreat
+
+  if (overThreat && s.energy >= 1) {
     // Инструменты разные, и путать их нельзя: маскировка замедляет прирост
     // угрозы, но саму угрозу не снижает — это делает разведка. Пока угроза
     // не подошла к зоне рейдов, выгоднее вкладываться в маскировку; когда
     // подошла — сбивать её напрямую. Раньше бот всегда маскировался и
     // измерял этим собственную ошибку, а не баланс игры.
-    const needsRelief = s.threat >= BALANCE.threat.raidThreshold
+    //
+    // Обе проверяются на осмысленность: разведка сверх бюджета цикла ничего
+    // не снижает, маскировка сверх потолка ничего не добавляет. Без этих
+    // проверок бот тратил впустую почти половину ходов и мерил этим
+    // собственную бестолковость, а не баланс игры.
+    const reliefLeft = s.reliefUsed < BALANCE.threat.reliefCapPerCycle
     const canMask = s.masking < BALANCE.masking.max && s.plasma >= BALANCE.masking.actionCost.plasma
-    if (!needsRelief && canMask) return act(s, { type: 'action/mask' })
-    return act(s, { type: 'action/scan' })
+    const needsRelief = s.threat >= BALANCE.threat.raidThreshold
+    if (needsRelief && reliefLeft) return act(s, { type: 'action/scan' })
+    if (canMask) return act(s, { type: 'action/mask' })
+    if (reliefLeft) return act(s, { type: 'action/scan' })
+    // Ни снизить угрозу, ни укрыться — значит ход стоит потратить на дело.
   }
 
   // Лечение до порога политики. Когда угроза дошла до зоны рейдов, порог
@@ -699,8 +713,15 @@ export function step(state: GameState, policy: Policy): GameState {
   // поэтому встречать его на половине целостности — не стиль игры, а ошибка.
   const healTarget =
     s.threat >= BALANCE.threat.raidThreshold ? Math.max(policy.healUpTo, 0.92) : policy.healUpTo
+  // Лечение сверх бюджета цикла не проходит вовсе: попытка возвращает то же
+  // состояние, прогон считает это тупиком и обнуляет остаток энергии.
+  const healBudget = Math.max(
+    BALANCE.actions.mend.heal,
+    Math.round(stats.maxIntegrity * BALANCE.actions.mend.cyclePerCycle),
+  )
   if (
     !policy.neverHeal &&
+    s.healedThisCycle < healBudget &&
     s.integrity < stats.maxIntegrity * healTarget &&
     s.energy >= BALANCE.actions.mend.energy &&
     s.plasma >= BALANCE.actions.mend.cost.plasma
@@ -719,7 +740,10 @@ export function step(state: GameState, policy: Policy): GameState {
   // в третий регион недооснащёнными и гибли, ни разу не проиграв бой.
   const withinReach = (difficulty: number): boolean =>
     stats.level + policy.difficultyMargin >= recommendedLevel(difficulty)
-  const target = readyToExpand(s, policy) ? pickTarget(s, policy, withinReach, healthy) : undefined
+  const target =
+    !overThreat && readyToExpand(s, policy)
+      ? pickTarget(s, policy, withinReach, healthy)
+      : undefined
   if (target && s.energy >= BALANCE.actions.assault.energy) {
     return act(s, { type: 'map/capture', sectorId: target.id })
   }

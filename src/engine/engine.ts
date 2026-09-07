@@ -357,7 +357,6 @@ function doHarvest(ctx: Ctx): void {
   gainXp(ctx, BALANCE.xp.harvest)
   ctx.log(`Сбор плазмы: +${gained}.`)
   unlock(ctx, 'first-blood')
-  advanceTutorial(ctx, 0)
 }
 
 function doRefine(ctx: Ctx): void {
@@ -374,7 +373,6 @@ function doRefine(ctx: Ctx): void {
   gainXp(ctx, BALANCE.xp.refine)
   ctx.log(`Синтез сгустков: +${gained}.`)
   unlock(ctx, 'first-blood')
-  advanceTutorial(ctx, 1)
 }
 
 function doTransmute(ctx: Ctx): void {
@@ -494,7 +492,6 @@ function doCapture(ctx: Ctx, sectorId: string): void {
     ctx.s.phase = 'combat'
     const enemy = getEnemy(combat.enemyId)
     ctx.log(`Штурм «${sector.name}»: навстречу вышел ${enemy?.name ?? 'противник'}.`, 'bad')
-    advanceTutorial(ctx, 3)
     return
   }
 
@@ -518,7 +515,6 @@ function completeCapture(ctx: Ctx, sector: SectorDef): void {
   ctx.log(`Сектор «${sector.name}» под контролем империи.`, 'good')
   ctx.good(`Захвачено: ${sector.name}`)
   unlock(ctx, 'first-sector')
-  advanceTutorial(ctx, 2)
 
   if (sector.grantsModule) {
     const def = MODULE_BY_ID.get(sector.grantsModule)
@@ -832,7 +828,6 @@ function winCombat(ctx: Ctx): void {
   } else {
     ctx.s.phase = 'command'
   }
-  advanceTutorial(ctx, 3)
 }
 
 function doWithdraw(ctx: Ctx): void {
@@ -881,7 +876,6 @@ function doBuyModule(ctx: Ctx, id: string): void {
   )
   unlock(ctx, 'first-module')
   if (level + 1 >= def.maxLevel) unlock(ctx, 'branch-max')
-  advanceTutorial(ctx, 4)
 }
 
 function doBuyDoctrine(ctx: Ctx, id: string): void {
@@ -913,7 +907,6 @@ function doBuyDoctrine(ctx: Ctx, id: string): void {
   }
   unlock(ctx, 'first-doctrine')
   if (level + 1 >= def.maxLevel) unlock(ctx, 'doctrine-max')
-  advanceTutorial(ctx, 5)
 }
 
 /**
@@ -970,7 +963,10 @@ function doEndCycle(ctx: Ctx): void {
   if (stats.regen > 0) s.integrity = Math.min(stats.maxIntegrity, s.integrity + stats.regen)
 
   // 3. Маскировка: прирост от модулей минус естественная деградация.
-  s.masking += stats.maskingGain - BALANCE.masking.decay
+  // Чем шире империя, тем труднее ей прятаться: деградация растёт с
+  // территорией, иначе маскировка упирается в потолок и стоит там сама.
+  const maskingDecay = BALANCE.masking.decay + s.controlled.length * BALANCE.masking.decayPerSector
+  s.masking += stats.maskingGain - maskingDecay
 
   // 4. Угроза. Во время осады давление резко возрастает.
   const siege = s.siegeCyclesLeft > 0
@@ -1052,7 +1048,6 @@ function doEndCycle(ctx: Ctx): void {
   }
 
   if (s.cycle >= 50) unlock(ctx, 'cycle-50')
-  advanceTutorial(ctx, 6)
 }
 
 /**
@@ -1177,11 +1172,6 @@ function doEventChoice(ctx: Ctx, optionId: string): void {
  * Обучение — только подсказки. Оно никогда не блокирует интерфейс и не может
  * заблокировать перезапуск партии: шаг просто двигается вперёд по факту действия.
  */
-function advanceTutorial(ctx: Ctx, step: number): void {
-  if (ctx.s.tutorialDismissed) return
-  if (ctx.s.tutorialStep === step) ctx.s.tutorialStep += 1
-}
-
 function unlock(ctx: Ctx, id: string): void {
   if ((ctx.s.achievements[id] ?? 0) > 0) return
   const def = ACHIEVEMENTS.find(a => a.id === id)
