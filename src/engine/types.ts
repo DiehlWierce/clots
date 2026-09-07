@@ -249,6 +249,16 @@ export interface EventDef {
   minSectors?: number
   /** Событие выпадает только при угрозе не ниже указанной. */
   minThreat?: number
+  /** Событие требует уровня цитадели не ниже указанного. */
+  minLevel?: number
+  /**
+   * Событие может повторяться. Пул из десяти неповторимых событий
+   * вычерпывался к семидесятому циклу, а победный забег длится втрое
+   * дольше: две трети партии проходили вообще без событий.
+   */
+  repeatable?: boolean
+  /** Сколько циклов не повторять. По умолчанию — BALANCE.events.repeatCooldown. */
+  repeatCooldown?: number
   options: EventOption[]
 }
 
@@ -392,6 +402,8 @@ export interface GameState {
    * снижать угрозу можно не больше, чем на BALANCE.threat.reliefCapPerCycle.
    */
   reliefUsed: number
+  /** Цикл последнего появления каждого события — для повторов. */
+  eventCycles: Record<string, number>
 
   /** Сколько циклов осталось продержаться в осаде. 0 — осады нет. */
   siegeCyclesLeft: number

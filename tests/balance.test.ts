@@ -6,6 +6,9 @@ import { BALANCE } from '@/engine/balance'
 import { currentIntent, momentumCost } from '@/engine/systems/combat'
 import type { GameState } from '@/engine/types'
 import { simulateRun, summarize } from '@/engine/sim/run'
+import { POLICIES, step } from '@/engine/sim/policies'
+import { createInitialState } from '@/engine/state'
+import { EVENTS } from '@/engine/content/events'
 import { newGame } from './helpers'
 
 /**
@@ -228,5 +231,64 @@ describe('балансный харнесс', () => {
     const started = Date.now()
     simulateRun('aggressive', 99, 80)
     expect(Date.now() - started).toBeLessThan(5000)
+  })
+})
+
+describe('события покрывают всю партию', () => {
+  /** Наибольший промежуток без событий за прогон и цикл последнего события. */
+  function eventCoverage(policy: 'aggressive' | 'cautious', seed: number, cycles: number) {
+    let s: GameState = createInitialState(seed)
+    let prev = 0
+    let worstGap = 0
+    let last = 0
+    let count = 0
+    let guard = 0
+    while (s.cycle <= cycles && s.phase !== 'collapsed' && s.phase !== 'victory' && guard < 8000) {
+      guard += 1
+      const before = s.lastEventCycle
+      const next = step(s, POLICIES[policy])
+      if (next === s) {
+        if (s.phase !== 'command') break
+        s = step({ ...s, energy: 0 }, POLICIES[policy])
+        continue
+      }
+      s = next
+      if (s.lastEventCycle !== before) {
+        worstGap = Math.max(worstGap, s.cycle - prev)
+        prev = s.cycle
+        last = s.cycle
+        count += 1
+      }
+    }
+    return { worstGap: Math.max(worstGap, s.cycle - prev), last, count, cycles: s.cycle }
+  }
+
+  it('поздняя партия не остаётся без событий', () => {
+    // Регресс: пул из десяти неповторимых событий вычерпывался к семидесятому
+    // циклу, а победный забег длится втрое дольше — две трети партии
+    // проходили вообще без единого события.
+    const run = eventCoverage('cautious', 7919, 150)
+    expect(run.count, `событий за прогон: ${run.count}`).toBeGreaterThan(8)
+    expect(run.worstGap, `худший промежуток: ${run.worstGap} циклов`).toBeLessThan(35)
+    expect(run.last, `последнее событие на цикле ${run.last} из ${run.cycles}`).toBeGreaterThan(80)
+  })
+
+  it('повторяемое событие возвращается не раньше своей паузы', () => {
+    const repeatable = EVENTS.filter(def => def.repeatable)
+    expect(repeatable.length).toBeGreaterThan(5)
+    for (const def of repeatable) {
+      const pause = def.repeatCooldown ?? BALANCE.events.repeatCooldown
+      expect(pause, def.id).toBeGreaterThanOrEqual(BALANCE.events.cooldown * 4)
+    }
+  })
+
+  it('события распределены по всей партии, а не только по началу', () => {
+    const late = EVENTS.filter(def => (def.minCycle ?? 1) >= 40)
+    const middle = EVENTS.filter(def => {
+      const c = def.minCycle ?? 1
+      return c >= 12 && c < 40
+    })
+    expect(late.length, 'поздних событий').toBeGreaterThanOrEqual(5)
+    expect(middle.length, 'средних событий').toBeGreaterThanOrEqual(8)
   })
 })

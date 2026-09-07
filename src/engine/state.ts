@@ -64,6 +64,7 @@ export function createInitialState(seed: number): GameState {
     lastEventCycle: 0,
     seenEvents: [],
     reliefUsed: 0,
+    eventCycles: {},
 
     siegeCyclesLeft: 0,
     ngPlus: 0,

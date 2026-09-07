@@ -462,12 +462,12 @@ describe('события', () => {
     }
   })
 
-  it('одно и то же событие не повторяется', () => {
+  it('неповторяемое событие выпадает один раз, повторяемое — не раньше своей паузы', () => {
     let s = newGame(11)
-    const seen: string[] = []
-    for (let i = 0; i < 400; i += 1) {
+    const seen: { id: string; cycle: number }[] = []
+    for (let i = 0; i < 900; i += 1) {
       if (s.phase === 'event' && s.pendingEvent) {
-        seen.push(s.pendingEvent)
+        seen.push({ id: s.pendingEvent, cycle: s.cycle })
         s = answerEvent(s)
         continue
       }
@@ -476,10 +476,29 @@ describe('события', () => {
         continue
       }
       if (s.phase !== 'command') break
+      s = { ...s, integrity: 9999 }
       s = reduce(s, { type: 'cycle/end' }).state
     }
     expect(seen.length).toBeGreaterThan(1)
-    expect(new Set(seen).size).toBe(seen.length)
+
+    const byId = new Map<string, number[]>()
+    for (const entry of seen) {
+      byId.set(entry.id, [...(byId.get(entry.id) ?? []), entry.cycle])
+    }
+    for (const [id, cycles] of byId) {
+      const def = EVENT_BY_ID.get(id)
+      expect(def, id).toBeDefined()
+      if (!def) continue
+      if (!def.repeatable) {
+        expect(cycles.length, `неповторяемое ${id}`).toBe(1)
+        continue
+      }
+      const pause = def.repeatCooldown ?? BALANCE.events.repeatCooldown
+      for (let i = 1; i < cycles.length; i += 1) {
+        const gap = (cycles[i] ?? 0) - (cycles[i - 1] ?? 0)
+        expect(gap, `повтор ${id} через ${gap} циклов`).toBeGreaterThanOrEqual(pause)
+      }
+    }
   })
 
   it('события не идут подряд', () => {

@@ -98,6 +98,82 @@ export const enMisc: ContentPack = {
       title: 'Plasma Tide',
       text: 'A rare confluence of currents: for a few moments the channels yield three times the usual.',
     },
+    'pressure-spike': {
+      title: 'Pressure Spike',
+      text: 'The system has raised pressure through the whole channel. Weak walls are cracking, but the current has turned generous.',
+    },
+    'patrol-rotation': {
+      title: 'Patrol Rotation',
+      text: 'The immune system is redrawing its routes. For a few cycles the network has blind spots.',
+    },
+    'starved-node': {
+      title: 'Starving Node',
+      text: 'One of your captured nodes is getting no supply. It still holds, but not for long.',
+    },
+    'ferrous-vein': {
+      title: 'Ferrous Vein',
+      text: 'Scouts found a seam rich in iron. It can be worked, but not for free.',
+    },
+    'false-signal': {
+      title: 'False Signal',
+      text: 'A command nobody issued is moving through the network. Or somebody did — just not the system.',
+    },
+    'quarantine-order': {
+      title: 'Quarantine Order',
+      text: 'The system has declared a district infected. Imperial holdings fall under the order too.',
+    },
+    'severed-relay': {
+      title: 'Severed Relay',
+      text: 'The link between two nodes is cut. Logistics sag until the break is closed.',
+    },
+    'wandering-clotmass': {
+      title: 'Wandering Clotmass',
+      text: 'A mass of foreign clots drifts through the channel — neither imperial nor immune. It simply moves.',
+    },
+    'imperial-census': {
+      title: 'Imperial Census',
+      text: 'The holdings have grown so far that the empire no longer knows itself. Time to count.',
+    },
+    'archon-envoy': {
+      title: 'Envoy of the Archon',
+      text: 'An archon has come to the border without escort. It does not attack — it speaks.',
+    },
+    'systemic-fever': {
+      title: 'Systemic Fever',
+      text: 'The network is running hot. Everything accelerates — the empire’s growth, and the attention paid to it.',
+    },
+    'marrow-tribute': {
+      title: 'Tribute of the Marrow',
+      text: 'The marrow offers supply in exchange for being left alone. The empire may accept — or simply take.',
+    },
+    'old-empire': {
+      title: 'Traces of an Older Empire',
+      text: 'Deep in the channel lie the remains of something that already tried this. And failed.',
+    },
+    'immune-schism': {
+      title: 'Immune Schism',
+      text: 'Two branches of the immune system disagree on who counts as the enemy. While they argue, the empire goes untouched.',
+    },
+    'terminal-pressure': {
+      title: 'Terminal Pressure',
+      text: 'The system is pressing on everything at once. This is no longer a test — it is an attempt to finish it.',
+    },
+    'stray-current': {
+      title: 'Stray Current',
+      text: 'The channel turned the wrong way for a moment. A small thing, but it can be caught.',
+    },
+    'clogged-channel': {
+      title: 'Clogged Channel',
+      text: 'One of the channels has stalled. The blockage must be broken through — or gone around.',
+    },
+    'silent-cycle': {
+      title: 'Silent Cycle',
+      text: 'Nothing is happening. In a network that never falls quiet, that is strange in itself.',
+    },
+    'defector-again': {
+      title: 'Another Defector',
+      text: 'Word of the first one spread. Now they come on their own.',
+    },
   },
 
   eventOptions: {
@@ -166,6 +242,119 @@ export const enMisc: ContentPack = {
       label: 'Collect everything',
       outcome: 'A large plasma haul with no consequences. It happens.',
     },
+    channel: {
+      label: 'Let it through you',
+      outcome: 'A large plasma haul at the cost of integrity.',
+    },
+    brace: { label: 'Shut down', outcome: 'Ride out the surge. Nothing gained, nothing lost.' },
+    slip: {
+      label: 'Slip past unseen',
+      outcome: 'A marked drop in threat: the empire is lost from view for a while.',
+    },
+    ambush: {
+      label: 'Strike where the routes meet',
+      outcome: 'Experience and clots, but the immune system will remember it.',
+    },
+    feed: {
+      label: 'Feed it from reserves',
+      outcome: 'Plasma is spent, the node survives and yields experience.',
+    },
+    abandon: {
+      label: 'Abandon it',
+      outcome:
+        'The node falls quiet. The immune system is pleased: threat drops, the core loses integrity.',
+    },
+    mine: { label: 'Work the seam', outcome: 'Plenty of clots for the energy of a cycle.' },
+    'refine-on-site': {
+      label: 'Refine it on site',
+      outcome: 'Fewer clots, but essence as well.',
+    },
+    trace: {
+      label: 'Trace the source',
+      outcome: 'Experience and lower threat: the empire understands the network a little better.',
+    },
+    amplify: {
+      label: 'Amplify and rebroadcast',
+      outcome: 'The immune system chases ghosts. Masking rises, plasma is spent.',
+    },
+    comply: {
+      label: 'Lie low',
+      outcome: 'A cycle is lost, but the empire is struck from the target list.',
+    },
+    'ignore-order': {
+      label: 'Carry on as if nothing happened',
+      outcome: 'Income kept, and the immune system’s attention with it.',
+    },
+    reroute: {
+      label: 'Lay a bypass',
+      outcome: 'Clots go into a new branch, the nodes are linked again.',
+    },
+    wait: {
+      label: 'Wait for it to knit',
+      outcome: 'The break closes on its own, but the empire loses income.',
+    },
+    engulf: { label: 'Engulf it', outcome: 'A large haul of clots and experience.' },
+    divert: {
+      label: 'Steer it into a patrol',
+      outcome: 'The mass slams into an immune patrol. Threat drops, nothing is gained.',
+    },
+    count: {
+      label: 'Count everything',
+      outcome: 'A cycle goes to the ledger, but the surplus found is large.',
+    },
+    estimate: { label: 'Settle for an estimate', outcome: 'Quick and rough: a modest gain.' },
+    listen: {
+      label: 'Hear it out',
+      outcome: 'Knowledge is expensive: much experience and lower threat.',
+    },
+    strike: { label: 'Strike first', outcome: 'Immediate battle with the barrier archon.' },
+    burn: {
+      label: 'Run hot',
+      outcome: 'A big haul and experience, but threat will jump.',
+    },
+    cool: { label: 'Ease off', outcome: 'Some integrity restored, threat falls.' },
+    accept: { label: 'Accept the tribute', outcome: 'Steady essence with no consequences.' },
+    seize: {
+      label: 'Take it all',
+      outcome: 'Far more essence, but the marrow will raise the alarm.',
+    },
+    'study-ruins': {
+      label: 'Study the remains',
+      outcome: 'A great deal of experience: another’s mistakes come cheaper than your own.',
+    },
+    salvage: {
+      label: 'Break it down for material',
+      outcome: 'Large stocks of all three resources.',
+    },
+    fuel: {
+      label: 'Add fuel',
+      outcome: 'The schism deepens: threat falls sharply, essence is spent.',
+    },
+    'use-pause': {
+      label: 'Use the lull',
+      outcome: 'While they are busy with each other, the empire gathers double.',
+    },
+    hold: {
+      label: 'Hold every node',
+      outcome: 'A vast expense, but the empire stands without losses.',
+    },
+    give: {
+      label: 'Give up the periphery',
+      outcome: 'Integrity sags, but the pressure lifts on its own.',
+    },
+    catch: { label: 'Catch it', outcome: 'A little plasma and experience.' },
+    clear: { label: 'Break through', outcome: 'Energy is spent, the channel works again.' },
+    bypass: {
+      label: 'Go around',
+      outcome: 'Clots for a new detour, but no turn is lost.',
+    },
+    rest: { label: 'Use the quiet', outcome: 'Some integrity restored.' },
+    attune: {
+      label: 'Listen closely',
+      outcome: 'Masking rises: the empire learns to fall silent with the network.',
+    },
+    recruit: { label: 'Take it in', outcome: 'Experience and lower threat for essence.' },
+    devour: { label: 'Devour it', outcome: 'Clots instead of an ally.' },
   },
 
   vaultOptions: {

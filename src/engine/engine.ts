@@ -1039,10 +1039,20 @@ function advanceEpoch(ctx: Ctx): void {
 
 /** Подходит ли событие текущему состоянию партии. */
 function eventAvailable(state: GameState, def: (typeof EVENTS)[number]): boolean {
-  if (state.seenEvents.includes(def.id)) return false
+  // Повторяемые события возвращаются после собственной паузы, остальные —
+  // ровно один раз за партию. Без повторов пул вычерпывался к семидесятому
+  // циклу, а победный забег длится втрое дольше.
+  const last = state.eventCycles[def.id]
+  if (def.repeatable) {
+    const pause = def.repeatCooldown ?? BALANCE.events.repeatCooldown
+    if (last !== undefined && state.cycle - last < pause) return false
+  } else if (state.seenEvents.includes(def.id) || last !== undefined) {
+    return false
+  }
   if (def.minCycle !== undefined && state.cycle < def.minCycle) return false
   if (def.minSectors !== undefined && state.controlled.length < def.minSectors) return false
   if (def.minThreat !== undefined && state.threat < def.minThreat) return false
+  if (def.minLevel !== undefined && derive(state).level < def.minLevel) return false
   return true
 }
 
@@ -1058,6 +1068,7 @@ function rollEvent(ctx: Ctx): void {
   const picked = ctx.rng.pick(pool)
   s.pendingEvent = picked.id
   s.lastEventCycle = s.cycle
+  s.eventCycles[picked.id] = s.cycle
   s.phase = 'event'
   ctx.log(`Событие: ${picked.title}.`)
 }

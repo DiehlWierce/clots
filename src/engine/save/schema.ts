@@ -72,6 +72,17 @@ function levelMap(
   return result
 }
 
+/** Карта «id → номер цикла»: всё неизвестное отбрасывается. */
+function cycleMap(value: unknown, known: ReadonlySet<string>): Record<string, number> {
+  const result: Record<string, number> = {}
+  if (typeof value !== 'object' || value === null) return result
+  for (const [id, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (!known.has(id)) continue
+    result[id] = int(raw, 0, 0)
+  }
+  return result
+}
+
 function idList(value: unknown, known: ReadonlySet<string>): string[] {
   if (!Array.isArray(value)) return []
   const seen = new Set<string>()
@@ -157,6 +168,7 @@ export function sanitizeState(input: unknown): GameState | null {
     lastEventCycle: int(raw.lastEventCycle, 0, 0),
     seenEvents: idList(raw.seenEvents, new Set(EVENT_BY_ID.keys())),
     reliefUsed: int(raw.reliefUsed, 0, 0),
+    eventCycles: cycleMap(raw.eventCycles, new Set(EVENT_BY_ID.keys())),
 
     siegeCyclesLeft: int(raw.siegeCyclesLeft, 0, 0, 999),
     ngPlus: int(raw.ngPlus, 0, 0, 999),
