@@ -27,7 +27,14 @@ describe('все стили игры жизнеспособны', () => {
   // Накопительные стили включены наравне с активными: игрок, который тянет
   // с выбором пути или не делает его вовсе, — это обычный игрок, а не
   // граничный случай, и тупиком его игра быть не должна.
-  for (const policy of ['aggressive', 'economic', 'cautious', 'hoarder', 'grinder'] as const) {
+  for (const policy of [
+    'aggressive',
+    'economic',
+    'cautious',
+    'hoarder',
+    'grinder',
+    'fortress',
+  ] as const) {
     it(
       `политика «${policy}» доходит до победы`,
       () => {

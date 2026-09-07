@@ -34,7 +34,7 @@ import type { DoctrinePath, GameState } from '../types'
  * половину игроков, которая идёт вперёд.
  */
 
-export type PolicyId = 'aggressive' | 'economic' | 'cautious' | 'hoarder' | 'grinder'
+export type PolicyId = 'aggressive' | 'economic' | 'cautious' | 'hoarder' | 'grinder' | 'fortress'
 
 export interface Policy {
   id: PolicyId
@@ -52,6 +52,19 @@ export interface Policy {
    * никогда: партия проходится на одних модулях и технологиях.
    */
   doctrineFrom: number | null
+  /**
+   * Расширяться не чаще, чем раз в столько циклов. 1 — без ограничения.
+   *
+   * Так описывается стиль «сначала скупить всё и укрепиться, потом
+   * завоёвывать»: развитие идёт каждый цикл, захват — изредка, и почти весь
+   * доход уходит в дерево, а не в новые секторы.
+   *
+   * Буквальный запрет расширяться до полного выкупа не работает: доход
+   * берётся с территории, поэтому такой бот замирал на двух секторах и не
+   * выигрывал ни разу. Это свойство игры, а не бота, — сказано в
+   * docs/EXPERIENCE.md.
+   */
+  expandEvery: number
   /** Доля энергии, отдаваемая на переработку вместо добычи. */
   refineBias: number
   /**
@@ -75,6 +88,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     healUpTo: 0.75,
     path: 'reaver',
     doctrineFrom: 1,
+    expandEvery: 1,
     refineBias: 0.3,
     difficultyMargin: 2,
   },
@@ -86,6 +100,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     healUpTo: 0.85,
     path: 'weaver',
     doctrineFrom: 1,
+    expandEvery: 1,
     refineBias: 0.7,
     difficultyMargin: 0,
   },
@@ -97,6 +112,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     healUpTo: 0.95,
     path: 'warden',
     doctrineFrom: 1,
+    expandEvery: 1,
     refineBias: 0.5,
     difficultyMargin: -1,
   },
@@ -111,8 +127,24 @@ export const POLICIES: Record<PolicyId, Policy> = {
     healUpTo: 0.9,
     path: 'weaver',
     doctrineFrom: 120,
+    expandEvery: 1,
     refineBias: 0.85,
     difficultyMargin: -1,
+  },
+  // Крепость: сначала скупает всё дерево и держит оборону — маскировка,
+  // лечение, отбитые рейды, — и лишь потом идёт завоёвывать карту. Проверяет,
+  // работает ли игра для того, кто сперва укрепляется, а потом наступает.
+  fortress: {
+    id: 'fortress',
+    name: 'Крепость',
+    expandBelowThreat: 46,
+    assaultAboveHealth: 0.85,
+    healUpTo: 0.95,
+    path: 'warden',
+    doctrineFrom: 1,
+    expandEvery: 3,
+    refineBias: 0.8,
+    difficultyMargin: 0,
   },
   // Гриндер: доктрину не берёт вовсе. Территория расширяется редко и только
   // наверняка. Это проверка на то, проходима ли игра без главного выбора —
@@ -125,6 +157,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     healUpTo: 0.92,
     path: 'weaver',
     doctrineFrom: null,
+    expandEvery: 1,
     refineBias: 0.75,
     difficultyMargin: -2,
   },
@@ -145,6 +178,19 @@ const FAIR_LEVEL_FOR_HARDEST = BALANCE.progression.xpCurve.length - 2
 function recommendedLevel(difficulty: number): number {
   if (MAX_DIFFICULTY <= 0) return 1
   return 1 + (difficulty / MAX_DIFFICULTY) * (FAIR_LEVEL_FOR_HARDEST - 1)
+}
+
+/**
+ * Пора ли этому стилю выходить на карту.
+ *
+ * Развитие в шаге бота и так идёт раньше захвата, поэтому «сначала покупки»
+ * само по себе стиля не задаёт: как только на покупку не хватает, бот идёт
+ * расширяться. Разницу делает темп — «Крепость» захватывает лишь раз в
+ * несколько циклов, и накопленное уходит в дерево, а не в новые секторы.
+ */
+function readyToExpand(s: GameState, policy: Policy): boolean {
+  if (policy.expandEvery <= 1) return true
+  return s.cycle % policy.expandEvery === 0
 }
 
 const act = (state: GameState, action: GameAction): GameState => reduce(state, action).state
@@ -218,10 +264,12 @@ export function step(state: GameState, policy: Policy): GameState {
   // в третий регион недооснащёнными и гибли, ни разу не проиграв бой.
   const withinReach = (difficulty: number): boolean =>
     stats.level + policy.difficultyMargin >= recommendedLevel(difficulty)
-  const target = SECTORS.find(
-    sec =>
-      isSectorReachable(s, sec.id) && withinReach(sec.difficulty) && (healthy || !sec.garrison),
-  )
+  const target = readyToExpand(s, policy)
+    ? SECTORS.find(
+        sec =>
+          isSectorReachable(s, sec.id) && withinReach(sec.difficulty) && (healthy || !sec.garrison),
+      )
+    : undefined
   if (target && s.energy >= BALANCE.actions.assault.energy) {
     return act(s, { type: 'map/capture', sectorId: target.id })
   }
