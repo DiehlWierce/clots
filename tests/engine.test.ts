@@ -372,7 +372,7 @@ describe('потеря секторов', () => {
   })
 
   it('потерянный сектор возвращается в разведанные и снижает угрозу', () => {
-    let s = {
+    let s: GameState = {
       ...newGame(777),
       controlled: ['cap-core', 'cap-drift', 'cap-weave'],
       revealed: [],
