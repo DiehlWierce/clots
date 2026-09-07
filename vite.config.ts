@@ -11,7 +11,26 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    sourcemap: true,
+    /*
+     * Карты создаются для разбора ошибок, но браузер их не запрашивает:
+     * полтора мегабайта не уезжают в раздачу и не светят исходники.
+     */
+    sourcemap: 'hidden',
+    rollupOptions: {
+      output: {
+        /*
+         * Библиотеки отдельно от кода: React и Immer меняются раз в месяцы,
+         * а контент и правила — постоянно. Без разделения любая правка
+         * опечатки заставляла игрока перекачивать весь бандл целиком.
+         */
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('react')) return 'vendor-react'
+          if (id.includes('immer') || id.includes('zustand')) return 'vendor-state'
+          return 'vendor'
+        },
+      },
+    },
   },
   test: {
     globals: true,

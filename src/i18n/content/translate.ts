@@ -1,4 +1,3 @@
-import { contentPack } from './index'
 import type { ContentPack } from './types'
 
 /**
@@ -41,9 +40,8 @@ function pick(
   return typeof value === 'string' && value.length > 0 ? value : fallback
 }
 
-export function createTranslator(locale: string): ContentTranslator {
-  const pack: ContentPack = contentPack(locale)
-
+/** Принимает готовый пакет: загрузкой занимается вызывающая сторона. */
+export function createTranslator(pack: ContentPack): ContentTranslator {
   return {
     sector: (id, field, fallback) => pick(pack.sectors, id, field, fallback),
     region: (id, field, fallback) => pick(pack.regions, id, field, fallback),

@@ -1165,7 +1165,10 @@ function unlockLore(ctx: Ctx): void {
     if (!isChapterUnlocked(ctx.s, chapter.unlock)) continue
     ctx.s.lore.push(chapter.id)
     if (chapter.unlock.kind !== 'always') {
-      ctx.log(`Открыта глава лора: «${chapter.title}».`, 'good')
+      // Название главы живёт в текстах, которые движок намеренно не знает:
+      // они загружаются вместе с «Хроникой». Здесь достаточно номера.
+      const index = ALL_CHAPTERS.findIndex(c => c.id === chapter.id) + 1
+      ctx.log(`Летопись пополнилась: глава ${index} из ${ALL_CHAPTERS.length}.`, 'good')
     }
   }
 }

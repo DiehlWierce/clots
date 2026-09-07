@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { en } from '@/i18n/en'
 import { ru } from '@/i18n/ru'
 import { createTranslator } from '@/i18n/content/translate'
+import { CHAPTER_TEXT } from '@/engine/content/lore-text'
+import enPack from '@/i18n/content/en'
+import { contentPack, loadContentPack } from '@/i18n/content'
 import {
   ACHIEVEMENTS,
   ALL_CHAPTERS,
@@ -74,8 +77,9 @@ describe('словари интерфейса', () => {
  * остаётся русской, а не исчезает.
  */
 describe('перевод контента', () => {
-  const en = createTranslator('en')
-  const ru = createTranslator('ru')
+  // Пакет загружается динамически, поэтому в тесте берём его напрямую.
+  const en = createTranslator(enPack)
+  const ru = createTranslator({})
 
   it('русский пакет пуст и отдаёт исходный текст', () => {
     for (const sector of SECTORS) {
@@ -111,11 +115,15 @@ describe('перевод контента', () => {
 
   it('каждая глава летописи переведена целиком', () => {
     for (const chapter of ALL_CHAPTERS) {
-      const title = en.loreChapterTitle(chapter.id, chapter.title)
-      expect(title, `глава ${chapter.id}`).not.toBe(chapter.title)
+      const source = CHAPTER_TEXT[chapter.id]
+      expect(source, `нет текста главы ${chapter.id}`).toBeDefined()
+      if (!source) continue
 
-      const paragraphs = en.loreChapterParagraphs(chapter.id, chapter.paragraphs)
-      expect(paragraphs.length, `абзацы ${chapter.id}`).toBe(chapter.paragraphs.length)
+      const title = en.loreChapterTitle(chapter.id, source.title)
+      expect(title, `глава ${chapter.id}`).not.toBe(source.title)
+
+      const paragraphs = en.loreChapterParagraphs(chapter.id, source.paragraphs)
+      expect(paragraphs.length, `абзацы ${chapter.id}`).toBe(source.paragraphs.length)
       for (const text of paragraphs) {
         expect(/[а-яА-ЯёЁ]/.test(text), `кириллица в ${chapter.id}`).toBe(false)
       }
@@ -148,5 +156,32 @@ describe('перевод контента', () => {
 
   it('неизвестный идентификатор отдаёт запасной текст', () => {
     expect(en.sector('нет-такого', 'name', 'запасной')).toBe('запасной')
+  })
+})
+
+/**
+ * Пакеты перевода загружаются по требованию: раньше оба языка лежали в
+ * главном чанке, и русскоязычный игрок скачивал перевод, который не увидит.
+ */
+describe('загрузка пакетов перевода', () => {
+  it('русский не требует загрузки и сразу пуст', () => {
+    expect(contentPack('ru')).toEqual({})
+  })
+
+  it('незагруженный язык отдаёт пустой пакет, а не падает', () => {
+    expect(contentPack('de')).toEqual({})
+  })
+
+  it('английский пакет загружается и кэшируется', async () => {
+    const first = await loadContentPack('en')
+    expect(first.sectors?.['cap-drift']?.name).toBe('Capillary Strait')
+    // Второй вызов обязан вернуть тот же объект: повторная загрузка чанка
+    // на каждое переключение языка сводила бы экономию на нет.
+    expect(await loadContentPack('en')).toBe(first)
+    expect(contentPack('en')).toBe(first)
+  })
+
+  it('неизвестный язык не пытается ничего грузить', async () => {
+    expect(await loadContentPack('xx')).toEqual({})
   })
 })

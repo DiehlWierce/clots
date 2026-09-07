@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { ACHIEVEMENTS, ALL_CHAPTERS, LORE } from '@/engine/content'
+import { useMemo, useState } from 'react'
+import { ACHIEVEMENTS, ALL_CHAPTERS, LORE_CHAPTERS, LORE_ERAS } from '@/engine/content'
+import { loreForDisplay } from '@/engine/content/lore-text'
 import { isAchievementEarned } from '@/engine/selectors'
 import { haptics } from '@/telegram'
 import { Empty } from './Empty'
@@ -14,6 +15,9 @@ type Section = 'journal' | 'lore' | 'achievements'
  */
 export function ChronicleTab({ state, tc }: { state: GameState; tc: ContentTranslator }) {
   const [section, setSection] = useState<Section>('journal')
+  // Тексты подтягиваются здесь: вкладка загружается по требованию, и вместе
+  // с ней приезжает литературная часть летописи.
+  const lore = useMemo(() => loreForDisplay(LORE_ERAS, LORE_CHAPTERS), [])
 
   const unlockedLore = new Set(state.lore)
   const doneCount = ACHIEVEMENTS.filter(a => isAchievementEarned(state, a.id)).length
@@ -71,7 +75,7 @@ export function ChronicleTab({ state, tc }: { state: GameState; tc: ContentTrans
       ) : null}
 
       {section === 'lore' &&
-        LORE.map(era => (
+        lore.map(era => (
           <div key={era.id} className="era">
             <div className="region__title">
               <h3>{tc.loreEra(era.id, 'title', era.title)}</h3>
