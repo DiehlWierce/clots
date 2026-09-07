@@ -1,6 +1,6 @@
 import { BALANCE } from '@/engine/balance'
 import { canAfford } from '@/engine/selectors'
-import { raidChance } from '@/engine/systems/threat'
+import { raidChance, reclaimChance } from '@/engine/systems/threat'
 import { formatCost } from '../format'
 import type { GameAction } from '@/engine/actions'
 import type { DerivedStats, GameState } from '@/engine/types'
@@ -69,6 +69,7 @@ export function CommandTab({ state, stats, dispatch }: Props) {
   ]
 
   const chance = raidChance(state.threat)
+  const lossChance = reclaimChance(state.threat)
 
   return (
     <>
@@ -82,6 +83,9 @@ export function CommandTab({ state, stats, dispatch }: Props) {
             <div className="hint__text">
               Сбейте угрозу маскировкой или разведкой, прежде чем расширяться. Отражённый рейд
               снимает {BALANCE.threat.raidRelief}% угрозы.
+              {lossChance > 0
+                ? ` Кроме того, иммунитет может отбить окраинный сектор: ${Math.round(lossChance * 100)}% за цикл.`
+                : ''}
             </div>
           </div>
         </div>

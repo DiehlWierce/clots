@@ -16,7 +16,13 @@ const MIGRATIONS: Record<number, Migration> = {
    * Партия, начатая до их появления, продолжается без мутации: заставлять
    * выбирать её в середине забега бессмысленно, а сломать сейв — тем более.
    */
-  1: data => ({ ...data, mutation: null, mutationOffer: [], version: 2 }),
+  1: data => ({
+    ...data,
+    mutation: null,
+    mutationOffer: [],
+    stats: { ...(data.stats as object), sectorsLost: 0 },
+    version: 2,
+  }),
 }
 
 export function migrate(input: unknown): Record<string, unknown> | null {

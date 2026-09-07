@@ -4,7 +4,8 @@ import { createInitialState } from '@/engine/state'
 import { derive, isAchievementEarned, threatGain } from '@/engine/selectors'
 import { BALANCE } from '@/engine/balance'
 import { MUTATIONS, SECTORS } from '@/engine/content'
-import { raidChance } from '@/engine/systems/threat'
+import { pickReclaimTarget, raidChance, reclaimChance } from '@/engine/systems/threat'
+import { Rng } from '@/engine/rng'
 import type { GameAction } from '@/engine/actions'
 import type { GameState } from '@/engine/types'
 import { newGame } from './helpers'
@@ -341,5 +342,54 @@ describe('стартовые мутации', () => {
     s = reduce(s, { type: 'mutation/choose', id: 'crisis-start' }).state
     expect(s.plasma).toBeGreaterThan(before)
     expect(s.threat).toBe(45)
+  })
+})
+
+/**
+ * Территория перестала быть храповиком: при высокой угрозе иммунитет
+ * отбивает периферийные секторы, и их надо возвращать боем.
+ */
+describe('потеря секторов', () => {
+  it('ниже порога секторы не отбираются', () => {
+    expect(reclaimChance(BALANCE.threat.reclaimThreshold - 1)).toBe(0)
+  })
+
+  it('шанс растёт вместе с угрозой', () => {
+    expect(reclaimChance(100)).toBeGreaterThan(reclaimChance(BALANCE.threat.reclaimThreshold))
+    expect(reclaimChance(100)).toBeLessThanOrEqual(1)
+  })
+
+  it('отбирается периферия, а не сердцевина', () => {
+    // cap-core ↔ cap-drift ↔ cap-weave: у cap-weave один свой сосед, у cap-drift два.
+    const s = { ...newGame(1), controlled: ['cap-core', 'cap-drift', 'cap-weave'] }
+    const rng = new Rng({ seed: 1, cursor: 0 })
+    expect(pickReclaimTarget(s, rng)).toBe('cap-weave')
+  })
+
+  it('стартовый сектор не отбирается никогда', () => {
+    const s = { ...newGame(1), controlled: ['cap-core'] }
+    expect(pickReclaimTarget(s, new Rng({ seed: 1, cursor: 0 }))).toBeNull()
+  })
+
+  it('потерянный сектор возвращается в разведанные и снижает угрозу', () => {
+    let s = {
+      ...newGame(777),
+      controlled: ['cap-core', 'cap-drift', 'cap-weave'],
+      revealed: [],
+      threat: 99,
+    }
+    let lost = false
+    for (let i = 0; i < 40 && !lost; i += 1) {
+      const before = s.controlled.length
+      s = reduce(s, { type: 'cycle/end' }).state
+      // Бой прерывает цикл — доигрываем его отступлением.
+      if (s.phase === 'combat') s = reduce(s, { type: 'combat/withdraw' }).state
+      if (s.controlled.length < before) lost = true
+    }
+    expect(lost, 'за 40 циклов при угрозе 99 сектор должен быть отбит').toBe(true)
+    expect(s.controlled).toContain('cap-core')
+    expect(s.stats.sectorsLost).toBeGreaterThan(0)
+    // Отбитый сектор снова доступен для захвата.
+    expect(s.revealed.length).toBeGreaterThan(0)
   })
 })

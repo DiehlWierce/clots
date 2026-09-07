@@ -34,7 +34,14 @@ import {
   resolveEnemyTurn,
   resolvePlayerHit,
 } from './systems/combat'
-import { clampThreat, pickRaider, raidChance, raidDifficulty } from './systems/threat'
+import {
+  clampThreat,
+  pickRaider,
+  pickReclaimTarget,
+  raidChance,
+  raidDifficulty,
+  reclaimChance,
+} from './systems/threat'
 import type { GameAction } from './actions'
 import type { GameState, LoreUnlock, ResourceBag, SectorDef } from './types'
 
@@ -804,7 +811,23 @@ function doEndCycle(ctx: Ctx): void {
     `Цикл ${s.cycle}. Доход: +${stats.income.plasma}💧 +${stats.income.clots}🩸 +${stats.income.essence}✨. Угроза ${s.threat}%.`,
   )
 
-  // 6. Проверка рейда.
+  // 6. Иммунитет отбивает периферийный сектор, если угроза слишком высока.
+  const reclaim = reclaimChance(s.threat)
+  if (reclaim > 0 && ctx.rng.chance(reclaim)) {
+    const lost = pickReclaimTarget(s, ctx.rng)
+    if (lost) {
+      const sector = getSector(lost)
+      s.controlled = s.controlled.filter(id => id !== lost)
+      // Сектор возвращается в разведанные: его можно отбить обратно.
+      if (!s.revealed.includes(lost)) s.revealed.push(lost)
+      s.threat = clampThreat(s.threat - BALANCE.threat.reclaimRelief)
+      s.stats.sectorsLost += 1
+      ctx.log(`Иммунитет отбил сектор «${sector?.name ?? lost}». Доход упал.`, 'bad')
+      ctx.notices.push({ message: `Потерян сектор: ${sector?.name ?? lost}`, tone: 'bad' })
+    }
+  }
+
+  // 7. Проверка рейда.
   const chance = raidChance(s.threat)
   if (chance > 0 && ctx.rng.chance(chance)) {
     const raider = pickRaider(s.threat, s.regions.length, ctx.rng)

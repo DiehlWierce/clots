@@ -1,7 +1,7 @@
 import { BALANCE } from '../balance'
-import { RAID_TABLE, getEnemy } from '../content'
+import { RAID_TABLE, getEnemy, getSector, neighborsOf } from '../content'
 import type { Rng } from '../rng'
-import type { EnemyDef } from '../types'
+import type { EnemyDef, GameState } from '../types'
 
 export function clampThreat(value: number): number {
   const { min, max } = BALANCE.threat
@@ -46,4 +46,41 @@ export function raidDifficulty(threat: number, level: number): number {
   // Потолок — уровень цитадели: рейд навязан, поэтому он обязан быть слабее
   // гарнизона той же ступени, который игрок атакует по своему выбору.
   return Math.max(1, Math.min(fromThreat, level))
+}
+
+/** Шанс потерять сектор за цикл. Работает выше собственного порога. */
+export function reclaimChance(threat: number): number {
+  const t = BALANCE.threat
+  if (threat < t.reclaimThreshold) return 0
+  const span = t.max - t.reclaimThreshold
+  if (span <= 0) return t.reclaimChanceAtMax
+  const progress = (threat - t.reclaimThreshold) / span
+  return t.reclaimChanceAtThreshold + progress * (t.reclaimChanceAtMax - t.reclaimChanceAtThreshold)
+}
+
+/**
+ * Какой сектор отобьёт иммунитет.
+ *
+ * Берётся периферия — сектор с наименьшим числом своих соседей: именно окраины
+ * держать труднее всего. При равенстве предпочитается более шумный, то есть
+ * тот, который империи и так дорого обходится. Стартовый сектор неприкосновенен,
+ * иначе карта могла бы стать недостижимой.
+ */
+export function pickReclaimTarget(state: GameState, rng: Rng): string | null {
+  const owned = new Set(state.controlled)
+  const candidates = state.controlled.filter(id => !BALANCE.threat.protectedSectors.includes(id))
+  if (candidates.length === 0) return null
+
+  const scored = candidates.map(id => ({
+    id,
+    support: neighborsOf(id).filter(n => owned.has(n)).length,
+    heat: getSector(id)?.heat ?? 0,
+  }))
+
+  const minSupport = Math.min(...scored.map(s => s.support))
+  const weakest = scored.filter(s => s.support === minSupport)
+  const maxHeat = Math.max(...weakest.map(s => s.heat))
+  const loudest = weakest.filter(s => s.heat === maxHeat)
+
+  return rng.pick(loudest).id
 }

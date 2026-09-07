@@ -318,6 +318,7 @@ export interface RunStats {
   battlesWon: number
   battlesLost: number
   sectorsTaken: number
+  sectorsLost: number
   raidsSurvived: number
   plasmaEarned: number
   clotsEarned: number

@@ -49,6 +49,10 @@ export function EndOverlay({ state, onRestart }: Props) {
             <dd>{s.raidsSurvived}</dd>
           </div>
           <div>
+            <dt>Секторов потеряно</dt>
+            <dd>{s.sectorsLost}</dd>
+          </div>
+          <div>
             <dt>Лучшая серия</dt>
             <dd>{s.bestStreak}</dd>
           </div>

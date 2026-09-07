@@ -214,6 +214,7 @@ function sanitizeStats(value: unknown, fallback: GameState['stats']): GameState[
     battlesWon: int(raw.battlesWon, 0),
     battlesLost: int(raw.battlesLost, 0),
     sectorsTaken: int(raw.sectorsTaken, 0),
+    sectorsLost: int(raw.sectorsLost, 0),
     raidsSurvived: int(raw.raidsSurvived, 0),
     plasmaEarned: int(raw.plasmaEarned, 0),
     clotsEarned: int(raw.clotsEarned, 0),

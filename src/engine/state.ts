@@ -78,6 +78,7 @@ export function createInitialState(seed: number): GameState {
       battlesWon: 0,
       battlesLost: 0,
       sectorsTaken: 0,
+      sectorsLost: 0,
       raidsSurvived: 0,
       plasmaEarned: 0,
       clotsEarned: 0,
