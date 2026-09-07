@@ -44,6 +44,10 @@ export const ru = {
     themeLight: 'Светлая',
     themeDark: 'Тёмная',
     haptics: 'Тактильный отклик',
+    cloudAuto:
+      'Партия синхронизируется с облаком Telegram: выгружается в конце цикла и подтягивается при запуске.',
+    cloudUnavailable:
+      'Облако Telegram недоступно: нужен клиент версии 6.9 или новее. Прогресс сохраняется на устройстве.',
     cloud: 'Облако Telegram',
     cloudPush: '☁️ Выгрузить',
     cloudPull: '⬇️ Загрузить',
@@ -116,6 +120,15 @@ export const ru = {
   actions: {
     title: 'Действия цикла',
     citadel: 'Состояние цитадели',
+  },
+  development: {
+    sortDefault: 'По веткам',
+    sortAvailable: 'Доступные',
+    sortCheapest: 'Дешевле',
+    sort: 'Сортировка',
+    available: 'Доступно к покупке',
+    nothingAvailable: 'Сейчас ничего не по карману. Копите ресурсы или завершите цикл.',
+    pathChosen: 'Путь выбран. Остальные закрыты навсегда и скрыты.',
   },
   common: {
     cancel: 'Отмена',

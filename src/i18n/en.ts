@@ -40,6 +40,10 @@ export const en: Dictionary = {
     themeLight: 'Light',
     themeDark: 'Dark',
     haptics: 'Haptic feedback',
+    cloudAuto:
+      'Your run syncs with Telegram cloud: uploaded at the end of each cycle, restored on launch.',
+    cloudUnavailable:
+      'Telegram cloud is unavailable: it needs client 6.9 or newer. Progress is stored on this device.',
     cloud: 'Telegram cloud',
     cloudPush: '☁️ Upload',
     cloudPull: '⬇️ Download',
@@ -112,6 +116,15 @@ export const en: Dictionary = {
   actions: {
     title: 'Cycle actions',
     citadel: 'Citadel status',
+  },
+  development: {
+    sortDefault: 'By branch',
+    sortAvailable: 'Affordable',
+    sortCheapest: 'Cheapest',
+    sort: 'Sort',
+    available: 'Available to buy',
+    nothingAvailable: 'Nothing is affordable yet. Gather resources or end the cycle.',
+    pathChosen: 'The path is chosen. The others are closed for good and hidden.',
   },
   common: {
     cancel: 'Cancel',

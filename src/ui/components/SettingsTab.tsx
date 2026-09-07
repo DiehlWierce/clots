@@ -15,11 +15,8 @@ import type { GameState } from '@/engine/types'
 
 interface Props {
   state: GameState
-  cloudBusy: boolean
   locale: Locale
   onLocaleChange: (locale: Locale) => void
-  onCloudPush: () => Promise<boolean>
-  onCloudPull: () => Promise<void>
   themeMode: ThemeMode
   onThemeChange: (mode: ThemeMode) => void
   onLoad: (state: GameState) => void
@@ -59,11 +56,8 @@ function Switch({
 
 export function SettingsTab({
   state,
-  cloudBusy,
   locale,
   onLocaleChange,
-  onCloudPush,
-  onCloudPull,
   themeMode,
   onThemeChange,
   onLoad,
@@ -220,49 +214,11 @@ export function SettingsTab({
               {status.text}
             </p>
           ) : null}
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel__head">
-          <h2>Облако Telegram</h2>
-          <p>
-            {isCloudAvailable()
-              ? 'Партия выгружается в облако в конце каждого цикла и подтягивается при запуске.'
-              : 'Недоступно: нужен Telegram версии 6.9 или новее.'}
+          {/* Синхронизация идёт сама, поэтому здесь только её состояние:
+              кнопка ручной выгрузки предлагала бы делать работу за игру. */}
+          <p className="muted">
+            {isCloudAvailable() ? t.settings.cloudAuto : t.settings.cloudUnavailable}
           </p>
-        </div>
-        <div className="row">
-          <button
-            type="button"
-            className="btn"
-            disabled={!isCloudAvailable() || cloudBusy}
-            onClick={() => {
-              void onCloudPush().then(ok => {
-                setStatus({
-                  text: ok ? 'Партия выгружена в облако.' : 'Не удалось выгрузить партию.',
-                  ok,
-                })
-                if (ok) haptics.success()
-                else haptics.error()
-              })
-            }}
-          >
-            ☁️ Выгрузить
-          </button>
-          <button
-            type="button"
-            className="btn"
-            disabled={!isCloudAvailable() || cloudBusy}
-            onClick={() => {
-              void onCloudPull().then(() => {
-                setStatus({ text: 'Проверено: загружается только более поздняя партия.', ok: true })
-                haptics.tap()
-              })
-            }}
-          >
-            ⬇️ Загрузить
-          </button>
         </div>
       </section>
 

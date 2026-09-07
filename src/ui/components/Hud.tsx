@@ -23,11 +23,18 @@ function Resource({
   suffix?: string
   delta?: string
 }) {
-  // Число досчитывается до нового значения: так виден результат действия.
-  const shown = useAnimatedNumber(amount)
+  // Число досчитывается до нового значения, а карточка на мгновение
+  // подсвечивается: без подсветки короткий отсчёт легко не заметить.
+  const { value: shown, direction, delta: change } = useAnimatedNumber(amount)
   const value = `${formatNumber(shown)}${suffix ?? ''}`
   return (
-    <div className={`res res--${kind}`}>
+    <div className={`res res--${kind}${direction ? ` res--${direction}` : ''}`}>
+      {direction && change !== 0 ? (
+        <span className={`res__pop res__pop--${direction}`} aria-hidden="true">
+          {change > 0 ? '+' : '−'}
+          {formatNumber(Math.abs(change))}
+        </span>
+      ) : null}
       <span className="res__icon" aria-hidden="true">
         {icon}
       </span>

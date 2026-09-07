@@ -1360,3 +1360,93 @@
   font-size: 0.8125rem;
   max-width: 32ch;
 }
+
+/*
+ * Подсветка изменившегося ресурса.
+ *
+ * Отсчёт числа сам по себе почти незаметен на коротких приращениях, поэтому
+ * карточка на мгновение подсвечивается цветом изменения. Это единственный
+ * сигнал «действие сработало» для игрока, смотрящего на шапку.
+ */
+@keyframes res-pulse-up {
+  0% {
+    background: var(--c-surface);
+  }
+  25% {
+    background: color-mix(in srgb, var(--c-good) 30%, var(--c-surface));
+    border-color: var(--c-good);
+  }
+  100% {
+    background: var(--c-surface);
+  }
+}
+
+@keyframes res-pulse-down {
+  0% {
+    background: var(--c-surface);
+  }
+  25% {
+    background: color-mix(in srgb, var(--c-bad) 30%, var(--c-surface));
+    border-color: var(--c-bad);
+  }
+  100% {
+    background: var(--c-surface);
+  }
+}
+
+.res--up {
+  animation: res-pulse-up 0.9s ease-out;
+}
+
+.res--down {
+  animation: res-pulse-down 0.9s ease-out;
+}
+
+/* Всплывающая прибавка над числом ресурса. */
+@keyframes delta-float {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.res__pop {
+  position: absolute;
+  top: -2px;
+  right: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  pointer-events: none;
+  animation: delta-float 0.9s ease-out forwards;
+}
+
+.res__pop--up {
+  color: var(--c-good);
+}
+
+.res__pop--down {
+  color: var(--c-bad);
+}
+
+.res {
+  position: relative;
+}
+
+/* Шкалы состояния тоже переезжают плавно, а не рывком. */
+.meter__fill {
+  transition:
+    width 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.2s ease;
+}
+
+.enemy__hp,
+.enemy__shield {
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}

@@ -56,7 +56,6 @@ export default function App() {
   const dismissToast = useGame(s => s.dismissToast)
   const syncFromCloud = useGame(s => s.syncFromCloud)
   const pushToCloud = useGame(s => s.pushToCloud)
-  const cloudBusy = useGame(s => s.cloudBusy)
 
   const [tab, setTab] = useState<TabId>(HOME)
   const { mode: themeMode, setMode: setThemeMode } = useTheme()
@@ -120,8 +119,12 @@ export default function App() {
   const nativeButton = useMainButton({
     visible: !busyPhase,
     enabled: !busyPhase,
-    text: `${t.cycle.end} ${state.cycle}`,
+    // Разделитель отделяет действие от номера: «Завершить цикл · 8».
+    text: `${t.cycle.end} · ${state.cycle}`,
     onClick: endCycle,
+    // Фирменный красный игры вместо синего из темы Telegram.
+    color: '#d61f45',
+    textColor: '#ffffff',
   })
 
   // Игра работает только внутри Telegram. Исключения — локальная разработка
@@ -153,11 +156,8 @@ export default function App() {
           <Suspense fallback={<p className="muted">Загружаем настройки…</p>}>
             <SettingsTab
               state={state}
-              cloudBusy={cloudBusy}
               locale={locale}
               onLocaleChange={setLocale}
-              onCloudPush={pushToCloud}
-              onCloudPull={syncFromCloud}
               themeMode={themeMode}
               onThemeChange={setThemeMode}
               onLoad={loadState}
@@ -175,7 +175,7 @@ export default function App() {
             disabled={busyPhase}
             onClick={endCycle}
           >
-            ⏭️ {t.cycle.end} {state.cycle}
+            ⏭️ {t.cycle.end} · {state.cycle}
           </button>
         )}
         <div className="cycle-bar__hint">

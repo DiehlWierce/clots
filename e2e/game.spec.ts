@@ -9,8 +9,9 @@ async function startRun(page: Page): Promise<void> {
   await page.evaluate(() => localStorage.clear())
   await page.reload()
 
-  // Партия открывается выбором мутации.
-  const overlay = page.getByRole('dialog', { name: 'Выбор мутации' })
+  // Партия открывается выбором мутации. Ищем диалог по роли, а не по имени:
+  // подпись локализована и меняется вместе со словарём.
+  const overlay = page.getByRole('dialog').first()
   await expect(overlay).toBeVisible()
   await overlay.getByRole('button').first().click()
   await expect(overlay).toBeHidden()
@@ -70,7 +71,7 @@ test('бой: оверлей открывается, приём наносит �
     .click()
   await page.getByRole('button', { name: /Штурмовать/ }).click()
 
-  const combat = page.getByRole('dialog', { name: 'Бой' })
+  const combat = page.getByRole('dialog').first()
   await expect(combat).toBeVisible()
 
   const hp = combat.locator('.tag', { hasText: 'HP' })
