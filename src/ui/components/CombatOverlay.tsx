@@ -1,7 +1,7 @@
 import { BALANCE } from '@/engine/balance'
 import { getEnemy } from '@/engine/content'
 import { canAfford } from '@/engine/selectors'
-import { currentIntent, effectiveArmor } from '@/engine/systems/combat'
+import { currentIntent, effectiveArmor, momentumCost } from '@/engine/systems/combat'
 import type { GameAction } from '@/engine/actions'
 import type { CombatState, DerivedStats, GameState, PlayerCombatAction } from '@/engine/types'
 
@@ -19,6 +19,30 @@ interface MoveSpec {
   cost?: { clots: number }
 }
 
+/** Полоса импульса: ресурс копится ударами и тратится на сильные приёмы. */
+function MomentumBar({ value, max }: { value: number; max: number }) {
+  return (
+    <div className="momentum" title="Импульс: копится ударами, тратится на сильные приёмы">
+      <span className="momentum__label">Импульс</span>
+      <div
+        className="momentum__pips"
+        role="meter"
+        aria-valuenow={value}
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-label="Импульс"
+      >
+        {Array.from({ length: max }, (_, i) => (
+          <span key={i} className={`momentum__pip${i < value ? ' momentum__pip--on' : ''}`} />
+        ))}
+      </div>
+      <span className="momentum__value">
+        {value}/{max}
+      </span>
+    </div>
+  )
+}
+
 export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
   const enemy = getEnemy(combat.enemyId)
   const intent = currentIntent(combat)
@@ -27,23 +51,31 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
   const shieldPercent = Math.min(100 - hpPercent, (combat.shield / combat.maxHp) * 100)
 
   const moves: MoveSpec[] = [
-    { action: 'strike', label: '⚔️ Пульс-удар', hint: 'Базовая атака без затрат.' },
+    {
+      action: 'strike',
+      label: '⚔️ Пульс-удар',
+      hint: `Атака и кровотечение на ${c.strike.bleed} хода. +${c.momentum.perStrike} импульса.`,
+    },
     {
       action: 'surge',
       label: '💥 Гемо-всплеск',
-      hint: `Урон ×${c.surge.power} за сгустки.`,
+      hint: `Урон ×${c.surge.power}. Тратит импульс и сгустки.`,
       cost: c.surge.cost,
     },
     {
       action: 'rupture',
       label: '🔧 Вскрытие',
-      hint: `Срывает щит целиком и снимает ${c.rupture.armorBreak} брони.`,
+      hint: `Срывает щит, снимает броню, разъедает её навсегда. Шанс оглушить.`,
     },
-    { action: 'focus', label: '🎯 Фокус', hint: `Следующий удар ×${c.focus.multiplier}.` },
+    {
+      action: 'focus',
+      label: '🎯 Фокус',
+      hint: `Следующий удар ×${c.focus.multiplier}. +${c.momentum.perFocus} импульса.`,
+    },
     {
       action: 'guard',
       label: '🛡️ Щит',
-      hint: `Урон следующего хода −${Math.round(c.guard.reduction * 100)}%.`,
+      hint: `Урон следующего хода −${Math.round(c.guard.reduction * 100)}%. +${c.momentum.perGuard} импульса.`,
     },
   ]
 
@@ -89,6 +121,13 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
             </span>
             {combat.shield > 0 ? <span className="tag tag--info">щит {combat.shield}</span> : null}
             <span className="tag tag--bad">броня {effectiveArmor(combat)}</span>
+            {combat.statuses.corrode > 0 ? (
+              <span className="tag tag--good">разъедание {combat.statuses.corrode}</span>
+            ) : null}
+            {combat.statuses.bleed > 0 ? (
+              <span className="tag tag--good">кровотечение {combat.statuses.bleed}</span>
+            ) : null}
+            {combat.statuses.stun > 0 ? <span className="tag tag--good">оглушён</span> : null}
             {enemy?.weakness ? (
               <span className="tag tag--good">уязвим: {moveName(enemy.weakness)}</span>
             ) : null}
@@ -97,12 +136,18 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
 
         {/* Намерение всегда показано заранее: бой должен читаться, а не угадываться. */}
         <div className="intent">
-          <span aria-hidden="true">🔮</span>
+          <span aria-hidden="true">{combat.statuses.stun > 0 ? '💫' : '🔮'}</span>
           <div>
-            <div className="intent__label">Следующий ход: {intent.label}</div>
+            <div className="intent__label">
+              {combat.statuses.stun > 0
+                ? 'Оглушён: пропустит ход'
+                : `Следующий ход: ${intent.label}`}
+            </div>
             <div className="intent__desc">{intent.description}</div>
           </div>
         </div>
+
+        <MomentumBar value={combat.momentum} max={c.momentum.max} />
 
         <div className="effects" style={{ marginBottom: 'var(--sp-3)' }}>
           <span className="tag">
@@ -115,21 +160,27 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
         </div>
 
         <div className="moves">
-          {moves.map(move => (
-            <button
-              key={move.action}
-              type="button"
-              className="move"
-              disabled={move.cost ? !canAfford(state, move.cost) : false}
-              onClick={() => dispatch({ type: 'combat/act', action: move.action })}
-            >
-              <span className="move__title">{move.label}</span>
-              <span className="move__hint">{move.hint}</span>
-              <span className="move__cost">
-                {move.cost ? `🩸${move.cost.clots}` : 'без затрат'}
-              </span>
-            </button>
-          ))}
+          {moves.map(move => {
+            const need = momentumCost(move.action)
+            const noMomentum = combat.momentum < need
+            const noClots = move.cost ? !canAfford(state, move.cost) : false
+            const price = [need > 0 ? `⚡︎${need}` : null, move.cost ? `🩸${move.cost.clots}` : null]
+              .filter(Boolean)
+              .join('  ·  ')
+            return (
+              <button
+                key={move.action}
+                type="button"
+                className="move"
+                disabled={noMomentum || noClots}
+                onClick={() => dispatch({ type: 'combat/act', action: move.action })}
+              >
+                <span className="move__title">{move.label}</span>
+                <span className="move__hint">{move.hint}</span>
+                <span className="move__cost">{price || 'без затрат'}</span>
+              </button>
+            )
+          })}
         </div>
 
         <button

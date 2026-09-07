@@ -13,7 +13,7 @@ import {
 } from '../content'
 import { VAULT_ENERGY, VAULT_INTEGRITY } from '../selectors'
 import { STATE_VERSION, createInitialState } from '../state'
-import type { DoctrinePath, GameState, LevelMap, Phase, RegionId } from '../types'
+import type { CombatState, DoctrinePath, GameState, LevelMap, Phase, RegionId } from '../types'
 
 /**
  * Валидация и очистка загружаемого состояния.
@@ -204,8 +204,19 @@ function sanitizeCombat(value: unknown): GameState['combat'] {
     intentIndex: int(raw.intentIndex, 0, 0, 999),
     focused: bool(raw.focused, false),
     guarded: bool(raw.guarded, false),
+    momentum: int(raw.momentum, 0, 0, BALANCE.combat.momentum.max),
+    statuses: sanitizeStatuses(raw.statuses),
     round: int(raw.round, 1, 1),
     forced: bool(raw.forced, false),
+  }
+}
+
+function sanitizeStatuses(value: unknown): CombatState['statuses'] {
+  const raw = (typeof value === 'object' && value !== null ? value : {}) as Record<string, unknown>
+  return {
+    bleed: int(raw.bleed, 0, 0, 99),
+    corrode: int(raw.corrode, 0, 0, 999),
+    stun: int(raw.stun, 0, 0, 9),
   }
 }
 

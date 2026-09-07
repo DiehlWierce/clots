@@ -182,6 +182,16 @@ export interface EnemyDef {
 
 export type PlayerCombatAction = 'strike' | 'surge' | 'focus' | 'guard' | 'rupture'
 
+/** Состояния, наложенные на противника. Значение — сколько ходов осталось. */
+export interface EnemyStatuses {
+  /** Кровотечение: урон в начале каждого хода врага. */
+  bleed: number
+  /** Разъедание: постоянное снижение брони, не проходит само. */
+  corrode: number
+  /** Оглушение: враг пропускает намерение. */
+  stun: number
+}
+
 export interface CombatState {
   sectorId: string
   enemyId: string
@@ -196,6 +206,13 @@ export interface CombatState {
   intentIndex: number
   focused: boolean
   guarded: boolean
+  /**
+   * Импульс — боевой ресурс, накапливаемый ударами и фокусом.
+   * До него оптимальной стратегией было жать одну кнопку: фокус и щит
+   * почти всегда проигрывали по урону в единицу времени.
+   */
+  momentum: number
+  statuses: EnemyStatuses
   round: number
   /** Бой навязан рейдом: отступление невозможно. */
   forced: boolean

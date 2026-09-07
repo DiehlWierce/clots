@@ -34,9 +34,12 @@ import {
 } from './selectors'
 import { createInitialState } from './state'
 import {
+  bleedDamage,
   createRaidCombat,
   createSectorCombat,
   currentIntent,
+  momentumCost,
+  momentumGain,
   resolveEnemyTurn,
   resolvePlayerHit,
 } from './systems/combat'
@@ -49,7 +52,14 @@ import {
   reclaimChance,
 } from './systems/threat'
 import type { GameAction } from './actions'
-import type { GameState, LevelMap, LoreUnlock, ResourceBag, SectorDef } from './types'
+import type {
+  GameState,
+  LevelMap,
+  LoreUnlock,
+  PlayerCombatAction,
+  ResourceBag,
+  SectorDef,
+} from './types'
 
 /** Результат применения действия: новое состояние + что показать игроку. */
 export interface ReduceResult {
@@ -597,28 +607,35 @@ function doChooseMutation(ctx: Ctx, id: string): void {
 
 // ─── Бой ────────────────────────────────────────────────────────────────────
 
-function doCombatAction(
-  ctx: Ctx,
-  action: 'strike' | 'surge' | 'focus' | 'guard' | 'rupture',
-): void {
+function doCombatAction(ctx: Ctx, action: PlayerCombatAction): void {
   const combat = ctx.s.combat
   if (!combat) return
   const c = BALANCE.combat
   const stats = derive(ctx.s)
 
-  // Боевые действия не тратят энергию цикла — см. комментарий в BALANCE.combat.
+  // Импульс — плата за сильные приёмы. Он же делает «Фокус» и «Щит»
+  // осмысленными: они не наносят урона, но копят ресурс на следующий удар.
+  const cost = momentumCost(action)
+  if (cost > 0 && combat.momentum < cost) {
+    ctx.warn(`Нужно ${cost} импульса, накоплено ${combat.momentum}.`)
+    return
+  }
+
   if (action === 'surge' && !payCost(ctx, c.surge.cost)) return
+
+  if (cost > 0) combat.momentum -= cost
+  combat.momentum = Math.min(c.momentum.max, combat.momentum + momentumGain(action))
 
   if (action === 'focus') {
     combat.focused = true
-    ctx.log('Импульс сфокусирован: следующий удар тяжелее.')
+    ctx.log(`Импульс сфокусирован: следующий удар тяжелее (+${c.momentum.perFocus} импульса).`)
     enemyTurn(ctx)
     return
   }
 
   if (action === 'guard') {
     combat.guarded = true
-    ctx.log('Щит поднят: следующий удар придёт ослабленным.')
+    ctx.log(`Щит поднят: удар придёт ослабленным (+${c.momentum.perGuard} импульса).`)
     enemyTurn(ctx)
     return
   }
@@ -627,15 +644,20 @@ function doCombatAction(
   // бы щитом, который он в этот же момент срывает.
   if (action === 'rupture') {
     combat.armorBroken = Math.min(combat.armor, combat.armorBroken + c.rupture.armorBreak)
-    // Срыв щита — единственный контрприём против «Экранирования». Без него
-    // враг, набирающий щит быстрее, чем игрок наносит урон, делал бы бой не
-    // сложным, а невыигрываемым.
     const stripped = combat.shield
     combat.shield = 0
+    combat.statuses.corrode += c.rupture.corrode
+    const stunned = ctx.rng.chance(c.rupture.stunChance)
+    if (stunned) combat.statuses.stun += 1
     ctx.log(
-      stripped > 0
-        ? `Вскрытие: щит сорван (−${stripped}), броня ослаблена (−${c.rupture.armorBreak}).`
-        : `Вскрытие: броня противника ослаблена (−${c.rupture.armorBreak}).`,
+      `Вскрытие: ${[
+        stripped > 0 ? `щит сорван (−${stripped})` : null,
+        `броня ослаблена (−${c.rupture.armorBreak})`,
+        `разъедание +${c.rupture.corrode}`,
+        stunned ? 'противник оглушён' : null,
+      ]
+        .filter(Boolean)
+        .join(', ')}.`,
     )
   }
 
@@ -653,6 +675,9 @@ function doCombatAction(
   combat.hp = Math.max(0, combat.hp - hit.damage)
   combat.focused = false
   ctx.s.stats.damageDealt += hit.damage
+
+  // Пульс-удар оставляет кровотечение: урон продолжает капать сам.
+  if (action === 'strike') combat.statuses.bleed = Math.max(combat.statuses.bleed, c.strike.bleed)
 
   const suffix = [hit.crit ? 'крит' : null, hit.weakness ? 'уязвимость' : null]
     .filter(Boolean)
@@ -688,6 +713,19 @@ function enemyTurn(ctx: Ctx): void {
   const combat = ctx.s.combat
   if (!combat) return
   const stats = derive(ctx.s)
+
+  // Кровотечение капает до хода врага и может добить его само.
+  if (combat.statuses.bleed > 0) {
+    const damage = bleedDamage(stats)
+    combat.hp = Math.max(0, combat.hp - damage)
+    combat.statuses.bleed -= 1
+    ctx.s.stats.damageDealt += damage
+    ctx.log(`Кровотечение: −${damage}.`)
+    if (combat.hp <= 0) {
+      winCombat(ctx)
+      return
+    }
+  }
   const result = resolveEnemyTurn(
     combat,
     stats,
@@ -703,8 +741,15 @@ function enemyTurn(ctx: Ctx): void {
   ctx.s.threat += result.threat
 
   combat.guarded = false
-  combat.intentIndex += 1
   combat.round += 1
+  if (result.stunned) {
+    // Оглушённый враг теряет ход, но намерение не сменяется: игрок видит,
+    // что именно он не успел применить.
+    combat.statuses.stun -= 1
+    ctx.log(`${enemy?.name ?? 'Противник'} оглушён и пропускает ход.`, 'good')
+    return
+  }
+  combat.intentIndex += 1
 
   const parts = [
     result.damage > 0 ? `−${result.damage} целостности` : null,

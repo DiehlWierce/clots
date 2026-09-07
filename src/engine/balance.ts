@@ -95,11 +95,28 @@ export const BALANCE = {
    * Цена боя — целостность (и сгустки на всплеск), а не очки действий.
    */
   combat: {
-    strike: { power: 1 },
-    surge: { cost: { clots: 10 }, power: 2.1 },
+    /**
+     * Импульс: боевой ресурс, копящийся от ударов. Сильные приёмы тратят его,
+     * поэтому «Фокус» перестал быть чистой потерей темпа, а «Всплеск» —
+     * кнопкой, доступной ровно столько раз, сколько хватает сгустков.
+     */
+    momentum: {
+      max: 10,
+      perStrike: 2,
+      perFocus: 3,
+      perRupture: 1,
+      /** Импульс за полученный удар: терпеть тоже полезно. */
+      perGuard: 2,
+    },
+
+    strike: { power: 1, bleed: 2 },
+    surge: { cost: { clots: 10 }, power: 2.1, momentum: 4 },
     focus: { multiplier: 1.6 },
     guard: { reduction: 0.6 },
-    rupture: { armorBreak: 6, power: 0.4 },
+    rupture: { armorBreak: 6, power: 0.4, corrode: 3, momentum: 3, stunChance: 0.35 },
+
+    /** Урон кровотечения за ход, доля от атаки цитадели. */
+    bleedDamage: 0.35,
     withdraw: { threatPenalty: 10 },
     /** Разброс урона игрока: ±этой доли. */
     variance: 0.15,

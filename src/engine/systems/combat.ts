@@ -44,6 +44,8 @@ function buildCombat(
     intentIndex: rng.int(0, Math.max(0, enemy.pattern.length - 1)),
     focused: false,
     guarded: false,
+    momentum: 0,
+    statuses: { bleed: 0, corrode: 0, stun: 0 },
     round: 1,
     forced,
   }
@@ -58,7 +60,8 @@ export function currentIntent(combat: CombatState): IntentDef {
 }
 
 export function effectiveArmor(combat: CombatState): number {
-  return Math.max(0, combat.armor - combat.armorBroken)
+  // Разъедание снижает броню постоянно, вскрытие — на этот бой.
+  return Math.max(0, combat.armor - combat.armorBroken - combat.statuses.corrode)
 }
 
 export interface PlayerHitResult {
@@ -108,6 +111,8 @@ export function resolvePlayerHit(
 
 export interface EnemyTurnResult {
   intent: IntentDef
+  /** Враг пропустил ход из-за оглушения. */
+  stunned?: boolean
   /** Урон, дошедший до целостности цитадели. */
   damage: number
   energyDrained: number
@@ -135,6 +140,19 @@ export function resolveEnemyTurn(
     damage = Math.max(1, Math.round(damage * damageScale))
   }
 
+  // Оглушённый враг пропускает ход целиком.
+  if (combat.statuses.stun > 0) {
+    return {
+      intent,
+      damage: 0,
+      energyDrained: 0,
+      healed: 0,
+      shielded: 0,
+      threat: 0,
+      stunned: true,
+    }
+  }
+
   // Лечение врага ограничено долей его максимума за ход: см. enemyHealCap.
   const rawHeal = ((intent.healSelf ?? 0) + (enemy?.regen ?? 0)) * regenScale
   const healed = Math.min(rawHeal, Math.round(combat.maxHp * BALANCE.combat.enemyHealCap))
@@ -146,5 +164,33 @@ export function resolveEnemyTurn(
     healed,
     shielded: intent.shieldSelf ?? 0,
     threat: intent.threat,
+  }
+}
+
+/** Урон кровотечения за ход. */
+export function bleedDamage(stats: DerivedStats): number {
+  return Math.max(1, Math.round(stats.attack * BALANCE.combat.bleedDamage))
+}
+
+/** Хватает ли импульса на приём. */
+export function momentumCost(action: PlayerCombatAction): number {
+  const c = BALANCE.combat
+  if (action === 'surge') return c.surge.momentum
+  if (action === 'rupture') return c.rupture.momentum
+  return 0
+}
+
+/** Сколько импульса приносит приём. */
+export function momentumGain(action: PlayerCombatAction): number {
+  const m = BALANCE.combat.momentum
+  switch (action) {
+    case 'strike':
+      return m.perStrike
+    case 'focus':
+      return m.perFocus
+    case 'guard':
+      return m.perGuard
+    default:
+      return 0
   }
 }

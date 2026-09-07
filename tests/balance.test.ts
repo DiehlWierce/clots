@@ -3,7 +3,7 @@ import { reduce } from '@/engine/engine'
 import { derive, isSectorReachable, nextCost, canAfford, requirementsMet } from '@/engine/selectors'
 import { EVENT_BY_ID, MODULES, SECTORS, TECHS, getSector } from '@/engine/content'
 import { BALANCE } from '@/engine/balance'
-import { currentIntent } from '@/engine/systems/combat'
+import { currentIntent, momentumCost } from '@/engine/systems/combat'
 import type { GameState } from '@/engine/types'
 import { newGame } from './helpers'
 
@@ -41,13 +41,24 @@ function playout(seed: number, cycles: number): GameState {
         break
       }
       const intent = currentIntent(combat).kind
-      if (combat.shield > 0 || combat.armor - combat.armorBroken > 8)
+      const momentum = combat.momentum
+      const needsRupture = combat.shield > 0 || combat.armor - combat.armorBroken > 8
+
+      // Сильные приёмы стоят импульса: без него бьём обычным ударом,
+      // который импульс и копит.
+      if (needsRupture && momentum >= momentumCost('rupture')) {
         act({ type: 'combat/act', action: 'rupture' })
-      else if (intent === 'heavy' && s.integrity < derive(s).maxIntegrity * 0.5)
+      } else if (intent === 'heavy' && s.integrity < derive(s).maxIntegrity * 0.5) {
         act({ type: 'combat/act', action: 'guard' })
-      else if (s.clots >= BALANCE.combat.surge.cost.clots)
+      } else if (
+        momentum >= momentumCost('surge') &&
+        s.clots >= BALANCE.combat.surge.cost.clots &&
+        !needsRupture
+      ) {
         act({ type: 'combat/act', action: 'surge' })
-      else act({ type: 'combat/act', action: 'strike' })
+      } else {
+        act({ type: 'combat/act', action: 'strike' })
+      }
     }
 
     if (s.phase === 'vault' && s.pendingVault) {

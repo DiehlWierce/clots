@@ -1194,3 +1194,47 @@
     background: var(--c-surface-hover);
   }
 }
+
+/* Импульс — боевой ресурс: копится ударами, тратится на сильные приёмы. */
+.momentum {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-bg-elevated);
+}
+
+.momentum__label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-faint);
+}
+
+.momentum__pips {
+  display: flex;
+  flex: 1;
+  gap: 3px;
+}
+
+.momentum__pip {
+  flex: 1;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--c-border);
+  transition: background 0.15s ease;
+}
+
+.momentum__pip--on {
+  background: var(--c-energy);
+}
+
+.momentum__value {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-muted);
+}

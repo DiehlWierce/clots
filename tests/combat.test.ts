@@ -37,7 +37,11 @@ describe('бой', () => {
   })
 
   it('вскрытие снижает эффективную броню', () => {
-    const before = inCombat()
+    const started = inCombat()
+    const before: GameState = {
+      ...started,
+      combat: started.combat ? { ...started.combat, momentum: BALANCE.combat.momentum.max } : null,
+    }
     const after = reduce(before, { type: 'combat/act', action: 'rupture' }).state
     expect(after.combat).not.toBeNull()
     if (!before.combat || !after.combat) return
@@ -66,8 +70,12 @@ describe('бой', () => {
   })
 
   it('всплеск требует сгустков и не проходит без них', () => {
-    let s = inCombat()
-    s = { ...s, clots: 0 }
+    const started = inCombat()
+    const s: GameState = {
+      ...started,
+      clots: 0,
+      combat: started.combat ? { ...started.combat, momentum: BALANCE.combat.momentum.max } : null,
+    }
     const after = reduce(s, { type: 'combat/act', action: 'surge' }).state
     expect(after.energy).toBe(s.energy)
     expect(after.combat?.hp).toBe(s.combat?.hp)
@@ -123,18 +131,70 @@ describe('стоимость боевых действий', () => {
   it('бой не тратит энергию цикла', () => {
     // Иначе энергия кончается посреди схватки, а пополнить её нельзя:
     // завершение цикла во время боя запрещено. Живучий враг стал бы непобедим.
-    const base = inCombat()
+    const started = inCombat()
+    const base: GameState = {
+      ...started,
+      combat: started.combat ? { ...started.combat, momentum: BALANCE.combat.momentum.max } : null,
+    }
     for (const action of ['strike', 'focus', 'guard', 'rupture'] as const) {
       const after = reduce(base, { type: 'combat/act', action }).state
       expect(after.energy, `действие ${action} не должно тратить энергию`).toBe(base.energy)
     }
   })
 
-  it('всплеск тратит только сгустки', () => {
+  it('всплеск тратит сгустки и импульс, но не энергию цикла', () => {
     const base = inCombat()
-    const after = reduce(base, { type: 'combat/act', action: 'surge' }).state
-    expect(after.energy).toBe(base.energy)
-    expect(after.clots).toBe(base.clots - BALANCE.combat.surge.cost.clots)
+    // Импульс копится ударами, поэтому для всплеска его нужно заранее набрать.
+    const ready: GameState = {
+      ...base,
+      combat: base.combat ? { ...base.combat, momentum: BALANCE.combat.momentum.max } : null,
+    }
+    const after = reduce(ready, { type: 'combat/act', action: 'surge' }).state
+    expect(after.energy).toBe(ready.energy)
+    expect(after.clots).toBe(ready.clots - BALANCE.combat.surge.cost.clots)
+    expect(after.combat?.momentum ?? 0).toBeLessThan(BALANCE.combat.momentum.max)
+  })
+
+  it('без импульса сильный приём не проходит', () => {
+    const base = inCombat()
+    const empty: GameState = {
+      ...base,
+      combat: base.combat ? { ...base.combat, momentum: 0 } : null,
+    }
+    const { state: after, notices } = reduce(empty, { type: 'combat/act', action: 'surge' })
+    expect(after.clots).toBe(empty.clots)
+    expect(after.combat?.hp).toBe(empty.combat?.hp)
+    expect(notices.some(n => n.message.includes('импульса'))).toBe(true)
+  })
+
+  it('удары копят импульс', () => {
+    let s = inCombat()
+    const before = s.combat?.momentum ?? 0
+    s = reduce(s, { type: 'combat/act', action: 'strike' }).state
+    expect(s.combat?.momentum ?? 0).toBeGreaterThan(before)
+  })
+
+  it('пульс-удар оставляет кровотечение, которое капает само', () => {
+    let s = inCombat(21)
+    s = reduce(s, { type: 'combat/act', action: 'strike' }).state
+    expect(s.combat?.statuses.bleed ?? 0).toBeGreaterThan(0)
+
+    // Следующий ход снимает здоровье ещё до действия игрока.
+    const hpBefore = s.combat?.hp ?? 0
+    s = reduce(s, { type: 'combat/act', action: 'focus' }).state
+    expect(s.combat?.hp ?? 0).toBeLessThan(hpBefore)
+  })
+
+  it('вскрытие разъедает броню навсегда', () => {
+    const started = inCombat(33)
+    // Вскрытие стоит импульса — набираем его заранее.
+    let s: GameState = {
+      ...started,
+      combat: started.combat ? { ...started.combat, momentum: BALANCE.combat.momentum.max } : null,
+    }
+    const before = s.combat?.statuses.corrode ?? 0
+    s = reduce(s, { type: 'combat/act', action: 'rupture' }).state
+    expect(s.combat?.statuses.corrode ?? 0).toBeGreaterThan(before)
   })
 
   it('первый бой в игре выигрывается со стартовыми характеристиками', () => {
