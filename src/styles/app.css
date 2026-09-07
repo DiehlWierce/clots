@@ -1450,3 +1450,18 @@
 .enemy__shield {
   transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* Код партии на экране падения: его нужно уметь выделить и скопировать. */
+.crash-code {
+  width: 100%;
+  max-width: 34ch;
+  min-height: 96px;
+  padding: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--c-text);
+  background: var(--c-bg-elevated);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  resize: vertical;
+}

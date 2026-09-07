@@ -2,7 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { applyTheme, readThemeMode, resolveTheme } from './telegram'
-import { reportStorageFailures } from './store/useGame'
+import { reportStorageFailures, useGame } from './store/useGame'
+import { ErrorBoundary } from './ui/components/ErrorBoundary'
+import { encodeSaveCodeCompressed } from './engine/save'
+import { recordError, watchErrors } from './telegram'
 import './styles/tokens.css'
 import './styles/base.css'
 import './styles/app.css'
@@ -13,11 +16,19 @@ applyTheme(resolveTheme(readThemeMode()))
 // Молчаливая потеря прогресса хуже честного предупреждения.
 reportStorageFailures()
 
+// Необработанные ошибки складываются локально; отправку решает игрок.
+watchErrors()
+
 const container = document.getElementById('root')
 if (!container) throw new Error('Не найден корневой элемент #root')
 
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary
+      getSaveCode={() => encodeSaveCodeCompressed(useGame.getState().state)}
+      onError={error => recordError(error.message, 'render')}
+    >
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )

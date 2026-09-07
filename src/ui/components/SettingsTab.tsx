@@ -6,13 +6,18 @@ import {
   readSnapshot,
 } from '@/engine/save'
 import {
+  buildErrorReport,
+  clearErrors,
   getWebApp,
   haptics,
+  listErrors,
   isCloudAvailable,
   isHapticsEnabled,
   isTelegram,
   setHapticsEnabled,
 } from '@/telegram'
+import { buildShareUrl } from '@/telegram'
+import { APP_VERSION } from '@/config'
 import { LOCALES, dictionary } from '@/i18n'
 import type { Locale } from '@/i18n'
 import type { ThemeMode } from '@/telegram'
@@ -75,6 +80,7 @@ export function SettingsTab({
   // Список читается из хранилища при каждом открытии вкладки: она
   // монтируется по требованию, и пересчитывать чаще незачем.
   const snapshots = useMemo(() => listSnapshots(), [])
+  const [errors, setErrors] = useState(() => listErrors())
   const [hapticsOn, setHapticsOn] = useState(isHapticsEnabled)
 
   const t = dictionary(locale)
@@ -307,6 +313,48 @@ export function SettingsTab({
           >
             🔄 Начать заново
           </button>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <h2>{t.settings.diagnostics}</h2>
+          <p>{t.settings.diagnosticsHint}</p>
+        </div>
+        {errors.length === 0 ? (
+          <p className="muted">{t.settings.diagnosticsEmpty}</p>
+        ) : (
+          <>
+            <p className="muted">
+              {errors.length} {t.settings.errorsCount}: {errors[0]?.message.slice(0, 80)}
+            </p>
+            <div className="row">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  const report = buildErrorReport(platform ?? 'browser', APP_VERSION)
+                  // Отчёт уходит обычной ссылкой «поделиться»: игрок видит,
+                  // что именно отправляет, и выбирает получателя сам.
+                  window.open(buildShareUrl(report), '_blank', 'noopener')
+                  haptics.tap()
+                }}
+              >
+                {t.settings.diagnosticsSend}
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => {
+                  clearErrors()
+                  setErrors([])
+                  haptics.tap()
+                }}
+              >
+                {t.settings.diagnosticsClear}
+              </button>
+            </div>
+          </>
         )}
       </section>
 

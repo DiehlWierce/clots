@@ -3,8 +3,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
 
+import pkg from './package.json'
+
 export default defineConfig({
   base: '/clots/',
+  // Версия попадает в отчёты об ошибках: без неё непонятно, к какой сборке
+  // относится присланный игроком лог.
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   plugins: [react()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },

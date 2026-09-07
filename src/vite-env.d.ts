@@ -7,3 +7,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+/** Подставляется на сборке из package.json. */
+declare const __APP_VERSION__: string

@@ -5,6 +5,8 @@ export type { ThemeMode, ResolvedTheme } from './theme'
 export { watchViewport } from './viewport'
 export { isPlaytest } from './playtest'
 export { shareRun, buildRunSummary, buildShareUrl } from './share'
+export { watchErrors, listErrors, clearErrors, recordError, buildErrorReport } from './diagnostics'
+export type { ErrorRecord } from './diagnostics'
 export {
   cloudGet,
   cloudSet,
