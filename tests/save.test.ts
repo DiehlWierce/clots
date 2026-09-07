@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  SLOT_COUNT,
+  SLOT_INTERVAL,
   compareSaves,
   decodeSaveCode,
+  decodeSaveCodeAsync,
+  encodeSaveCodeCompressed,
+  isCompressed,
+  isCompressionAvailable,
+  shouldSnapshot,
   encodeSaveCode,
   fromCloudPayload,
   fromUnknown,
@@ -309,5 +316,68 @@ describe('самолечение летописи', () => {
       lore: ['origin-spark', 'forge-cost'],
     })
     expect(state?.lore).toContain('forge-cost')
+  })
+})
+
+/**
+ * Надёжность сохранений: сжатие, автослоты и честный отказ записи.
+ */
+describe('сжатие кода партии', () => {
+  it('сжатый код читается обратно', async () => {
+    const state = midGame()
+    const code = await encodeSaveCodeCompressed(state)
+    const result = await decodeSaveCodeAsync(code)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.state.cycle).toBe(state.cycle)
+  })
+
+  it('сжатие заметно короче обычного кода', async () => {
+    // Ради этого всё и затевалось: прокачанная партия не влезала в предел
+    // облака Telegram, из-за чего понадобилась запись по частям.
+    const state = midGame()
+    const plain = encodeSaveCode(state)
+    const compressed = await encodeSaveCodeCompressed(state)
+    if (!isCompressionAvailable()) return
+    expect(isCompressed(compressed)).toBe(true)
+    expect(compressed.length).toBeLessThan(plain.length * 0.6)
+  })
+
+  it('обычный код по-прежнему читается', async () => {
+    const state = midGame()
+    const result = await decodeSaveCodeAsync(encodeSaveCode(state))
+    expect(result.ok).toBe(true)
+  })
+
+  it('синхронный разбор честно сообщает про сжатый код', async () => {
+    if (!isCompressionAvailable()) return
+    const code = await encodeSaveCodeCompressed(midGame())
+    expect(decodeSaveCode(code)).toEqual({ ok: false, reason: 'compressed' })
+  })
+
+  it('мусор под видом сжатого кода не ломает игру', async () => {
+    const result = await decodeSaveCodeAsync('HEMZ1-этонекод')
+    expect(result.ok).toBe(false)
+  })
+})
+
+describe('автослоты', () => {
+  it('снимок делается не каждый цикл', () => {
+    expect(shouldSnapshot(1)).toBe(false)
+    expect(shouldSnapshot(5)).toBe(false)
+    expect(shouldSnapshot(SLOT_INTERVAL)).toBe(true)
+    expect(shouldSnapshot(SLOT_INTERVAL * 2)).toBe(true)
+  })
+
+  it('слоты покрывают разные моменты партии, а не три хода подряд', () => {
+    // Индекс выбирается по номеру цикла, поэтому последовательные снимки
+    // ложатся в разные слоты и старый не затирается сразу же.
+    const indexOf = (cycle: number) => Math.floor(cycle / SLOT_INTERVAL) % SLOT_COUNT
+    const used = new Set([
+      indexOf(SLOT_INTERVAL),
+      indexOf(SLOT_INTERVAL * 2),
+      indexOf(SLOT_INTERVAL * 3),
+    ])
+    expect(used.size).toBe(SLOT_COUNT)
   })
 })

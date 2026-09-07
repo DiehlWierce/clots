@@ -101,9 +101,11 @@ test('сохранение: код генерируется и загружае�
   await page.getByRole('tab', { name: 'Настройки' }).click()
   await page.getByRole('button', { name: /Сгенерировать/ }).click()
 
+  // Код теперь сжимается асинхронно, поэтому поле заполняется не мгновенно.
   const field = page.getByLabel('Код сохранения')
+  await expect(field).not.toHaveValue('')
   const code = await field.inputValue()
-  expect(code.length).toBeGreaterThan(100)
+  expect(code.length).toBeGreaterThan(50)
 
   await page
     .getByRole('button', { name: /Загрузить/ })

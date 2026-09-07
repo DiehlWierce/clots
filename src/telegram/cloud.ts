@@ -69,38 +69,63 @@ export function cloudSet(key: string, value: string): Promise<boolean> {
 }
 
 /**
- * Запись значения любой длины: оно режется на части и складывается в
- * несколько ключей, а рядом пишется их количество.
+ * Запись значения любой длины под новой версией.
  *
- * Одного ключа не хватает: сейв полностью прокачанной партии уже превышает
- * лимит Telegram, и с ростом контента разрыв будет только увеличиваться.
+ * Части складываются под номером поколения, и только после того, как все они
+ * записаны, переключается указатель. Раньше части перезаписывались поверх
+ * старых: приложение, закрытое посреди записи, оставляло в облаке смесь
+ * старой и новой партии, и указатель на неё уже был переключён.
+ *
+ * Одного ключа не хватает: сейв прокачанной партии превышает лимит Telegram.
  */
 export async function cloudSetLarge(baseKey: string, value: string): Promise<boolean> {
+  const previous = await cloudGet(`${baseKey}_v`)
+  const generation = (Number(previous) || 0) + 1
+
   const chunks: string[] = []
   for (let i = 0; i < value.length; i += CLOUD_CHUNK_SIZE) {
     chunks.push(value.slice(i, i + CLOUD_CHUNK_SIZE))
   }
+  if (chunks.length === 0 || chunks.length > 32) return false
 
-  // Счётчик пишется последним: если часть кусков не записалась, читатель
-  // увидит старый счётчик и старую партию, а не половину новой.
   for (let i = 0; i < chunks.length; i += 1) {
     const chunk = chunks[i]
     if (chunk === undefined) return false
-    const ok = await cloudSet(`${baseKey}_${i}`, chunk)
+    const ok = await cloudSet(`${baseKey}_${generation}_${i}`, chunk)
     if (!ok) return false
   }
-  return cloudSet(`${baseKey}_n`, String(chunks.length))
+
+  // Указатель переключается последним: до этого момента читатель видит
+  // предыдущее поколение целиком, а не половину нового.
+  const count = await cloudSet(`${baseKey}_${generation}_n`, String(chunks.length))
+  if (!count) return false
+  const pointer = await cloudSet(`${baseKey}_v`, String(generation))
+  if (!pointer) return false
+
+  // Прошлое поколение больше не нужно; неудача уборки не критична.
+  if (generation > 1) void cloudDropGeneration(baseKey, generation - 1)
+  return true
+}
+
+async function cloudDropGeneration(baseKey: string, generation: number): Promise<void> {
+  const countRaw = await cloudGet(`${baseKey}_${generation}_n`)
+  const count = Number(countRaw)
+  if (!Number.isInteger(count) || count <= 0) return
+  for (let i = 0; i < count; i += 1) await cloudRemove(`${baseKey}_${generation}_${i}`)
+  await cloudRemove(`${baseKey}_${generation}_n`)
 }
 
 /** Чтение значения, записанного по частям. */
 export async function cloudGetLarge(baseKey: string): Promise<string | null> {
-  const countRaw = await cloudGet(`${baseKey}_n`)
-  const count = Number(countRaw)
+  const generation = Number(await cloudGet(`${baseKey}_v`))
+  if (!Number.isInteger(generation) || generation <= 0) return null
+
+  const count = Number(await cloudGet(`${baseKey}_${generation}_n`))
   if (!Number.isInteger(count) || count <= 0 || count > 32) return null
 
   const parts: string[] = []
   for (let i = 0; i < count; i += 1) {
-    const part = await cloudGet(`${baseKey}_${i}`)
+    const part = await cloudGet(`${baseKey}_${generation}_${i}`)
     // Недостающая часть означает повреждённую запись: лучше ничего,
     // чем половина партии, выдаваемая за целую.
     if (part === null) return null

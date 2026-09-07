@@ -1,5 +1,10 @@
-import { useState } from 'react'
-import { decodeSaveCode, encodeSaveCode } from '@/engine/save'
+import { useMemo, useState } from 'react'
+import {
+  decodeSaveCodeAsync,
+  encodeSaveCodeCompressed,
+  listSnapshots,
+  readSnapshot,
+} from '@/engine/save'
 import {
   getWebApp,
   haptics,
@@ -27,6 +32,7 @@ const REASONS: Record<string, string> = {
   empty: 'Код пустой — вставьте его в поле.',
   corrupt: 'Код повреждён или это не код сохранения.',
   incompatible: 'Код от несовместимой версии игры.',
+  compressed: 'Сжатый код не читается на этом устройстве.',
 }
 
 const THEME_IDS: ThemeMode[] = ['auto', 'light', 'dark']
@@ -66,6 +72,9 @@ export function SettingsTab({
   const [code, setCode] = useState('')
   const [status, setStatus] = useState<{ text: string; ok: boolean } | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)
+  // Список читается из хранилища при каждом открытии вкладки: она
+  // монтируется по требованию, и пересчитывать чаще незачем.
+  const snapshots = useMemo(() => listSnapshots(), [])
   const [hapticsOn, setHapticsOn] = useState(isHapticsEnabled)
 
   const t = dictionary(locale)
@@ -73,10 +82,12 @@ export function SettingsTab({
   const platform = getWebApp()?.platform
 
   const generate = () => {
-    const generated = encodeSaveCode(state)
-    setCode(generated)
-    setStatus({ text: `Код готов: ${generated.length} символов.`, ok: true })
-    haptics.success()
+    // Сжатый код в разы короче; если сжатие недоступно, вернётся обычный.
+    void encodeSaveCodeCompressed(state).then(generated => {
+      setCode(generated)
+      setStatus({ text: `Код готов: ${generated.length} символов.`, ok: true })
+      haptics.success()
+    })
   }
 
   const copy = async () => {
@@ -92,15 +103,16 @@ export function SettingsTab({
   }
 
   const load = () => {
-    const result = decodeSaveCode(code)
-    if (result.ok) {
-      onLoad(result.state)
-      setStatus({ text: 'Сохранение загружено.', ok: true })
-      haptics.success()
-    } else {
-      setStatus({ text: REASONS[result.reason] ?? 'Не удалось загрузить код.', ok: false })
-      haptics.error()
-    }
+    void decodeSaveCodeAsync(code).then(result => {
+      if (result.ok) {
+        onLoad(result.state)
+        setStatus({ text: 'Сохранение загружено.', ok: true })
+        haptics.success()
+      } else {
+        setStatus({ text: REASONS[result.reason] ?? 'Не удалось загрузить код.', ok: false })
+        haptics.error()
+      }
+    })
   }
 
   return (
@@ -220,6 +232,46 @@ export function SettingsTab({
             {isCloudAvailable() ? t.settings.cloudAuto : t.settings.cloudUnavailable}
           </p>
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <h2>{t.settings.slots}</h2>
+          <p>{t.settings.slotsHint}</p>
+        </div>
+        {snapshots.length === 0 ? (
+          <p className="muted">{t.settings.slotsEmpty}</p>
+        ) : (
+          <div className="grid">
+            {snapshots.map(slot => (
+              <button
+                key={slot.index}
+                type="button"
+                className="action"
+                onClick={() => {
+                  const restored = readSnapshot(slot.index)
+                  if (!restored) {
+                    setStatus({ text: 'Снимок повреждён.', ok: false })
+                    haptics.error()
+                    return
+                  }
+                  onLoad(restored)
+                  setStatus({ text: `Восстановлен цикл ${slot.cycle}.`, ok: true })
+                  haptics.success()
+                }}
+              >
+                <span className="action__title">
+                  {t.settings.cycleShort} {slot.cycle}
+                </span>
+                <span className="action__desc">
+                  {slot.sectors} {t.settings.sectorsShort} ·{' '}
+                  {new Date(slot.savedAt).toLocaleString()}
+                </span>
+                <span className="action__cost">{t.settings.slotRestore}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="panel">

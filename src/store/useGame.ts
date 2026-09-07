@@ -5,11 +5,14 @@ import { createSeed } from '@/engine/rng'
 import {
   CLOUD_KEY,
   clearPersisted,
+  clearSnapshots,
   compareSaves,
   fromCloudPayload,
   loadPersisted,
   persist,
+  shouldSnapshot,
   toCloudPayload,
+  writeSnapshot,
 } from '@/engine/save'
 import { createInitialState } from '@/engine/state'
 import type { GameAction } from '@/engine/actions'
@@ -25,6 +28,8 @@ interface GameStore {
   toasts: Toast[]
   /** Идёт ли обмен с облаком: показывается в настройках. */
   cloudBusy: boolean
+  /** Запись на устройство не удалась — прогресс живёт только в памяти. */
+  storageBroken: boolean
   dispatch: (action: GameAction) => void
   restart: () => void
   newGamePlus: () => void
@@ -41,15 +46,30 @@ interface GameStore {
  * пошаговая, поэтому сохранять чаще, чем раз в кадр, незачем. В v1 полное
  * состояние сериализовалось каждую секунду из setInterval.
  */
+/** Не удалось записать партию на устройство — игрок должен узнать об этом. */
+let onPersistFailure: (() => void) | null = null
+
 const schedulePersist = (() => {
   let pending: GameState | null = null
   let scheduled = false
+  let lastSnapshotCycle = 0
 
   const flush = () => {
     scheduled = false
-    if (pending) {
-      persist(pending)
-      pending = null
+    if (!pending) return
+    const state = pending
+    pending = null
+
+    if (!persist(state)) {
+      onPersistFailure?.()
+      return
+    }
+
+    // Раз в несколько циклов откладываем снимок в автослот: точка возврата
+    // на случай ошибочного сброса или неудачного решения.
+    if (shouldSnapshot(state.cycle) && state.cycle !== lastSnapshotCycle) {
+      lastSnapshotCycle = state.cycle
+      writeSnapshot(state)
     }
   }
 
@@ -102,6 +122,7 @@ export const useGame = create<GameStore>((set, get) => ({
   state: loadPersisted() ?? createInitialState(createSeed()),
   toasts: [],
   cloudBusy: false,
+  storageBroken: false,
 
   dispatch: action => {
     const before = get().state
@@ -119,6 +140,7 @@ export const useGame = create<GameStore>((set, get) => ({
   restart: () => {
     const seed = createSeed()
     clearPersisted()
+    clearSnapshots()
     const state = createInitialState(seed)
     schedulePersist(state)
     set({ state, toasts: [] })
@@ -140,12 +162,16 @@ export const useGame = create<GameStore>((set, get) => ({
 
   syncFromCloud: async () => {
     if (!isCloudAvailable()) return
+    // Состояние на момент начала загрузки: медленный ответ облака не должен
+    // перезаписать ход, сделанный игроком, пока запрос был в пути.
+    const before = get().state
     set({ cloudBusy: true })
     try {
       const payload = await cloudGetLarge(CLOUD_KEY)
       if (!payload) return
       const cloud = fromCloudPayload(payload)
       const local = get().state
+      if (local !== before) return
       // Побеждает более поздняя партия — та, у которой больше цикл.
       if (compareSaves(local, cloud) !== 'cloud' || !cloud) return
       schedulePersist(cloud)
@@ -177,5 +203,24 @@ export const useGame = create<GameStore>((set, get) => ({
 }))
 
 /** Удобные точечные селекторы, чтобы компоненты не перерисовывались лишний раз. */
+/** Подписывает стор на сообщение о непишущемся хранилище. */
+export function reportStorageFailures(): void {
+  onPersistFailure = () => {
+    const store = useGame.getState()
+    if (store.storageBroken) return
+    useGame.setState({
+      storageBroken: true,
+      toasts: [
+        ...store.toasts,
+        {
+          id: (toastId += 1),
+          message: 'Прогресс не сохраняется. Скопируйте код партии в настройках.',
+          tone: 'bad' as const,
+        },
+      ],
+    })
+  }
+}
+
 export const useGameState = () => useGame(s => s.state)
 export const useDispatch = () => useGame(s => s.dispatch)
