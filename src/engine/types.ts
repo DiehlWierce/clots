@@ -193,6 +193,24 @@ export interface CombatState {
 
 // ─── Прочее ─────────────────────────────────────────────────────────────────
 
+export interface MutationDef {
+  id: string
+  name: string
+  /** Короткая формула компромисса — показывается под названием. */
+  tagline: string
+  description: string
+  /** Постоянные модификаторы характеристик. */
+  effects: CitadelEffects
+  /** Множитель «шума» территории: 2 — вдвое громче, 0.5 — вдвое тише. */
+  heatMultiplier?: number
+  /** Множитель силы рейдов. */
+  raidPower?: number
+  /** Разовая прибавка к стартовым ресурсам. */
+  startBonus?: ResourceBag
+  /** Стартовый уровень угрозы, если он должен отличаться от обычного. */
+  startThreat?: number
+}
+
 export interface AchievementDef {
   id: string
   title: string
@@ -233,7 +251,7 @@ export interface LogEntry {
   tone: 'info' | 'good' | 'bad'
 }
 
-export type Phase = 'command' | 'combat' | 'vault' | 'collapsed' | 'victory'
+export type Phase = 'mutation' | 'command' | 'combat' | 'vault' | 'collapsed' | 'victory'
 
 /** Прогресс покупаемой вещи: 0 — не открыто. */
 export type LevelMap = Record<string, number>
@@ -278,6 +296,11 @@ export interface GameState {
   combat: CombatState | null
   /** Открытое хранилище, ждущее выбора награды. */
   pendingVault: string | null
+
+  /** Выбранная стартовая мутация. */
+  mutation: string | null
+  /** Три варианта мутации, предложенные на старте. */
+  mutationOffer: string[]
 
   achievements: LevelMap
   log: LogEntry[]

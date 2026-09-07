@@ -10,8 +10,13 @@ import { STATE_VERSION } from '../state'
 type Migration = (data: Record<string, unknown>) => Record<string, unknown>
 
 const MIGRATIONS: Record<number, Migration> = {
-  // Пример на будущее:
-  // 1: data => ({ ...data, newField: 0, version: 2 }),
+  /**
+   * v1 → v2: появились стартовые мутации.
+   *
+   * Партия, начатая до их появления, продолжается без мутации: заставлять
+   * выбирать её в середине забега бессмысленно, а сломать сейв — тем более.
+   */
+  1: data => ({ ...data, mutation: null, mutationOffer: [], version: 2 }),
 }
 
 export function migrate(input: unknown): Record<string, unknown> | null {

@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { decodeSaveCode, encodeSaveCode, fromUnknown, serialize } from '@/engine/save'
 import { decodeText, encodeText } from '@/engine/save/codec'
 import { sanitizeState } from '@/engine/save/schema'
-import { createInitialState, STATE_VERSION } from '@/engine/state'
+import { STATE_VERSION } from '@/engine/state'
 import { reduce } from '@/engine/engine'
 import type { GameState } from '@/engine/types'
+import { newGame } from './helpers'
 
 function midGame(): GameState {
-  let s = createInitialState(31337)
+  let s = newGame(31337)
   s = reduce(s, { type: 'map/capture', sectorId: 'cap-drift' }).state
   s = reduce(s, { type: 'cycle/end' }).state
   s = reduce(s, { type: 'action/harvest' }).state

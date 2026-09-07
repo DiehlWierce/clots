@@ -2,6 +2,7 @@ import { BALANCE, levelForXp, xpForNextLevel } from './balance'
 import {
   ACHIEVEMENT_BY_ID,
   DOCTRINE_BY_ID,
+  MUTATION_BY_ID,
   MODULE_BY_ID,
   SECTORS,
   TECH_BY_ID,
@@ -93,6 +94,12 @@ export function collectEffects(state: GameState): EffectTotals {
     if (sector.income.suppression) total.suppression += sector.income.suppression
   }
 
+  // Стартовая мутация действует всю партию наравне с модулями.
+  if (state.mutation) {
+    const mutation = MUTATION_BY_ID.get(state.mutation)
+    if (mutation) addScaled(total, mutation.effects, 1)
+  }
+
   // Бонусы за уровень цитадели.
   const level = levelForXp(state.xp)
   const stage = level - 1
@@ -126,7 +133,19 @@ export function baseIncome(state: GameState): { plasma: number; clots: number; e
 export function territoryHeat(state: GameState): number {
   let heat = 0
   for (const sectorId of state.controlled) heat += getSector(sectorId)?.heat ?? 0
-  return heat
+  return heat * mutationHeatMultiplier(state)
+}
+
+/** Множитель шума от стартовой мутации. */
+export function mutationHeatMultiplier(state: GameState): number {
+  if (!state.mutation) return 1
+  return MUTATION_BY_ID.get(state.mutation)?.heatMultiplier ?? 1
+}
+
+/** Множитель силы рейдов от стартовой мутации. */
+export function mutationRaidPower(state: GameState): number {
+  if (!state.mutation) return 1
+  return MUTATION_BY_ID.get(state.mutation)?.raidPower ?? 1
 }
 
 /**

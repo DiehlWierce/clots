@@ -17,6 +17,8 @@ export type GameAction =
   | { type: 'combat/withdraw' }
   // Хранилище
   | { type: 'vault/choose'; optionId: string }
+  // Стартовая мутация
+  | { type: 'mutation/choose'; id: string }
   // Развитие
   | { type: 'module/buy'; id: string }
   | { type: 'doctrine/buy'; id: string }

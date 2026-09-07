@@ -41,10 +41,13 @@ export function formatEffects(effects: CitadelEffects, multiplier = 1): string[]
     const value = effects[key]
     if (value === undefined || value === 0) continue
     const scaled = value * multiplier
+    // Мутации дают и отрицательные модификаторы: знак ставим по значению.
+    const sign = scaled < 0 ? '−' : '+'
+    const magnitude = Math.abs(scaled)
     out.push(
       config.percent
-        ? `${config.label} +${Math.round(scaled * 100)}%`
-        : `${config.label} +${Math.round(scaled * 10) / 10}`,
+        ? `${config.label} ${sign}${Math.round(magnitude * 100)}%`
+        : `${config.label} ${sign}${Math.round(magnitude * 10) / 10}`,
     )
   }
   return out

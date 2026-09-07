@@ -2,6 +2,7 @@ import { BALANCE } from '../balance'
 import {
   ACHIEVEMENT_BY_ID,
   DOCTRINE_BY_ID,
+  MUTATION_BY_ID,
   MODULE_BY_ID,
   REGIONS,
   SECTOR_BY_ID,
@@ -20,7 +21,7 @@ import type { DoctrinePath, GameState, LevelMap, Phase, RegionId } from '../type
  * попадает в состояние как NaN. Именно на этом ломалась прошлая версия.
  */
 
-const PHASES: readonly Phase[] = ['command', 'combat', 'vault', 'collapsed', 'victory']
+const PHASES: readonly Phase[] = ['mutation', 'command', 'combat', 'vault', 'collapsed', 'victory']
 const PATHS: readonly DoctrinePath[] = ['reaver', 'warden', 'weaver']
 const REGION_IDS: readonly RegionId[] = REGIONS.map(r => r.id)
 
@@ -129,6 +130,10 @@ export function sanitizeState(input: unknown): GameState | null {
         ? raw.selectedSector
         : null,
 
+    mutation:
+      typeof raw.mutation === 'string' && MUTATION_BY_ID.has(raw.mutation) ? raw.mutation : null,
+    mutationOffer: idList(raw.mutationOffer, new Set(MUTATION_BY_ID.keys())),
+
     combat: null,
     pendingVault:
       typeof raw.pendingVault === 'string' && SECTOR_IDS.has(raw.pendingVault)
@@ -150,6 +155,9 @@ export function sanitizeState(input: unknown): GameState | null {
   state.combat = sanitizeCombat(raw.combat)
   if (state.combat === null && state.phase === 'combat') state.phase = 'command'
   if (state.pendingVault === null && state.phase === 'vault') state.phase = 'command'
+  // Фаза выбора мутации без вариантов заперла бы игру на пустом экране.
+  if (state.phase === 'mutation' && state.mutationOffer.length === 0) state.phase = 'command'
+  if (state.mutation !== null && state.phase === 'mutation') state.phase = 'command'
   if (state.integrity <= 0) {
     state.phase = 'collapsed'
     state.combat = null

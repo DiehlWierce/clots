@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { reduce } from '@/engine/engine'
-import { createInitialState } from '@/engine/state'
 import { derive } from '@/engine/selectors'
 import { currentIntent, effectiveArmor } from '@/engine/systems/combat'
 import { BALANCE } from '@/engine/balance'
 import type { GameState } from '@/engine/types'
+import { newGame } from './helpers'
 
 /** Готовит партию, стоящую в бою за сектор с гарнизоном. */
 function inCombat(seed = 77): GameState {
-  let s = { ...createInitialState(seed), energy: 60, clots: 500, plasma: 500 }
+  let s = { ...newGame(seed), energy: 60, clots: 500, plasma: 500 }
   s = reduce(s, { type: 'map/capture', sectorId: 'cap-drift' }).state
   s = reduce(s, { type: 'map/capture', sectorId: 'cap-weave' }).state
   return s
@@ -140,7 +140,7 @@ describe('стоимость боевых действий', () => {
   it('первый бой в игре выигрывается со стартовыми характеристиками', () => {
     // Регресс на баланс: гарнизон стартового региона обязан быть по силам
     // цитадели без единого улучшения.
-    let s = createInitialState(31)
+    let s = newGame(31)
     s = reduce(s, { type: 'map/capture', sectorId: 'cap-drift' }).state
     s = reduce(s, { type: 'cycle/end' }).state
     s = reduce(s, { type: 'map/capture', sectorId: 'cap-weave' }).state

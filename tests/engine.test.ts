@@ -3,12 +3,13 @@ import { reduce } from '@/engine/engine'
 import { createInitialState } from '@/engine/state'
 import { derive, isAchievementEarned, threatGain } from '@/engine/selectors'
 import { BALANCE } from '@/engine/balance'
-import { SECTORS } from '@/engine/content'
+import { MUTATIONS, SECTORS } from '@/engine/content'
 import { raidChance } from '@/engine/systems/threat'
 import type { GameAction } from '@/engine/actions'
 import type { GameState } from '@/engine/types'
+import { newGame } from './helpers'
 
-const start = () => createInitialState(1234)
+const start = () => newGame(1234)
 
 function run(state: GameState, ...actions: GameAction[]): GameState {
   return actions.reduce((s, a) => reduce(s, a).state, state)
@@ -121,9 +122,11 @@ describe('регрессии v1', () => {
     expect(s.phase).toBe('collapsed')
 
     const restarted = reduce(s, { type: 'game/reset', seed: 7 }).state
-    expect(restarted.phase).toBe('command')
+    // Новая партия открывается выбором мутации — главное, что она открывается.
+    expect(restarted.phase).toBe('mutation')
     expect(restarted.integrity).toBe(BALANCE.start.integrity)
     expect(restarted.cycle).toBe(1)
+    expect(restarted.mutationOffer.length).toBeGreaterThan(0)
   })
 
   it('РЕГРЕСС #2: обучение не блокирует ни одно действие', () => {
@@ -171,8 +174,8 @@ describe('детерминированность', () => {
       { type: 'action/scan' },
       { type: 'cycle/end' },
     ]
-    const a = run(createInitialState(555), ...script)
-    const b = run(createInitialState(555), ...script)
+    const a = run(newGame(555), ...script)
+    const b = run(newGame(555), ...script)
     expect(a).toEqual(b)
   })
 
@@ -180,7 +183,7 @@ describe('детерминированность', () => {
     // Случайность расходуется в бою (разброс урона, криты), поэтому
     // расхождение проверяем на серии ударов, а не на «тихих» циклах.
     const fight = (seed: number) => {
-      let s = { ...createInitialState(seed), energy: 40 }
+      let s = { ...newGame(seed), energy: 40 }
       // cap-weave граничит с cap-drift, поэтому сперва занимаем пролив.
       s = reduce(s, { type: 'map/capture', sectorId: 'cap-drift' }).state
       s = reduce(s, { type: 'map/capture', sectorId: 'cap-weave' }).state
@@ -197,7 +200,7 @@ describe('детерминированность', () => {
   })
 
   it('рейд приходит при высокой угрозе и его можно отбить', () => {
-    let s = { ...createInitialState(4242), threat: 99, energy: 30 }
+    let s = { ...newGame(4242), threat: 99, energy: 30 }
     let raided = false
     for (let i = 0; i < 30 && !raided; i += 1) {
       s = reduce(s, { type: 'cycle/end' }).state
@@ -273,5 +276,70 @@ describe('открытие лора', () => {
   it('бинарное достижение засчитывается сразу', () => {
     const s = reduce(start(), { type: 'action/harvest' }).state
     expect(isAchievementEarned(s, 'first-blood')).toBe(true)
+  })
+})
+
+describe('стартовые мутации', () => {
+  it('партия начинается с выбора из трёх вариантов', () => {
+    const s = createInitialState(4242)
+    expect(s.phase).toBe('mutation')
+    expect(s.mutationOffer).toHaveLength(3)
+    expect(new Set(s.mutationOffer).size).toBe(3)
+    expect(s.mutation).toBeNull()
+  })
+
+  it('набор вариантов воспроизводим по зерну', () => {
+    expect(createInitialState(99).mutationOffer).toEqual(createInitialState(99).mutationOffer)
+  })
+
+  it('до выбора остальные действия заблокированы', () => {
+    const s = createInitialState(7)
+    const { state: after, notices } = reduce(s, { type: 'action/harvest' })
+    expect(after.plasma).toBe(s.plasma)
+    expect(notices.some(n => n.message.includes('мутацию'))).toBe(true)
+  })
+
+  it('выбор применяет эффекты и открывает командный экран', () => {
+    let s = createInitialState(4242)
+    const id = s.mutationOffer[0]
+    expect(id).toBeDefined()
+    if (!id) return
+    s = reduce(s, { type: 'mutation/choose', id }).state
+    expect(s.phase).toBe('command')
+    expect(s.mutation).toBe(id)
+  })
+
+  it('нельзя выбрать мутацию не из предложенных', () => {
+    const s = createInitialState(4242)
+    const outsider = MUTATIONS.find(m => !s.mutationOffer.includes(m.id))
+    expect(outsider).toBeDefined()
+    if (!outsider) return
+    const after = reduce(s, { type: 'mutation/choose', id: outsider.id }).state
+    expect(after.mutation).toBeNull()
+    expect(after.phase).toBe('mutation')
+  })
+
+  it('мутация на целостность сразу поднимает и максимум, и текущее значение', () => {
+    let s = createInitialState(1)
+    s = { ...s, mutationOffer: ['thick-blood'] }
+    s = reduce(s, { type: 'mutation/choose', id: 'thick-blood' }).state
+    const stats = derive(s)
+    expect(stats.maxIntegrity).toBeGreaterThan(BALANCE.citadel.baseMaxIntegrity)
+    expect(stats.maxEnergy).toBeLessThan(BALANCE.citadel.baseMaxEnergy)
+  })
+
+  it('мутация «Тонкие стенки» действительно удваивает шум территории', () => {
+    const base = { ...newGame(5), controlled: SECTORS.slice(0, 8).map(s => s.id) }
+    const loud = { ...base, mutation: 'thin-walls' }
+    expect(derive(loud).threatGain).toBeGreaterThan(derive(base).threatGain * 1.6)
+  })
+
+  it('кризисный старт выдаёт ресурсы и поднимает угрозу', () => {
+    let s = createInitialState(3)
+    s = { ...s, mutationOffer: ['crisis-start'] }
+    const before = s.plasma
+    s = reduce(s, { type: 'mutation/choose', id: 'crisis-start' }).state
+    expect(s.plasma).toBeGreaterThan(before)
+    expect(s.threat).toBe(45)
   })
 })

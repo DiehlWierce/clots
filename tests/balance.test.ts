@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { reduce } from '@/engine/engine'
-import { createInitialState } from '@/engine/state'
 import { derive, isSectorReachable, nextCost, canAfford, requirementsMet } from '@/engine/selectors'
 import { MODULES, SECTORS, TECHS, getSector } from '@/engine/content'
 import { BALANCE } from '@/engine/balance'
 import { currentIntent } from '@/engine/systems/combat'
 import type { GameState } from '@/engine/types'
+import { newGame } from './helpers'
 
 /**
  * Простой бот, играющий «жадно»: качается, расширяется и дерётся.
@@ -13,7 +13,7 @@ import type { GameState } from '@/engine/types'
  * и при этом не выигрывается сама собой.
  */
 function playout(seed: number, cycles: number): GameState {
-  let s = createInitialState(seed)
+  let s = newGame(seed)
 
   const act = (action: Parameters<typeof reduce>[1]) => {
     s = reduce(s, action).state
@@ -133,7 +133,7 @@ describe('баланс: игра проходима и не тривиальна
   })
 
   it('расширение действительно повышает давление', () => {
-    const small = createInitialState(1)
+    const small = newGame(1)
     const big: GameState = {
       ...small,
       controlled: SECTORS.slice(0, 20).map(s => s.id),
@@ -142,7 +142,7 @@ describe('баланс: игра проходима и не тривиальна
   })
 
   it('доход растёт вместе с территорией', () => {
-    const small = createInitialState(1)
+    const small = newGame(1)
     const big: GameState = {
       ...small,
       controlled: SECTORS.filter(s => s.income?.plasma).map(s => s.id),
@@ -151,7 +151,7 @@ describe('баланс: игра проходима и не тривиальна
   })
 
   it('бездействие не выигрывает: без расширения экономика почти не растёт', () => {
-    let idle = createInitialState(9)
+    let idle = newGame(9)
     for (let i = 0; i < 40; i += 1) idle = reduce(idle, { type: 'cycle/end' }).state
     const active = playout(9, 40)
     expect(active.xp).toBeGreaterThan(idle.xp * 3)

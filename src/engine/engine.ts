@@ -5,6 +5,7 @@ import {
   ALL_CHAPTERS,
   DOCTRINE_BY_ID,
   MODULE_BY_ID,
+  MUTATION_BY_ID,
   REGIONS,
   SECTORS,
   TECH_BY_ID,
@@ -17,6 +18,7 @@ import {
   canAfford,
   collectEffects,
   derive,
+  mutationRaidPower,
   isAchievementEarned,
   isSectorReachable,
   nextCost,
@@ -72,6 +74,11 @@ export function reduce(state: GameState, action: GameAction): ReduceResult {
       ctx.warn('Выберите содержимое хранилища.')
       return
     }
+    // Пока не выбрана мутация, партия ещё не началась.
+    if (draft.phase === 'mutation' && action.type !== 'mutation/choose') {
+      ctx.warn('Сначала выберите мутацию империи.')
+      return
+    }
     // Партия окончена: сброс обработан выше, остальные действия игнорируются.
     if (draft.phase === 'collapsed' || draft.phase === 'victory') return
 
@@ -108,6 +115,9 @@ export function reduce(state: GameState, action: GameAction): ReduceResult {
         break
       case 'vault/choose':
         doVaultChoice(ctx, action.optionId)
+        break
+      case 'mutation/choose':
+        doChooseMutation(ctx, action.id)
         break
       case 'module/buy':
         doBuyModule(ctx, action.id)
@@ -488,6 +498,35 @@ function doVaultChoice(ctx: Ctx, optionId: string): void {
   ctx.log(`Хранилище вскрыто: ${option.label}.`, 'good')
 }
 
+function doChooseMutation(ctx: Ctx, id: string): void {
+  if (ctx.s.mutation !== null) return
+  if (!ctx.s.mutationOffer.includes(id)) {
+    ctx.warn('Эта мутация не предлагалась.')
+    return
+  }
+  const def = MUTATION_BY_ID.get(id)
+  if (!def) return
+
+  ctx.s.mutation = id
+  ctx.s.phase = 'command'
+
+  if (def.startBonus) {
+    ctx.s.plasma += def.startBonus.plasma ?? 0
+    ctx.s.clots += def.startBonus.clots ?? 0
+    ctx.s.essence += def.startBonus.essence ?? 0
+  }
+  if (def.startThreat !== undefined) ctx.s.threat = def.startThreat
+
+  // Прибавки к максимумам должны сразу отражаться на текущих значениях,
+  // иначе мутация на целостность выглядит как «максимум вырос, а ядро нет».
+  const stats = derive(ctx.s)
+  ctx.s.integrity = Math.min(stats.maxIntegrity, Math.max(1, ctx.s.integrity))
+  ctx.s.energy = stats.maxEnergy
+
+  ctx.log(`Империя приняла форму: ${def.name}. ${def.tagline}.`, 'good')
+  ctx.good(def.name)
+}
+
 // ─── Бой ────────────────────────────────────────────────────────────────────
 
 function doCombatAction(
@@ -770,7 +809,7 @@ function doEndCycle(ctx: Ctx): void {
   if (chance > 0 && ctx.rng.chance(chance)) {
     const raider = pickRaider(s.threat, s.regions.length, ctx.rng)
     if (raider) {
-      const difficulty = raidDifficulty(s.threat, stats.level)
+      const difficulty = Math.round(raidDifficulty(s.threat, stats.level) * mutationRaidPower(s))
       s.combat = createRaidCombat(raider, difficulty, ctx.rng)
       s.phase = 'combat'
       ctx.log(`Иммунный рейд: ${raider.name} прорвался к цитадели.`, 'bad')
