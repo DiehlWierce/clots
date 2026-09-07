@@ -5,11 +5,21 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "any",
-  "theme_color": "#6b0f1a",
+  "orientation": "portrait",
+  "theme_color": "#150a0e",
   "background_color": "#0d0709",
   "icons": [
-    { "src": "./icons/drop.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "./icons/clots.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    {
+      "src": "./icons/drop.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/clots.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ]
 }

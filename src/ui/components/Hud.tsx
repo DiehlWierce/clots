@@ -7,45 +7,85 @@ interface Props {
   stats: DerivedStats
 }
 
-interface ResourceProps {
+function Resource({
+  kind,
+  icon,
+  label,
+  value,
+  delta,
+}: {
   kind: string
+  icon: string
   label: string
   value: string
-  delta?: string | undefined
-  meter?: { value: number; max: number; color: string } | undefined
-  title: string
-}
-
-function Resource({ kind, label, value, delta, meter, title }: ResourceProps) {
+  delta?: string
+}) {
   return (
-    <div className={`res res--${kind}`} title={title}>
-      <span className="res__label">{label}</span>
-      <span className="res__value">{value}</span>
-      {delta ? <span className="res__delta">{delta}</span> : null}
-      {meter ? (
-        <div
-          className="meter"
-          role="meter"
-          aria-valuenow={Math.round(meter.value)}
-          aria-valuemin={0}
-          aria-valuemax={Math.round(meter.max)}
-          aria-label={label}
-        >
-          <div
-            className="meter__fill"
-            style={{
-              width: `${Math.min(100, (meter.value / Math.max(1, meter.max)) * 100)}%`,
-              background: meter.color,
-            }}
-          />
-        </div>
-      ) : null}
+    <div className={`res res--${kind}`}>
+      <span className="res__icon" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="res__value">
+        <span className="sr-only">{label}: </span>
+        {value}
+      </span>
+      <span className="res__delta">{delta ?? ' '}</span>
     </div>
   )
 }
 
+function Gauge({
+  icon,
+  label,
+  value,
+  max,
+  display,
+  color,
+}: {
+  icon: string
+  label: string
+  value: number
+  max: number
+  display: string
+  color: string
+}) {
+  return (
+    <div className="gauge" title={label}>
+      <div className="gauge__top">
+        {/* На 375px полные подписи не помещаются: имя шкалы несёт иконка,
+            а полное название остаётся в title и aria-label. */}
+        <span className="gauge__label" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="gauge__value">{display}</span>
+      </div>
+      <div
+        className="meter"
+        role="meter"
+        aria-valuenow={Math.round(value)}
+        aria-valuemin={0}
+        aria-valuemax={Math.round(max)}
+        aria-label={label}
+      >
+        <div
+          className="meter__fill"
+          style={{
+            width: `${Math.min(100, (value / Math.max(1, max)) * 100)}%`,
+            background: color,
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Шапка рассчитана на 320px: четыре числа в ряд и три шкалы под ними.
+ * В прошлой раскладке восемь плашек вставали в столбик и занимали на телефоне
+ * весь первый экран.
+ */
 export function Hud({ state, stats }: Props) {
-  const xpLabel = stats.xpForLevel > 0 ? `${stats.xpInLevel} / ${stats.xpForLevel}` : 'максимум'
+  const xp = stats.xpForLevel > 0 ? `${stats.xpInLevel}/${stats.xpForLevel}` : 'макс'
 
   return (
     <header className="hud">
@@ -53,68 +93,68 @@ export function Hud({ state, stats }: Props) {
         <div className="hud__brand">
           Clots: <span>Hem Empire</span>
         </div>
-        <div className="hud__cycle">
+        <div className="hud__meta">
           <span>Цикл {state.cycle}</span>
           <span>
-            Уровень {stats.level} · {xpLabel} XP
+            Ур. {stats.level} · {xp}
           </span>
         </div>
       </div>
 
-      <div className="resources">
+      <div className="res-row">
         <Resource
           kind="plasma"
+          icon="💧"
           label="Плазма"
           value={formatNumber(state.plasma)}
-          delta={`+${stats.income.plasma}/цикл`}
-          title="Базовое сырьё. Приходит с секторов добычи каждый цикл."
+          delta={`+${stats.income.plasma}`}
         />
         <Resource
           kind="clots"
+          icon="🩸"
           label="Сгустки"
           value={formatNumber(state.clots)}
-          delta={stats.income.clots > 0 ? `+${stats.income.clots}/цикл` : undefined}
-          title="Строительный материал модулей и топливо гемо-всплеска."
+          {...(stats.income.clots > 0 ? { delta: `+${stats.income.clots}` } : {})}
         />
         <Resource
           kind="essence"
+          icon="✨"
           label="Эссенция"
           value={formatNumber(state.essence)}
-          delta={stats.income.essence > 0 ? `+${stats.income.essence}/цикл` : undefined}
-          title="Редкий ресурс: доктрины, технологии, восстановление ядра."
+          {...(stats.income.essence > 0 ? { delta: `+${stats.income.essence}` } : {})}
         />
         <Resource
           kind="energy"
+          icon="⚡"
           label="Энергия"
-          value={`${state.energy} / ${stats.maxEnergy}`}
-          meter={{ value: state.energy, max: stats.maxEnergy, color: 'var(--c-energy)' }}
-          title="Очки действий на цикл. Полностью восстанавливаются в конце цикла."
+          value={`${state.energy}/${stats.maxEnergy}`}
         />
-        <Resource
-          kind="integrity"
+      </div>
+
+      <div className="gauge-row">
+        <Gauge
+          icon="🫀"
           label="Целостность"
-          value={`${state.integrity} / ${stats.maxIntegrity}`}
-          delta={stats.regen > 0 ? `+${stats.regen}/цикл` : undefined}
-          meter={{ value: state.integrity, max: stats.maxIntegrity, color: 'var(--c-integrity)' }}
-          title="Здоровье цитадели. На нуле — коллапс империи."
+          value={state.integrity}
+          max={stats.maxIntegrity}
+          display={`${state.integrity}/${stats.maxIntegrity}`}
+          color="var(--c-integrity)"
         />
-        <Resource
-          kind="threat"
+        <Gauge
+          icon="👁️"
           label="Угроза"
-          value={`${state.threat}%`}
-          delta={`+${stats.threatGain}/цикл`}
-          meter={{ value: state.threat, max: 100, color: 'var(--c-threat)' }}
-          title={`Внимание иммунной системы. С ${BALANCE.threat.raidThreshold}% начинаются рейды.`}
+          value={state.threat}
+          max={BALANCE.threat.max}
+          display={`${Math.round(state.threat)}%`}
+          color="var(--c-threat)"
         />
-        <Resource
-          kind="masking"
+        <Gauge
+          icon="🌫️"
           label="Маскировка"
-          value={`${state.masking}%`}
-          delta={`${stats.maskingGain - BALANCE.masking.decay >= 0 ? '+' : ''}${
-            Math.round((stats.maskingGain - BALANCE.masking.decay) * 10) / 10
-          }/цикл`}
-          meter={{ value: state.masking, max: 100, color: 'var(--c-masking)' }}
-          title="Снижает прирост угрозы. Естественно деградирует каждый цикл."
+          value={state.masking}
+          max={BALANCE.masking.max}
+          display={`${Math.round(state.masking)}%`}
+          color="var(--c-masking)"
         />
       </div>
     </header>

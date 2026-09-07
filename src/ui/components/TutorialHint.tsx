@@ -1,63 +1,87 @@
+import { haptics } from '@/telegram'
 import type { GameAction } from '@/engine/actions'
+import type { GameState } from '@/engine/types'
 
 /**
- * Обучение — только подсказка. Оно никогда не блокирует вкладки и действия:
- * именно блокировка вкладок в v1 приводила к неубиваемому софтлоку.
+ * Обучение — только подсказка: оно никогда не блокирует вкладки и действия.
+ *
+ * Текущий шаг вычисляется из состояния игры, а не из счётчика: игрок волен
+ * делать что угодно и в любом порядке, и подсказка не может «залипнуть» на
+ * шаге, который уже давно пройден.
  */
-const STEPS = [
+interface Step {
+  title: string
+  text: string
+  done: (state: GameState) => boolean
+}
+
+const STEPS: Step[] = [
   {
     title: 'Соберите плазму',
-    text: 'Во вкладке «Командование» нажмите «Сбор плазмы». Каждое действие тратит энергию.',
+    text: 'Во вкладке «Штаб» нажмите «Сбор плазмы». Каждое действие тратит энергию.',
+    done: state => state.stats.plasmaEarned > 0,
   },
   {
     title: 'Синтезируйте сгустки',
-    text: 'Сгустки — материал модулей. Переработайте в них часть плазмы.',
+    text: 'Сгустки — материал модулей и топливо гемо-всплеска. Переработайте в них плазму.',
+    done: state => state.stats.clotsEarned > 0,
   },
   {
     title: 'Займите первый сектор',
-    text: 'На «Карте» выберите «Капиллярный пролив» и займите его: он даёт доход каждый цикл.',
+    text: 'На «Карте» выберите «Капиллярный пролив»: он приносит доход каждый цикл.',
+    done: state => state.controlled.length > 1,
   },
   {
-    title: 'Возьмите сектор с гарнизоном',
-    text: 'Секторы с гарнизоном берутся боем. Противник всегда показывает следующее намерение.',
+    title: 'Завершите цикл',
+    text: 'Кнопка снизу даёт доход и полностью восстанавливает энергию, но поднимает угрозу.',
+    done: state => state.cycle > 1,
   },
   {
     title: 'Постройте модуль',
     text: 'Во вкладке «Развитие» откройте первый модуль — он усилит цитадель навсегда.',
+    done: state => Object.keys(state.modules).length > 0,
+  },
+  {
+    title: 'Возьмите сектор с гарнизоном',
+    text: 'Такие секторы берутся боем. Противник всегда показывает следующее намерение.',
+    done: state => state.stats.battlesWon > 0,
   },
   {
     title: 'Выберите путь',
-    text: 'Доктрина определяет стиль империи и закрывает два других пути. Выбирайте осознанно.',
+    text: 'Доктрина задаёт стиль империи и закрывает два других пути. Выбирайте осознанно.',
+    done: state => state.doctrinePath !== null,
   },
-  {
-    title: 'Завершите цикл',
-    text: 'Кнопка «Завершить цикл» даёт доход и восстанавливает энергию, но поднимает угрозу.',
-  },
-] as const
+]
 
 interface Props {
-  step: number
+  state: GameState
   dispatch: (action: GameAction) => void
 }
 
-export function TutorialHint({ step, dispatch }: Props) {
-  const current = STEPS[Math.min(step, STEPS.length - 1)]
-  if (!current || step >= STEPS.length) return null
+export function TutorialHint({ state, dispatch }: Props) {
+  const index = STEPS.findIndex(step => !step.done(state))
+  if (index === -1) return null
+
+  const current = STEPS[index]
+  if (!current) return null
 
   return (
     <div className="hint">
       <span aria-hidden="true">💡</span>
       <div className="hint__body">
         <div className="hint__step">
-          Шаг {step + 1} из {STEPS.length}
+          Шаг {index + 1} из {STEPS.length}
         </div>
         <div className="hint__title">{current.title}</div>
         <div className="hint__text">{current.text}</div>
       </div>
       <button
         type="button"
-        className="btn btn--ghost"
-        onClick={() => dispatch({ type: 'tutorial/dismiss' })}
+        className="btn btn--ghost btn--sm"
+        onClick={() => {
+          dispatch({ type: 'tutorial/dismiss' })
+          haptics.tap()
+        }}
       >
         Скрыть
       </button>

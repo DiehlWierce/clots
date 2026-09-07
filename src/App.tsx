@@ -1,31 +1,36 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useGame } from '@/store/useGame'
 import { useDerived } from '@/ui/hooks/useDerived'
 import { useScrollLock } from '@/ui/hooks/useScrollLock'
+import { useTheme } from '@/ui/hooks/useTheme'
+import { useBackButton } from '@/ui/hooks/useBackButton'
 import { Hud } from '@/ui/components/Hud'
 import { CommandTab } from '@/ui/components/CommandTab'
 import { MapTab } from '@/ui/components/MapTab'
 import { DevelopmentTab } from '@/ui/components/DevelopmentTab'
-import { AchievementsTab, JournalTab, LoreTab } from '@/ui/components/InfoTabs'
-import { SystemTab } from '@/ui/components/SystemTab'
+import { ChronicleTab } from '@/ui/components/ChronicleTab'
+import { SettingsTab } from '@/ui/components/SettingsTab'
 import { CombatOverlay } from '@/ui/components/CombatOverlay'
 import { VaultOverlay } from '@/ui/components/VaultOverlay'
 import { EndOverlay } from '@/ui/components/EndOverlay'
 import { TutorialHint } from '@/ui/components/TutorialHint'
+import { TelegramGate } from '@/ui/components/TelegramGate'
 import { Toasts } from '@/ui/components/Toasts'
-import { ACHIEVEMENTS, SECTORS } from '@/engine/content'
+import { ACHIEVEMENTS } from '@/engine/content'
+import { haptics, initWebApp, isTelegram, watchViewport } from '@/telegram'
 
-type TabId = 'command' | 'map' | 'development' | 'journal' | 'lore' | 'achievements' | 'system'
+type TabId = 'command' | 'map' | 'development' | 'chronicle' | 'settings'
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'command', label: 'Командование' },
-  { id: 'map', label: 'Карта' },
-  { id: 'development', label: 'Развитие' },
-  { id: 'journal', label: 'Журнал' },
-  { id: 'lore', label: 'Летопись' },
-  { id: 'achievements', label: 'Достижения' },
-  { id: 'system', label: 'Система' },
+/** Пять пунктов — предел для нижней панели на телефоне. */
+const TABS: { id: TabId; icon: string; label: string }[] = [
+  { id: 'command', icon: '🎛️', label: 'Штаб' },
+  { id: 'map', icon: '🗺️', label: 'Карта' },
+  { id: 'development', icon: '⚗️', label: 'Развитие' },
+  { id: 'chronicle', icon: '📜', label: 'Хроника' },
+  { id: 'settings', icon: '⚙️', label: 'Настройки' },
 ]
+
+const HOME: TabId = 'command'
 
 export default function App() {
   const state = useGame(s => s.state)
@@ -35,72 +40,111 @@ export default function App() {
   const loadState = useGame(s => s.loadState)
   const dismissToast = useGame(s => s.dismissToast)
 
-  const [tab, setTab] = useState<TabId>('command')
+  const [tab, setTab] = useState<TabId>(HOME)
+  const [bypassGate, setBypassGate] = useState(false)
+  const { mode: themeMode, setMode: setThemeMode } = useTheme()
   const stats = useDerived(state)
 
-  const badges: Partial<Record<TabId, number>> = {
-    map: SECTORS.filter(s => state.controlled.includes(s.id)).length,
-    development:
-      Object.keys(state.modules).length +
-      Object.keys(state.doctrines).length +
-      Object.keys(state.techs).length,
-    achievements: ACHIEVEMENTS.filter(a => {
-      const value = state.achievements[a.id] ?? 0
-      return a.target ? value >= a.target : value > 0
-    }).length,
-  }
+  // Инициализация мини-приложения: разворот окна, безопасные зоны, свайпы.
+  useEffect(() => {
+    initWebApp()
+    return watchViewport()
+  }, [])
 
-  const handleDismiss = useCallback((id: number) => dismissToast(id), [dismissToast])
-  const busy = state.phase === 'combat' || state.phase === 'vault'
+  // Системная кнопка «Назад» возвращает на главную вкладку.
+  const goHome = useCallback(() => setTab(HOME), [])
+  useBackButton(tab !== HOME && state.phase === 'command', goHome)
+
   useScrollLock(state.phase !== 'command')
 
+  const badges = useMemo<Partial<Record<TabId, number>>>(
+    () => ({
+      map: state.controlled.length,
+      development:
+        Object.keys(state.modules).length +
+        Object.keys(state.doctrines).length +
+        Object.keys(state.techs).length,
+      chronicle: ACHIEVEMENTS.filter(a => {
+        const value = state.achievements[a.id] ?? 0
+        return a.target ? value >= a.target : value > 0
+      }).length,
+    }),
+    [state.controlled, state.modules, state.doctrines, state.techs, state.achievements],
+  )
+
+  const handleDismiss = useCallback((id: number) => dismissToast(id), [dismissToast])
+
+  const selectTab = useCallback((next: TabId) => {
+    setTab(next)
+    haptics.select()
+  }, [])
+
+  const endCycle = useCallback(() => {
+    haptics.tap()
+    dispatch({ type: 'cycle/end' })
+  }, [dispatch])
+
+  if (!isTelegram() && !bypassGate && !import.meta.env.DEV) {
+    return <TelegramGate onContinue={() => setBypassGate(true)} />
+  }
+
+  const busy = state.phase !== 'command'
+
   return (
-    <div className="shell">
+    <div className="app">
       <Hud state={state} stats={stats} />
 
-      {/* Ни одна вкладка не блокируется — интерфейс всегда доступен целиком. */}
-      <nav className="tabs" role="tablist" aria-label="Разделы игры">
+      <main className="content">
+        {!state.tutorialDismissed ? <TutorialHint state={state} dispatch={dispatch} /> : null}
+
+        {tab === 'command' && <CommandTab state={state} stats={stats} dispatch={dispatch} />}
+        {tab === 'map' && <MapTab state={state} dispatch={dispatch} />}
+        {tab === 'development' && <DevelopmentTab state={state} dispatch={dispatch} />}
+        {tab === 'chronicle' && <ChronicleTab state={state} />}
+        {tab === 'settings' && (
+          <SettingsTab
+            state={state}
+            themeMode={themeMode}
+            onThemeChange={setThemeMode}
+            onLoad={loadState}
+            onRestart={restart}
+          />
+        )}
+      </main>
+
+      <div className="cycle-bar">
+        <button
+          type="button"
+          className="btn btn--primary btn--block"
+          disabled={busy}
+          onClick={endCycle}
+        >
+          ⏭️ Завершить цикл {state.cycle}
+        </button>
+        <div className="cycle-bar__hint">
+          Доход +{stats.income.plasma}💧 · энергия {stats.maxEnergy}⚡ · угроза +{stats.threatGain}%
+        </div>
+      </div>
+
+      {/* Ни одна вкладка не блокируется: интерфейс всегда доступен целиком. */}
+      <nav className="nav" role="tablist" aria-label="Разделы игры">
         {TABS.map(item => (
           <button
             key={item.id}
             type="button"
             role="tab"
-            className="tab"
+            className="nav__item"
             aria-selected={tab === item.id}
-            onClick={() => setTab(item.id)}
+            onClick={() => selectTab(item.id)}
           >
-            {item.label}
-            {badges[item.id] !== undefined ? (
-              <span className="tab__badge">{badges[item.id]}</span>
-            ) : null}
+            <span className="nav__icon" aria-hidden="true">
+              {item.icon}
+            </span>
+            <span className="nav__label">{item.label}</span>
+            {badges[item.id] ? <span className="nav__badge">{badges[item.id]}</span> : null}
           </button>
         ))}
       </nav>
-
-      {!state.tutorialDismissed ? (
-        <TutorialHint step={state.tutorialStep} dispatch={dispatch} />
-      ) : null}
-
-      <main style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', flex: 1 }}>
-        {tab === 'command' && <CommandTab state={state} stats={stats} dispatch={dispatch} />}
-        {tab === 'map' && <MapTab state={state} dispatch={dispatch} />}
-        {tab === 'development' && <DevelopmentTab state={state} dispatch={dispatch} />}
-        {tab === 'journal' && <JournalTab state={state} />}
-        {tab === 'lore' && <LoreTab state={state} />}
-        {tab === 'achievements' && <AchievementsTab state={state} />}
-        {tab === 'system' && <SystemTab state={state} onLoad={loadState} onRestart={restart} />}
-      </main>
-
-      <button
-        type="button"
-        className="btn btn--primary btn--block"
-        disabled={busy}
-        onClick={() => dispatch({ type: 'cycle/end' })}
-      >
-        ⏭️ Завершить цикл {state.cycle} → доход, восстановление энергии, рост угрозы
-      </button>
-
-      <footer className="footer">Clots: Hem Empire — пошаговая стратегия о разумной крови.</footer>
 
       {state.phase === 'combat' && state.combat ? (
         <CombatOverlay state={state} combat={state.combat} stats={stats} dispatch={dispatch} />

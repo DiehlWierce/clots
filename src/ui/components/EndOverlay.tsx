@@ -21,6 +21,7 @@ export function EndOverlay({ state, onRestart }: Props) {
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label="Итоги партии">
       <div className="overlay__card">
+        <div className="overlay__grip" aria-hidden="true" />
         <h2 className="overlay__title">{victory ? '👑 Империя восторжествовала' : '💀 Коллапс'}</h2>
         <p className="overlay__sub">
           {victory

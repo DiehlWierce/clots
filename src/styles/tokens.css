@@ -1,44 +1,51 @@
 /*
- * Токены дизайн-системы. В v1 было 72 захардкоженных hex-значения в одном
- * файле и ни одной переменной — тему нельзя было тронуть. Здесь все цвета,
- * отступы и радиусы объявлены один раз.
+ * Токены дизайн-системы.
+ *
+ * Палитра объявлена трижды: базово (тёмная), под системную светлую тему и под
+ * явный выбор игрока через data-theme. Явный выбор обязан побеждать в обе
+ * стороны, иначе переключатель в настройках не сможет вернуть светлую тему
+ * на устройстве с тёмной системной.
  */
-:root {
-  color-scheme: dark light;
 
-  /* Палитра */
+:root {
   --hue-blood: 348;
+
+  /* Тёмная тема — база */
   --c-bg: hsl(var(--hue-blood) 30% 5%);
   --c-bg-elevated: hsl(var(--hue-blood) 24% 9%);
   --c-surface: hsl(var(--hue-blood) 20% 12%);
-  --c-surface-hover: hsl(var(--hue-blood) 20% 16%);
+  --c-surface-hover: hsl(var(--hue-blood) 20% 17%);
   --c-border: hsl(var(--hue-blood) 18% 22%);
   --c-border-strong: hsl(var(--hue-blood) 22% 32%);
 
   --c-text: hsl(350 20% 94%);
-  --c-text-muted: hsl(350 12% 68%);
-  --c-text-faint: hsl(350 10% 52%);
+  --c-text-muted: hsl(350 12% 70%);
+  --c-text-faint: hsl(350 10% 54%);
 
   --c-accent: hsl(348 78% 52%);
-  --c-accent-soft: hsl(348 60% 62%);
-  --c-accent-bg: hsl(348 60% 20%);
+  --c-accent-soft: hsl(348 62% 64%);
+  --c-accent-bg: hsl(348 55% 18%);
 
-  --c-plasma: hsl(198 82% 60%);
-  --c-clots: hsl(348 78% 60%);
-  --c-essence: hsl(272 70% 70%);
+  --c-plasma: hsl(198 82% 62%);
+  --c-clots: hsl(348 78% 62%);
+  --c-essence: hsl(272 70% 72%);
   --c-energy: hsl(45 92% 60%);
-  --c-integrity: hsl(4 74% 58%);
-  --c-threat: hsl(28 88% 58%);
-  --c-masking: hsl(168 60% 50%);
+  --c-integrity: hsl(4 74% 60%);
+  --c-threat: hsl(28 88% 60%);
+  --c-masking: hsl(168 60% 52%);
 
-  --c-good: hsl(148 58% 50%);
-  --c-bad: hsl(2 76% 60%);
-  --c-warn: hsl(38 88% 58%);
+  --c-good: hsl(148 58% 52%);
+  --c-bad: hsl(2 76% 62%);
+  --c-warn: hsl(38 88% 60%);
+
+  --shadow-1: 0 1px 2px hsl(0 0% 0% / 0.4);
+  --shadow-2: 0 10px 30px hsl(0 0% 0% / 0.5);
 
   /* Геометрия */
   --r-sm: 6px;
   --r-md: 10px;
   --r-lg: 16px;
+  --r-xl: 22px;
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
@@ -46,39 +53,99 @@
   --sp-5: 24px;
   --sp-6: 32px;
 
-  --shadow-1: 0 1px 2px hsl(0 0% 0% / 0.4);
-  --shadow-2: 0 8px 24px hsl(0 0% 0% / 0.45);
+  /* Минимальная площадь касания: рекомендация Apple HIG и Material. */
+  --tap: 44px;
 
-  --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --font-mono: 'SF Mono', ui-monospace, 'Cascadia Code', monospace;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
 
-  /* Безопасные зоны для мобильных: в v1 их не было при viewport-fit=cover. */
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
+  /*
+   * Безопасные зоны. Telegram отдаёт их числами через SDK (переменные --tg-*
+   * ставит src/telegram/viewport.ts), поэтому берём значение оттуда, а env()
+   * оставляем запасным вариантом для обычного браузера.
+   */
+  --tg-safe-top: 0px;
+  --tg-safe-bottom: 0px;
+  --tg-safe-left: 0px;
+  --tg-safe-right: 0px;
+  --safe-top: max(var(--tg-safe-top), env(safe-area-inset-top, 0px));
+  --safe-bottom: max(var(--tg-safe-bottom), env(safe-area-inset-bottom, 0px));
+  --safe-left: max(var(--tg-safe-left), env(safe-area-inset-left, 0px));
+  --safe-right: max(var(--tg-safe-right), env(safe-area-inset-right, 0px));
+
+  /* Высота окна: Telegram задаёт свою, иначе — динамическая высота вьюпорта. */
+  --tg-viewport: 100dvh;
+  --app-height: var(--tg-viewport);
+
+  /* Высота нижней панели навигации — под неё резервируется место в контенте. */
+  --nav-height: 62px;
 }
 
-/* Светлая тема для тех, у кого системная тема светлая. */
+/* Светлая палитра: применяется по системной теме и по явному выбору. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
-    --c-bg: hsl(350 30% 97%);
-    --c-bg-elevated: hsl(350 26% 99%);
-    --c-surface: hsl(350 24% 100%);
-    --c-surface-hover: hsl(350 30% 96%);
-    --c-border: hsl(350 18% 86%);
-    --c-border-strong: hsl(350 20% 74%);
-    --c-text: hsl(348 30% 12%);
-    --c-text-muted: hsl(348 12% 38%);
-    --c-text-faint: hsl(348 10% 52%);
-    --c-accent-bg: hsl(348 70% 92%);
+    --c-bg: hsl(350 40% 98%);
+    --c-bg-elevated: hsl(350 40% 100%);
+    --c-surface: hsl(350 40% 100%);
+    --c-surface-hover: hsl(350 40% 96%);
+    --c-border: hsl(350 20% 88%);
+    --c-border-strong: hsl(350 22% 76%);
+
+    --c-text: hsl(348 32% 13%);
+    --c-text-muted: hsl(348 12% 40%);
+    --c-text-faint: hsl(348 10% 54%);
+
+    --c-accent: hsl(348 74% 48%);
+    --c-accent-soft: hsl(348 62% 42%);
+    --c-accent-bg: hsl(348 76% 95%);
+
     --c-plasma: hsl(198 78% 38%);
     --c-clots: hsl(348 72% 46%);
-    --c-essence: hsl(272 58% 48%);
-    --c-energy: hsl(38 88% 40%);
-    --c-masking: hsl(168 60% 32%);
-    --shadow-2: 0 8px 24px hsl(348 30% 40% / 0.14);
+    --c-essence: hsl(272 56% 46%);
+    --c-energy: hsl(38 90% 38%);
+    --c-integrity: hsl(4 70% 48%);
+    --c-threat: hsl(26 84% 40%);
+    --c-masking: hsl(168 62% 30%);
+
+    --c-good: hsl(148 60% 32%);
+    --c-bad: hsl(2 72% 48%);
+    --c-warn: hsl(34 82% 38%);
+
+    --shadow-1: 0 1px 2px hsl(348 20% 50% / 0.12);
+    --shadow-2: 0 10px 30px hsl(348 24% 42% / 0.16);
   }
+}
+
+:root[data-theme='light'] {
+  --c-bg: hsl(350 40% 98%);
+  --c-bg-elevated: hsl(350 40% 100%);
+  --c-surface: hsl(350 40% 100%);
+  --c-surface-hover: hsl(350 40% 96%);
+  --c-border: hsl(350 20% 88%);
+  --c-border-strong: hsl(350 22% 76%);
+
+  --c-text: hsl(348 32% 13%);
+  --c-text-muted: hsl(348 12% 40%);
+  --c-text-faint: hsl(348 10% 54%);
+
+  --c-accent: hsl(348 74% 48%);
+  --c-accent-soft: hsl(348 62% 42%);
+  --c-accent-bg: hsl(348 76% 95%);
+
+  --c-plasma: hsl(198 78% 38%);
+  --c-clots: hsl(348 72% 46%);
+  --c-essence: hsl(272 56% 46%);
+  --c-energy: hsl(38 90% 38%);
+  --c-integrity: hsl(4 70% 48%);
+  --c-threat: hsl(26 84% 40%);
+  --c-masking: hsl(168 62% 30%);
+
+  --c-good: hsl(148 60% 32%);
+  --c-bad: hsl(2 72% 48%);
+  --c-warn: hsl(34 82% 38%);
+
+  --shadow-1: 0 1px 2px hsl(348 20% 50% / 0.12);
+  --shadow-2: 0 10px 30px hsl(348 24% 42% / 0.16);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -6,24 +6,22 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  height: 100%;
 }
 
 body {
   margin: 0;
-  min-height: 100dvh; /* dvh, а не vh: иначе на iOS Safari низ уезжает под панель */
+  min-height: var(--app-height);
   font-family: var(--font);
   font-size: 15px;
   line-height: 1.5;
   color: var(--c-text);
-  background:
-    radial-gradient(
-      ellipse 120% 80% at 50% -10%,
-      hsl(var(--hue-blood) 40% 14%) 0%,
-      transparent 60%
-    ),
-    var(--c-bg);
-  background-attachment: fixed;
+  background: var(--c-bg);
   -webkit-font-smoothing: antialiased;
+  /* Мини-приложение — не документ: резинового скролла всей страницы быть не должно. */
+  overscroll-behavior: none;
+  /* Синяя подсветка тапа в мобильных вебвью выглядит чужеродно в игре. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 h1,
@@ -46,17 +44,16 @@ button {
   border: none;
   background: none;
   cursor: pointer;
+  /* Без этого в iOS-вебвью двойной тап масштабирует страницу вместо нажатия. */
+  touch-action: manipulation;
 }
 
 button:disabled {
   cursor: not-allowed;
 }
 
-/*
- * Видимый фокус на всём интерактивном. В v1 не было ни одного :focus-стиля
- * при глобальном сбросе кнопок — игра была непроходима с клавиатуры.
- */
-:where(button, a, input, textarea, [tabindex]):focus-visible {
+/* Видимый фокус на всём интерактивном — игра целиком состоит из кнопок. */
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
   outline: 2px solid var(--c-accent-soft);
   outline-offset: 2px;
   border-radius: var(--r-sm);

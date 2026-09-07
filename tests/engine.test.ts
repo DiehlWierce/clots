@@ -217,3 +217,27 @@ describe('детерминированность', () => {
     }
   })
 })
+
+/**
+ * Обучение вычисляется из состояния, а не из счётчика. Проверяем, что шаги
+ * действительно закрываются игровыми событиями и подсказка не «залипает».
+ */
+describe('обучение', () => {
+  it('шаг закрывается фактом действия, а не порядком', () => {
+    const fresh = start()
+    expect(fresh.stats.plasmaEarned).toBe(0)
+
+    // Игрок пропустил первые шаги и сразу занял сектор.
+    const s = run(fresh, { type: 'map/capture', sectorId: 'cap-drift' })
+    expect(s.controlled.length).toBeGreaterThan(1)
+    // Награда сектора уже начислила плазму — шаг «соберите плазму» тоже закрыт.
+    expect(s.stats.plasmaEarned).toBeGreaterThan(0)
+  })
+
+  it('скрытие обучения не мешает играть', () => {
+    let s = reduce(start(), { type: 'tutorial/dismiss' }).state
+    expect(s.tutorialDismissed).toBe(true)
+    s = reduce(s, { type: 'action/harvest' }).state
+    expect(s.plasma).toBeGreaterThan(BALANCE.start.plasma)
+  })
+})

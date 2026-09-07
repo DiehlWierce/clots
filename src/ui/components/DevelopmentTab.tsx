@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { DOCTRINES, DOCTRINE_PATHS, MODULES, TECHS } from '@/engine/content'
 import { canAfford, nextCost, requirementsMet } from '@/engine/selectors'
+import { haptics } from '@/telegram'
 import { formatCost, formatEffects } from '../format'
 import type { GameAction } from '@/engine/actions'
 import type { CitadelEffects, DoctrinePath, GameState, ResourceBag } from '@/engine/types'
@@ -125,18 +126,20 @@ export function DevelopmentTab({ state, dispatch }: Props) {
         <p>Модули строят цитадель, технологии — экономику, доктрины задают путь.</p>
       </div>
 
-      <div className="tabs" style={{ marginBottom: 'var(--sp-4)' }} role="tablist">
-        {sections.map(s => (
+      <div className="segmented" style={{ marginBottom: 'var(--sp-4)' }} role="tablist">
+        {sections.map(item => (
           <button
-            key={s.id}
+            key={item.id}
             type="button"
             role="tab"
-            className="tab"
-            aria-selected={section === s.id}
-            onClick={() => setSection(s.id)}
+            className="segmented__item"
+            aria-selected={section === item.id}
+            onClick={() => {
+              setSection(item.id)
+              haptics.select()
+            }}
           >
-            {s.label}
-            <span className="tab__badge">{s.count}</span>
+            {item.label} {item.count}
           </button>
         ))}
       </div>
@@ -145,7 +148,7 @@ export function DevelopmentTab({ state, dispatch }: Props) {
         moduleBranches.map(([branch, items]) => (
           <div key={branch} className="branch">
             <div className="branch__name">{branch}</div>
-            <div className="grid grid--wide">
+            <div className="grid">
               {items.map(item => (
                 <UpgradeCard
                   key={item.id}
@@ -164,7 +167,7 @@ export function DevelopmentTab({ state, dispatch }: Props) {
         techBranches.map(([branch, items]) => (
           <div key={branch} className="branch">
             <div className="branch__name">{branch}</div>
-            <div className="grid grid--wide">
+            <div className="grid">
               {items.map(item => (
                 <UpgradeCard
                   key={item.id}
@@ -198,7 +201,7 @@ export function DevelopmentTab({ state, dispatch }: Props) {
                 <p className="muted" style={{ marginBottom: 'var(--sp-2)' }}>
                   {path.description}
                 </p>
-                <div className="grid grid--wide">
+                <div className="grid">
                   {items.map(item => (
                     <UpgradeCard
                       key={item.id}

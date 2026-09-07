@@ -50,6 +50,7 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label="Бой">
       <div className="overlay__card">
+        <div className="overlay__grip" aria-hidden="true" />
         <h2 className="overlay__title">
           {combat.forced ? '🚨 Иммунный рейд' : '⚔️ Штурм'} — раунд {combat.round}
         </h2>
@@ -113,18 +114,18 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
           {combat.guarded ? <span className="tag tag--good">щит поднят</span> : null}
         </div>
 
-        <div className="grid" style={{ marginBottom: 'var(--sp-3)' }}>
+        <div className="moves">
           {moves.map(move => (
             <button
               key={move.action}
               type="button"
-              className="action"
+              className="move"
               disabled={move.cost ? !canAfford(state, move.cost) : false}
               onClick={() => dispatch({ type: 'combat/act', action: move.action })}
             >
-              <span className="action__title">{move.label}</span>
-              <span className="action__desc">{move.hint}</span>
-              <span className="action__cost">
+              <span className="move__title">{move.label}</span>
+              <span className="move__hint">{move.hint}</span>
+              <span className="move__cost">
                 {move.cost ? `🩸${move.cost.clots}` : 'без затрат'}
               </span>
             </button>

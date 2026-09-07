@@ -14,11 +14,12 @@ export function VaultOverlay({ sectorId, dispatch }: Props) {
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label="Хранилище">
       <div className="overlay__card">
+        <div className="overlay__grip" aria-hidden="true" />
         <h2 className="overlay__title">🎁 {sector.name}</h2>
         <p className="overlay__sub">
           Хранилище вскрыто. Забрать можно только одно — выбор необратим.
         </p>
-        <div className="grid grid--wide">
+        <div className="grid">
           {sector.cache.map(option => (
             <button
               key={option.id}

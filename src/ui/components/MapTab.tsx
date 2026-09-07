@@ -101,7 +101,7 @@ export function MapTab({ state, dispatch }: Props) {
                 </span>
               </div>
               <p className="region__desc">{region.description}</p>
-              <div className="grid grid--wide">
+              <div className="grid">
                 {visible.map(sector => (
                   <SectorCard
                     key={sector.id}

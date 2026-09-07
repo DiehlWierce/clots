@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { haptics } from '@/telegram'
 import { reduce } from '@/engine/engine'
 import { createSeed } from '@/engine/rng'
 import { clearPersisted, loadPersisted, persist } from '@/engine/save'
@@ -48,13 +49,49 @@ const schedulePersist = (() => {
 
 let toastId = 0
 
+/**
+ * Тактильный отклик выводится из результата действия, а не расставляется по
+ * компонентам: так вибрация одинаково срабатывает и на клик, и на любое
+ * будущее действие, и не может разойтись с тем, что реально произошло.
+ */
+function reportHaptics(before: GameState, after: GameState, notices: Notice[]): void {
+  if (notices.some(n => n.tone === 'bad')) {
+    haptics.error()
+    return
+  }
+
+  // Урон по цитадели ощущается отдельно от результата хода.
+  if (after.integrity < before.integrity) haptics.damage()
+
+  if (notices.some(n => n.tone === 'good')) {
+    haptics.success()
+    return
+  }
+
+  // Бой: удар отзывается сильнее, добивание — как успех.
+  if (before.combat && after.combat && after.combat.hp < before.combat.hp) {
+    const share = (before.combat.hp - after.combat.hp) / Math.max(1, before.combat.maxHp)
+    if (share > 0.18) haptics.crit()
+    else haptics.hit()
+    return
+  }
+  if (before.combat && !after.combat) {
+    haptics.success()
+    return
+  }
+
+  if (after.cycle > before.cycle) haptics.tap()
+}
+
 export const useGame = create<GameStore>((set, get) => ({
   state: loadPersisted() ?? createInitialState(createSeed()),
   toasts: [],
 
   dispatch: action => {
-    const { state, notices } = reduce(get().state, action)
+    const before = get().state
+    const { state, notices } = reduce(before, action)
     schedulePersist(state)
+    reportHaptics(before, state, notices)
     set(prev => ({
       state,
       toasts: [...prev.toasts, ...notices.map(notice => ({ ...notice, id: (toastId += 1) }))].slice(
