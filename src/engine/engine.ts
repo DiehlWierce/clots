@@ -526,15 +526,26 @@ function completeCapture(ctx: Ctx, sector: SectorDef): void {
 
   if (sector.id === 'ctx-throne') {
     unlock(ctx, 'sovereign')
-    // Партия не заканчивается низложением Суверена: система переходит в
-    // контрнаступление, и победа засчитывается только тем, кто его переживёт.
-    ctx.s.siegeCyclesLeft = BALANCE.siege.cycles
-    ctx.s.threat = clampThreat(Math.max(ctx.s.threat, 80))
-    ctx.log(
-      `Суверен Иммунис низложен, но система не признала поражения. Осада: продержитесь ${BALANCE.siege.cycles} циклов.`,
-      'bad',
-    )
-    ctx.notices.push({ message: `Началась осада: ${BALANCE.siege.cycles} циклов`, tone: 'bad' })
+    // Осада взводится ровно один раз.
+    //
+    // Иммунитет может отбить трон, а игрок — взять его снова. Раньше этот
+    // повторный захват выставлял счётчик заново, и осада начиналась с нуля
+    // бесконечно: партия становилась непроходимой не по сложности, а по
+    // устройству. Счётчик трогаем, только когда осады ещё нет.
+    if (ctx.s.siegeCyclesLeft <= 0) {
+      // Партия не заканчивается низложением Суверена: система переходит в
+      // контрнаступление, и победа засчитывается только тем, кто его переживёт.
+      ctx.s.siegeCyclesLeft = BALANCE.siege.cycles
+      ctx.s.threat = clampThreat(Math.max(ctx.s.threat, 80))
+      ctx.log(
+        `Суверен Иммунис низложен, но система не признала поражения. Осада: продержитесь ${BALANCE.siege.cycles} циклов.`,
+        'bad',
+      )
+      ctx.notices.push({ message: `Началась осада: ${BALANCE.siege.cycles} циклов`, tone: 'bad' })
+    } else {
+      ctx.log('Тронный синус отбит обратно. Осада продолжается.', 'good')
+      ctx.notices.push({ message: 'Трон возвращён', tone: 'good' })
+    }
     ctx.s.phase = 'command'
     return
   }

@@ -138,3 +138,38 @@ test('сортировка развития выстраивает один об
   // Ветка не теряется: она подписана на самой карточке.
   await expect(page.locator('.node__branch').first()).toBeVisible()
 })
+
+test('после завершения цикла игрок возвращается на «Штаб»', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Развитие' }).click()
+  await expect(page.getByRole('tab', { name: 'Развитие' })).toHaveAttribute('aria-selected', 'true')
+
+  await page.getByRole('button', { name: /Завершить цикл/ }).click()
+
+  await expect(page.getByRole('tab', { name: 'Штаб' })).toHaveAttribute('aria-selected', 'true')
+})
+
+test('режимы сортировки дают разный порядок, а не одинаковый', async ({ page }) => {
+  // На первом цикле недоступно вообще ничего, и режимы совпадают честно.
+  // Разница появляется, когда часть покупок уже по карману, — копим ресурсы.
+  for (let i = 0; i < 8; i += 1) {
+    const dialog = page.getByRole('dialog').first()
+    if (await dialog.isVisible()) {
+      await dialog.getByRole('button').first().click()
+      continue
+    }
+    await page.getByRole('button', { name: /Завершить цикл/ }).click()
+  }
+
+  await page.getByRole('tab', { name: 'Развитие' }).click()
+
+  await page.getByRole('radio', { name: /Доступные/ }).click()
+  const available = await page.locator('.node__name').allTextContents()
+
+  await page.getByRole('radio', { name: /Дешевле/ }).click()
+  const cheapest = await page.locator('.node__name').allTextContents()
+
+  expect(available.length).toBeGreaterThan(1)
+  // Регресс: «Доступные» сортировали по цене после проверки доступности и
+  // выдавали почти тот же список, что «Дешевле».
+  expect(available).not.toEqual(cheapest)
+})

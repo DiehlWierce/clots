@@ -47,7 +47,19 @@ interface Sortable {
   requiresAny?: boolean
 }
 
-/** Упорядочивает элементы ветки по выбранному режиму. */
+/**
+ * Упорядочивает элементы по выбранному режиму.
+ *
+ * Режимы обязаны отличаться на глаз, иначе выбор бессмысленный. Раньше
+ * «Доступные» ставили покупаемое вперёд, а внутри сортировали по цене — то
+ * есть выдавали почти тот же порядок, что и «Дешевле», и игрок не видел
+ * разницы. Теперь они отвечают на разные вопросы:
+ *
+ * - «Доступные» — что взять прямо сейчас: сначала то, что по карману, и
+ *   среди этого самое дорогое, то есть самое весомое вложение.
+ * - «Дешевле» — до чего копить недолго: строго по возрастанию цены,
+ *   независимо от того, хватает ли на это сейчас.
+ */
 function sortItems<T extends Sortable>(
   items: T[],
   mode: SortMode,
@@ -55,6 +67,8 @@ function sortItems<T extends Sortable>(
   state: GameState,
 ): T[] {
   if (mode === 'branch') return [...items].sort((a, b) => a.tier - b.tier)
+
+  const weightOf = (item: T): number => costWeight(nextCost(item.costs, levels[item.id] ?? 0))
 
   const buyable = (item: T): boolean => {
     const level = levels[item.id] ?? 0
@@ -64,15 +78,22 @@ function sortItems<T extends Sortable>(
     return cost !== undefined && canAfford(state, cost)
   }
 
+  if (mode === 'available') {
+    return [...items].sort((a, b) => {
+      const byBuyable = Number(buyable(b)) - Number(buyable(a))
+      if (byBuyable !== 0) return byBuyable
+      // Среди доступного вперёд идёт самое дорогое: мелочь игрок и так
+      // возьмёт, а вопрос стоит о самой крупной покупке, которая по карману.
+      // Недоступное внизу упорядочено наоборот — ближайшее по цене выше.
+      const byCost = buyable(a) ? weightOf(b) - weightOf(a) : weightOf(a) - weightOf(b)
+      if (byCost !== 0) return byCost
+      return a.tier - b.tier
+    })
+  }
+
   return [...items].sort((a, b) => {
-    if (mode === 'available') {
-      const diff = Number(buyable(b)) - Number(buyable(a))
-      if (diff !== 0) return diff
-    }
-    const weight =
-      costWeight(nextCost(a.costs, levels[a.id] ?? 0)) -
-      costWeight(nextCost(b.costs, levels[b.id] ?? 0))
-    if (weight !== 0) return weight
+    const byCost = weightOf(a) - weightOf(b)
+    if (byCost !== 0) return byCost
     return a.tier - b.tier
   })
 }
@@ -325,6 +346,16 @@ export function DevelopmentTab({ state, dispatch, tc, t }: Props) {
           </button>
         ))}
       </div>
+
+      {/* Подпись к выбранному режиму: без неё «Доступные» и «Дешевле»
+          отличаются только результатом, который надо сначала заметить. */}
+      <p className="muted" style={{ marginBottom: 'var(--sp-3)' }}>
+        {sort === 'branch'
+          ? t.development.sortHintBranch
+          : sort === 'available'
+            ? t.development.sortHintAvailable
+            : t.development.sortHintCheapest}
+      </p>
 
       {section === 'modules' && (
         <Listing

@@ -16,6 +16,7 @@ import {
   DOCTRINE_BY_ID,
   EVENTS,
   EVENT_BY_ID,
+  MODULES,
   MUTATIONS,
   SECTORS,
   getEnemy,
@@ -786,5 +787,61 @@ describe('эпохи', () => {
       return before - (s.combat?.hp ?? 0)
     }
     expect(setup(['fever'])).toBeGreaterThan(setup([]))
+  })
+})
+
+describe('осада не начинается заново', () => {
+  /** Партия у самого финала: всё захвачено, кроме трона. */
+  function atThrone(siegeLeft: number): GameState {
+    const modules: Record<string, number> = {}
+    for (const def of MODULES) modules[def.id] = def.maxLevel
+    return {
+      ...newGame(2024),
+      modules,
+      xp: 40_000,
+      plasma: 20_000,
+      clots: 10_000,
+      essence: 3_000,
+      integrity: 100_000,
+      controlled: SECTORS.filter(s => s.id !== 'ctx-throne').map(s => s.id),
+      revealed: ['ctx-throne'],
+      regions: ['capillary', 'venous', 'arterial', 'cortex'],
+      siegeCyclesLeft: siegeLeft,
+    }
+  }
+
+  /** Берёт трон, доигрывая бой с Сувереном. */
+  function seizeThrone(state: GameState): GameState {
+    let s = reduce(state, { type: 'map/capture', sectorId: 'ctx-throne' }).state
+    for (let i = 0; i < 400 && s.phase === 'combat'; i += 1) {
+      s = reduce(s, { type: 'combat/act', action: 'strike' }).state
+    }
+    return s
+  }
+
+  it('первый захват трона взводит осаду', () => {
+    const s = seizeThrone(atThrone(0))
+    expect(s.controlled).toContain('ctx-throne')
+    expect(s.siegeCyclesLeft).toBe(BALANCE.siege.cycles)
+  })
+
+  it('повторный захват трона не обнуляет счётчик осады', () => {
+    // Регресс на реальной партии игрока: иммунитет отбивал трон, игрок брал
+    // его снова, и осада начиналась с пятнадцати циклов. Партия становилась
+    // непроходимой не по сложности, а по устройству.
+    const s = seizeThrone(atThrone(4))
+    expect(s.controlled).toContain('ctx-throne')
+    expect(s.siegeCyclesLeft).toBe(4)
+  })
+
+  it('иммунитет не отбирает трон', () => {
+    // Трон — лист графа, поэтому по правилу «слабейшая поддержка» он
+    // выбирался целью в 100% случаев: вся осада уходила на его отвоевание.
+    const state = { ...atThrone(10), controlled: SECTORS.map(s => s.id) }
+    for (let seed = 0; seed < 200; seed += 1) {
+      expect(pickReclaimTarget(state, new Rng({ seed: seed * 7919 + 1, cursor: 0 }))).not.toBe(
+        'ctx-throne',
+      )
+    }
   })
 })
