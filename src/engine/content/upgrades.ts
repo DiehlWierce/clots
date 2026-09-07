@@ -632,7 +632,12 @@ export const DOCTRINES: DoctrineDef[] = [
     tier: 1,
     maxLevel: 3,
     costs: [{ essence: 4 }, { essence: 9, plasma: 120 }, { essence: 16, plasma: 260 }],
-    effects: { masking: 5, suppression: 0.08 },
+    /*
+     * Подавление у пути было избыточным: суммарно оно доходило до 111% при
+     * потолке снижения в 75%, и треть бюджета ветки просто пропадала. Излишек
+     * перенесён в опыт и урон — величины, которые ни во что не упираются.
+     */
+    effects: { masking: 5, suppression: 0.05, xpYield: 0.15 },
   },
   {
     id: 'weaver-2',
@@ -646,7 +651,7 @@ export const DOCTRINES: DoctrineDef[] = [
       { essence: 18, plasma: 360 },
       { essence: 30, plasma: 650 },
     ],
-    effects: { plasmaYield: 0.22, essenceYield: 0.18 },
+    effects: { plasmaYield: 0.22, essenceYield: 0.18, xpYield: 0.15 },
     requires: ['weaver-1'],
   },
   // Развилка Ткача: невидимость против логистики и охвата.
@@ -663,7 +668,8 @@ export const DOCTRINES: DoctrineDef[] = [
       { essence: 34, plasma: 740, clots: 260 },
       { essence: 55, plasma: 1200, clots: 440 },
     ],
-    effects: { suppression: 0.16, masking: 6, maxEnergy: 1 },
+    // Удар из невидимости: путь Ткача бьёт не сильно, а точно.
+    effects: { suppression: 0.07, masking: 6, maxEnergy: 1, attack: 8, pierce: 5 },
     requires: ['weaver-2'],
   },
   {
@@ -679,7 +685,7 @@ export const DOCTRINES: DoctrineDef[] = [
       { essence: 34, plasma: 740, clots: 260 },
       { essence: 55, plasma: 1200, clots: 440 },
     ],
-    effects: { logistics: 3, plasmaYield: 0.15, xpYield: 0.15 },
+    effects: { logistics: 3, plasmaYield: 0.15, xpYield: 0.3, attack: 5 },
     requires: ['weaver-2'],
   },
   {
@@ -694,7 +700,14 @@ export const DOCTRINES: DoctrineDef[] = [
       { essence: 65, plasma: 2100, clots: 700 },
       { essence: 100, plasma: 3300, clots: 1150 },
     ],
-    effects: { masking: 12, suppression: 0.18, plasmaYield: 0.25, essenceYield: 0.25 },
+    effects: {
+      masking: 12,
+      suppression: 0.06,
+      plasmaYield: 0.25,
+      essenceYield: 0.25,
+      attack: 14,
+      pierce: 9,
+    },
     requires: ['weaver-3a', 'weaver-3b'],
     requiresAny: true,
   },
