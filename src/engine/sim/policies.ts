@@ -481,9 +481,15 @@ export function step(state: GameState, policy: Policy): GameState {
   // Берсерк и фермер рейдов этот шаг пропускают: одному угроза безразлична,
   // другому она нужна.
   if (!policy.neverMask && s.threat > policy.expandBelowThreat && s.energy >= 1) {
-    return s.plasma >= BALANCE.masking.actionCost.plasma
-      ? act(s, { type: 'action/mask' })
-      : act(s, { type: 'action/scan' })
+    // Инструменты разные, и путать их нельзя: маскировка замедляет прирост
+    // угрозы, но саму угрозу не снижает — это делает разведка. Пока угроза
+    // не подошла к зоне рейдов, выгоднее вкладываться в маскировку; когда
+    // подошла — сбивать её напрямую. Раньше бот всегда маскировался и
+    // измерял этим собственную ошибку, а не баланс игры.
+    const needsRelief = s.threat >= BALANCE.threat.raidThreshold
+    const canMask = s.masking < BALANCE.masking.max && s.plasma >= BALANCE.masking.actionCost.plasma
+    if (!needsRelief && canMask) return act(s, { type: 'action/mask' })
+    return act(s, { type: 'action/scan' })
   }
 
   // Лечение до порога политики. Когда угроза дошла до зоны рейдов, порог

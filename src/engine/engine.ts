@@ -403,12 +403,19 @@ function doMask(ctx: Ctx): void {
 function doScan(ctx: Ctx): void {
   const cfg = BALANCE.actions.scan
   if (!spendEnergy(ctx, cfg.energy)) return
-  ctx.s.threat -= cfg.threatRelief
+  // Снижение угрозы ограничено бюджетом цикла: иначе поздняя энергия
+  // позволяет сбить угрозу в ноль одним ходом. Разведка при этом остаётся
+  // полезной и после исчерпания бюджета — она открывает карту.
+  const room = Math.max(0, BALANCE.threat.reliefCapPerCycle - ctx.s.reliefUsed)
+  const relief = Math.min(cfg.threatRelief, room)
+  ctx.s.threat -= relief
+  ctx.s.reliefUsed += relief
   const revealed = revealFrontier(ctx)
+  const threatPart = relief > 0 ? `угроза −${relief}` : 'угроза не снижена: предел цикла исчерпан'
   ctx.log(
     revealed > 0
-      ? `Разведка потока: угроза −${cfg.threatRelief}, новых секторов: ${revealed}.`
-      : `Разведка потока: угроза −${cfg.threatRelief}.`,
+      ? `Разведка потока: ${threatPart}, новых секторов: ${revealed}.`
+      : `Разведка потока: ${threatPart}.`,
   )
   unlock(ctx, 'first-blood')
 }
@@ -787,11 +794,16 @@ function winCombat(ctx: Ctx): void {
   if (lowIntegrity) unlock(ctx, 'brink')
 
   if (wasRaid) {
-    ctx.s.threat -= BALANCE.threat.raidRelief
+    // Отражённый рейд снимает угрозу из того же бюджета цикла, что и
+    // разведка: иначе он снова становится обходным путём вокруг предела.
+    const raidRoom = Math.max(0, BALANCE.threat.reliefCapPerCycle - ctx.s.reliefUsed)
+    const raidRelief = Math.min(BALANCE.threat.raidRelief, raidRoom)
+    ctx.s.threat -= raidRelief
+    ctx.s.reliefUsed += raidRelief
     ctx.s.stats.raidsSurvived += 1
     gainXp(ctx, BALANCE.xp.raidWin)
     unlock(ctx, 'first-raid')
-    ctx.log(`Рейд отражён. Угроза −${BALANCE.threat.raidRelief}.`, 'good')
+    ctx.log(`Рейд отражён. Угроза −${raidRelief}.`, 'good')
     ctx.good('Рейд отражён')
     ctx.s.phase = 'command'
     return
@@ -931,6 +943,10 @@ function doEndCycle(ctx: Ctx): void {
   const siege = s.siegeCyclesLeft > 0
   s.threat = clampThreat(s.threat + stats.threatGain * (siege ? BALANCE.siege.threatMultiplier : 1))
 
+  // Бюджет снижения угрозы обнуляется вместе с энергией: это ограничение
+  // на ход, а не на партию.
+  s.reliefUsed = 0
+
   // 5. Энергия восстанавливается полностью — цикл и есть «ход».
   s.energy = stats.maxEnergy
 
@@ -965,6 +981,9 @@ function doEndCycle(ctx: Ctx): void {
       )
       s.combat = createRaidCombat(raider, difficulty, ctx.rng)
       s.phase = 'combat'
+      // Рейд урезает следующий ход: энергия уже начислена выше, и часть её
+      // уходит на отражение. Сам бой при этом ходов не стоит.
+      s.energy = Math.max(0, s.energy - BALANCE.combat.raidEnergyCost)
       ctx.log(`Иммунный рейд: ${raider.name} прорвался к цитадели.`, 'bad')
       ctx.notices.push({ message: `Рейд: ${raider.name}`, tone: 'bad' })
     }

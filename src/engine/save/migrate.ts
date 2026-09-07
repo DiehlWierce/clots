@@ -22,6 +22,7 @@ const MIGRATIONS: Record<number, Migration> = {
     mutationOffer: [],
     stats: { ...(data.stats as object), sectorsLost: 0 },
     pendingEvent: null,
+    reliefUsed: 0,
     lastEventCycle: 0,
     seenEvents: [],
     siegeCyclesLeft: 0,

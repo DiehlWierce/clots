@@ -387,6 +387,11 @@ export interface GameState {
   lastEventCycle: number
   /** Уже случившиеся события: одно и то же не повторяется. */
   seenEvents: string[]
+  /**
+   * Сколько угрозы уже снято в этом цикле. Обнуляется при завершении цикла:
+   * снижать угрозу можно не больше, чем на BALANCE.threat.reliefCapPerCycle.
+   */
+  reliefUsed: number
 
   /** Сколько циклов осталось продержаться в осаде. 0 — осады нет. */
   siegeCyclesLeft: number

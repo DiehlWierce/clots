@@ -156,6 +156,7 @@ export function sanitizeState(input: unknown): GameState | null {
         : null,
     lastEventCycle: int(raw.lastEventCycle, 0, 0),
     seenEvents: idList(raw.seenEvents, new Set(EVENT_BY_ID.keys())),
+    reliefUsed: int(raw.reliefUsed, 0, 0),
 
     siegeCyclesLeft: int(raw.siegeCyclesLeft, 0, 0, 999),
     ngPlus: int(raw.ngPlus, 0, 0, 999),

@@ -845,3 +845,34 @@ describe('осада не начинается заново', () => {
     }
   })
 })
+
+describe('бюджет снижения угрозы', () => {
+  it('разведка не сбивает угрозу ниже предела цикла', () => {
+    // Разведка стоит одну энергию, а к концу партии её почти три десятка:
+    // без предела угроза сбивалась в ноль одним ходом, и вся система
+    // переставала быть ограничением.
+    const s: GameState = { ...newGame(5), threat: 90, energy: 20 }
+    const after = run(
+      s,
+      ...Array.from({ length: 10 }, () => ({ type: 'action/scan' }) as GameAction),
+    )
+    expect(s.threat - after.threat).toBe(BALANCE.threat.reliefCapPerCycle)
+  })
+
+  it('новый цикл возвращает бюджет', () => {
+    let s: GameState = { ...newGame(5), threat: 90, energy: 20 }
+    s = run(s, ...Array.from({ length: 5 }, () => ({ type: 'action/scan' }) as GameAction))
+    expect(s.reliefUsed).toBe(BALANCE.threat.reliefCapPerCycle)
+    s = reduce(s, { type: 'cycle/end' }).state
+    expect(s.reliefUsed).toBe(0)
+  })
+
+  it('рейд берёт снижение угрозы из того же бюджета', () => {
+    // Иначе отражённый рейд снова становится обходным путём вокруг предела:
+    // на замере стиль, живший рейдами, выигрывал 50 забегов из 50.
+    const s: GameState = { ...newGame(5), threat: 90, energy: 20 }
+    const scanned = run(s, { type: 'action/scan' })
+    expect(scanned.reliefUsed).toBeGreaterThan(0)
+    expect(scanned.reliefUsed).toBeLessThanOrEqual(BALANCE.threat.reliefCapPerCycle)
+  })
+})
