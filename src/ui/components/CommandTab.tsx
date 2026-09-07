@@ -1,6 +1,6 @@
 import { BALANCE } from '@/engine/balance'
 import { EPOCH_MODIFIER_BY_ID, epochName } from '@/engine/content'
-import { canAfford } from '@/engine/selectors'
+import { canAfford, ngPlusPressure } from '@/engine/selectors'
 import { raidChance, reclaimChance } from '@/engine/systems/threat'
 import { formatCost } from '../format'
 import type { GameAction } from '@/engine/actions'
@@ -74,8 +74,26 @@ export function CommandTab({ state, stats, dispatch, tc }: Props) {
   const chance = raidChance(state.threat)
   const lossChance = reclaimChance(state.threat)
 
+  // Давление NG+ растёт молча, а игрок обязан понимать, почему стало тяжелее.
+  const pressure = ngPlusPressure(state)
+
   return (
     <>
+      {state.ngPlus > 0 ? (
+        <div className="hint" style={{ borderColor: 'var(--c-warn)' }}>
+          <span aria-hidden="true">♾️</span>
+          <div className="hint__body">
+            <div className="hint__title">
+              Цикл {state.ngPlus + 1}-го порядка · давление ×{pressure.toFixed(2)}
+            </div>
+            <div className="hint__text">
+              Система помнит прошлую империю: гарнизоны тяжелее, а угроза растёт тем быстрее, чем
+              дольше идёт партия. Медлить здесь дороже, чем в первом прохождении.
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {state.siegeCyclesLeft > 0 ? (
         <div className="hint" style={{ borderColor: 'var(--c-bad)' }}>
           <span aria-hidden="true">🛡️</span>
@@ -97,8 +115,11 @@ export function CommandTab({ state, stats, dispatch, tc }: Props) {
               Угроза {state.threat}% — риск рейда {Math.round(chance * 100)}% за цикл
             </div>
             <div className="hint__text">
-              Сбейте угрозу маскировкой или разведкой, прежде чем расширяться. Отражённый рейд
-              снимает {BALANCE.threat.raidRelief}% угрозы.
+              {/* Маскировка угрозу не снижает — она замедляет её прирост.
+                  Совет «сбейте угрозу маскировкой» отправлял игрока делать
+                  то, что не работает. Снижает угрозу только разведка. */}
+              Сбить угрозу можно разведкой — не больше {BALANCE.threat.reliefCapPerCycle}% за цикл.
+              Маскировка угрозу не снижает, она замедляет её прирост.
               {lossChance > 0
                 ? ` Кроме того, иммунитет может отбить окраинный сектор: ${Math.round(lossChance * 100)}% за цикл.`
                 : ''}

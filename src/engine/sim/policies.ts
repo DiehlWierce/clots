@@ -63,6 +63,8 @@ export type PolicyId =
   | 'scout'
   | 'overdriver'
   | 'opportunist'
+  | 'sprinter'
+  | 'hermit'
 
 /** Что стиль вообще покупает. */
 export type BuyScope = 'all' | 'techs' | 'modules'
@@ -518,6 +520,51 @@ export const POLICIES: Record<PolicyId, Policy> = {
     path: 'weaver',
     doctrineFrom: 1,
     expandEvery: 1,
+    refineBias: 0.7,
+    difficultyMargin: -1,
+    buy: 'all',
+    target: 'safest',
+    avoidCombat: false,
+    neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
+  },
+  // ─── Проверка темпа ───────────────────────────────────────────────────────
+
+  // Спринтер: берёт сектор при первой возможности, ничего не откладывая.
+  // Пара к «Отшельнику»: вместе они меряют, сколько стоит время. Замер
+  // показал, что медленный захват — доминирующая стратегия, и эти двое
+  // держат крайние точки шкалы.
+  sprinter: {
+    id: 'sprinter',
+    name: 'Спринтер',
+    expandBelowThreat: 70,
+    assaultAboveHealth: 0.5,
+    healUpTo: 0.7,
+    path: 'reaver',
+    doctrineFrom: 1,
+    expandEvery: 1,
+    refineBias: 0.2,
+    difficultyMargin: 1,
+    buy: 'all',
+    target: 'frontier',
+    avoidCombat: false,
+    neverMask: false,
+    neverHeal: false,
+    overdriveFirst: false,
+  },
+
+  // Отшельник: захватывает раз в двенадцать циклов, всё остальное время
+  // развивается. Крайняя точка «медленно — значит сильно».
+  hermit: {
+    id: 'hermit',
+    name: 'Отшельник',
+    expandBelowThreat: 40,
+    assaultAboveHealth: 0.95,
+    healUpTo: 0.95,
+    path: 'warden',
+    doctrineFrom: 1,
+    expandEvery: 12,
     refineBias: 0.7,
     difficultyMargin: -1,
     buy: 'all',

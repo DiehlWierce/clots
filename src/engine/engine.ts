@@ -27,6 +27,7 @@ import {
   doctrineForkBlocked,
   epochMultiplier,
   nextCost,
+  ngPlusPressure,
   overdriveCost,
   requirementsMet,
   VAULT_ENERGY,
@@ -1015,7 +1016,10 @@ function doEndCycle(ctx: Ctx): void {
       const difficulty = Math.round(
         raidDifficulty(s.threat, stats.level, s.controlled.length) *
           mutationRaidPower(s) *
-          pressure,
+          pressure *
+          // Рейду достаётся половина давления NG+: полное делало второе
+          // прохождение непроходимым.
+          (1 + (ngPlusPressure(s) - 1) * BALANCE.ngPlus.pressureRaidShare),
       )
       s.combat = createRaidCombat(raider, difficulty, ctx.rng)
       s.phase = 'combat'

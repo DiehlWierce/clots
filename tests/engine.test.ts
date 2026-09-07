@@ -7,6 +7,7 @@ import {
   doctrineForkBlocked,
   hopsToHub,
   isAchievementEarned,
+  ngPlusPressure,
   overdriveCost,
   sectorDelivery,
   threatGain,
@@ -994,5 +995,42 @@ describe('лечение и рейды ограничены', () => {
   it('рейд бьёт сильнее гарнизона той же ступени', () => {
     // Пассивная регенерация возвращала больше, чем рейд отнимал.
     expect(BALANCE.combat.raidDamageMultiplier).toBeGreaterThan(1)
+  })
+})
+
+describe('давление NG+', () => {
+  it('в первом прохождении давления нет', () => {
+    // Неспешная игра остаётся правом новичка: зашёл, отыграл десять циклов,
+    // закрыл. Часы включаются только со второго прохождения.
+    for (const cycle of [1, 50, 200, 400]) {
+      expect(ngPlusPressure({ ...newGame(1), cycle }), `цикл ${cycle}`).toBe(1)
+    }
+  })
+
+  it('в NG+ давление растёт с номером цикла', () => {
+    const early = ngPlusPressure({ ...newGame(1), ngPlus: 1, cycle: 1 })
+    const late = ngPlusPressure({ ...newGame(1), ngPlus: 1, cycle: 150 })
+    expect(early).toBeGreaterThan(1)
+    expect(late).toBeGreaterThan(early)
+  })
+
+  it('давление имеет потолок и растёт с номером прохождения', () => {
+    const capped = ngPlusPressure({ ...newGame(1), ngPlus: 1, cycle: 4000 })
+    const cfg = BALANCE.ngPlus
+    expect(capped).toBeCloseTo(1 + cfg.threatPerRun + cfg.pressureCap, 5)
+    expect(ngPlusPressure({ ...newGame(1), ngPlus: 2, cycle: 50 })).toBeGreaterThan(
+      ngPlusPressure({ ...newGame(1), ngPlus: 1, cycle: 50 }),
+    )
+  })
+
+  it('давление ускоряет рост угрозы только в NG+', () => {
+    const base: GameState = {
+      ...newGame(1),
+      cycle: 100,
+      controlled: SECTORS.slice(0, 12).map(s => s.id),
+    }
+    const plain = derive(base).threatGain
+    const harder = derive({ ...base, ngPlus: 1 }).threatGain
+    expect(harder).toBeGreaterThan(plain)
   })
 })

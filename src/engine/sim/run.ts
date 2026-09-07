@@ -39,10 +39,13 @@ export function simulateRun(
   maxCycles = DEFAULT_MAX_CYCLES,
   /** Принудительная мутация: нужна, чтобы мерить их по отдельности. */
   forceMutation?: string,
+  /** Номер прохождения: в NG+ действует растущее давление системы. */
+  ngPlus = 0,
 ): RunResult {
   const policy = POLICIES[policyId]
   let s: GameState = createInitialState(seed)
   if (forceMutation) s = { ...s, mutationOffer: [forceMutation] }
+  if (ngPlus > 0) s = { ...s, ngPlus }
   let guard = 0
   const limit = maxCycles * 40
 

@@ -263,13 +263,29 @@ export function mutationRaidPower(state: GameState): number {
  * ограничено сверху (maskingCap), поэтому прирост никогда не становится
  * нулевым или отрицательным. Расширение всегда остаётся риском.
  */
+/**
+ * Множитель давления системы: растёт с номером цикла и только в NG+.
+ *
+ * В первой партии всегда 1 — неспешная игра остаётся правом новичка.
+ * Со второго прохождения время начинает стоить: чем дольше тянешь, тем
+ * быстрее растёт угроза, и «медленно, зато наверняка» перестаёт работать.
+ */
+export function ngPlusPressure(state: GameState): number {
+  if (state.ngPlus <= 0) return 1
+  const cfg = BALANCE.ngPlus
+  const growth = cfg.pressurePerCycle * state.ngPlus * (state.cycle - 1)
+  return 1 + state.ngPlus * cfg.threatPerRun + Math.min(cfg.pressureCap, growth)
+}
+
 export function threatGain(state: GameState, effects = collectEffects(state)): number {
   const t = BALANCE.threat
   const raw = t.base + territoryHeat(state)
   const fromMasking = Math.min(t.maskingCap, state.masking / t.maskingDivisor)
   const fromUpgrades = Math.min(t.maskingCap, Math.max(0, effects.suppression))
   const reduction = Math.min(t.maskingCap, fromMasking + fromUpgrades)
-  return round2(raw * (1 - reduction) * epochMultiplier(state, 'threatMultiplier'))
+  return round2(
+    raw * (1 - reduction) * epochMultiplier(state, 'threatMultiplier') * ngPlusPressure(state),
+  )
 }
 
 export function derive(state: GameState): DerivedStats {
