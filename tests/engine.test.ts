@@ -7,6 +7,7 @@ import {
   doctrineForkBlocked,
   hopsToHub,
   isAchievementEarned,
+  overdriveCost,
   sectorDelivery,
   threatGain,
 } from '@/engine/selectors'
@@ -893,5 +894,39 @@ describe('бюджет снижения угрозы', () => {
     const scanned = run(s, { type: 'action/scan' })
     expect(scanned.reliefUsed).toBeGreaterThan(0)
     expect(scanned.reliefUsed).toBeLessThanOrEqual(BALANCE.threat.reliefCapPerCycle)
+  })
+})
+
+describe('перегрузка ядра', () => {
+  it('покупается бесконечно, но каждый уровень дороже', () => {
+    // Пустой эндгейм: в разобранной партии игрока на сотом цикле лежали
+    // 16 224 плазмы, которые некуда девать. Перегрузка — сток для излишков.
+    const first = overdriveCost(0)
+    const tenth = overdriveCost(10)
+    expect(tenth.plasma ?? 0).toBeGreaterThan((first.plasma ?? 0) * 5)
+  })
+
+  it('уровень перегрузки усиливает цитадель', () => {
+    const base: GameState = { ...newGame(3), plasma: 200_000, clots: 200_000, essence: 20_000 }
+    const before = derive(base)
+    const after = derive({ ...base, overdrive: 5 })
+    expect(after.maxIntegrity).toBeGreaterThan(before.maxIntegrity)
+    expect(after.attack).toBeGreaterThan(before.attack)
+  })
+
+  it('покупка списывает ресурсы и поднимает уровень', () => {
+    const rich: GameState = { ...newGame(3), plasma: 200_000, clots: 200_000, essence: 20_000 }
+    const after = reduce(rich, { type: 'overdrive/buy' }).state
+    expect(after.overdrive).toBe(1)
+    expect(after.plasma).toBeLessThan(rich.plasma)
+
+    const twice = reduce(after, { type: 'overdrive/buy' }).state
+    expect(twice.overdrive).toBe(2)
+    expect(rich.plasma - after.plasma).toBeLessThan(after.plasma - twice.plasma)
+  })
+
+  it('без ресурсов покупка не проходит', () => {
+    const poor: GameState = { ...newGame(3), plasma: 0, clots: 0, essence: 0 }
+    expect(reduce(poor, { type: 'overdrive/buy' }).state.overdrive).toBe(0)
   })
 })

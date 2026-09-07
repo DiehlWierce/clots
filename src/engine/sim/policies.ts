@@ -14,6 +14,7 @@ import {
   doctrineForkBlocked,
   isSectorReachable,
   nextCost,
+  overdriveCost,
   requirementsMet,
 } from '../selectors'
 import { currentIntent, momentumCost } from '../systems/combat'
@@ -557,6 +558,10 @@ function pickPurchase(s: GameState, policy: Policy): GameAction | null {
       if (cost && canAfford(s, cost)) return { type: 'module/buy', id: def.id }
     }
   }
+  // Перегрузка — последняя в очереди: она бесконечна, и покупать её раньше
+  // обычного дерева значит топить излишки вместо развития.
+  // Проверяется после доктрин, ниже.
+
   // Доктрины покупаются только когда стиль до них дозрел. Накопительные
   // политики держат путь незакрытым: у grinder — до конца партии.
   if (policy.doctrineFrom === null || s.cycle < policy.doctrineFrom) return null
@@ -570,6 +575,11 @@ function pickPurchase(s: GameState, policy: Policy): GameAction | null {
     const cost = nextCost(def.costs, level)
     if (cost && canAfford(s, cost)) return { type: 'doctrine/buy', id: def.id }
   }
+
+  // Излишкам поздней партии нужно назначение: когда покупать больше нечего,
+  // ресурсы уходят в перегрузку, а не копятся мёртвым грузом.
+  if (canAfford(s, overdriveCost(s.overdrive))) return { type: 'overdrive/buy' }
+
   return null
 }
 

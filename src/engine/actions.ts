@@ -25,6 +25,8 @@ export type GameAction =
   | { type: 'module/buy'; id: string }
   | { type: 'doctrine/buy'; id: string }
   | { type: 'tech/buy'; id: string }
+  /** Перегрузка ядра: бесконечный уровень для поздних излишков. */
+  | { type: 'overdrive/buy' }
   // Цикл и служебное
   | { type: 'cycle/end' }
   | { type: 'tutorial/dismiss' }

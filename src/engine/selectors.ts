@@ -96,6 +96,11 @@ export function collectEffects(state: GameState): EffectTotals {
     if (def && level > 0) addScaled(total, def.effects, level)
   }
 
+  // Перегрузка ядра: небольшая, но бесконечная прибавка за поздние излишки.
+  if (state.overdrive > 0) {
+    addScaled(total, BALANCE.overdrive.perLevel, state.overdrive)
+  }
+
   // Бонусы от захваченных секторов.
   for (const sectorId of state.controlled) {
     const sector = getSector(sectorId)
@@ -399,4 +404,20 @@ export function isRegionCleared(state: GameState, region: string): boolean {
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100
+}
+
+/**
+ * Цена следующего уровня перегрузки.
+ *
+ * Растёт геометрически: излишки поздней партии огромны, и линейная цена
+ * закончилась бы мгновенно, вернув ту же пустоту.
+ */
+export function overdriveCost(level: number): ResourceBag {
+  const cfg = BALANCE.overdrive
+  const factor = Math.pow(cfg.costGrowth, level)
+  return {
+    plasma: Math.round(cfg.baseCost.plasma * factor),
+    clots: Math.round(cfg.baseCost.clots * factor),
+    essence: Math.round(cfg.baseCost.essence * factor),
+  }
 }

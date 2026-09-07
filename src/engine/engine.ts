@@ -27,6 +27,7 @@ import {
   doctrineForkBlocked,
   epochMultiplier,
   nextCost,
+  overdriveCost,
   requirementsMet,
   VAULT_ENERGY,
   VAULT_INTEGRITY,
@@ -154,6 +155,9 @@ export function reduce(state: GameState, action: GameAction): ReduceResult {
         break
       case 'tech/buy':
         doBuyTech(ctx, action.id)
+        break
+      case 'overdrive/buy':
+        doOverdrive(ctx)
         break
       case 'cycle/end':
         doEndCycle(ctx)
@@ -898,6 +902,22 @@ function doBuyDoctrine(ctx: Ctx, id: string): void {
   unlock(ctx, 'first-doctrine')
   if (level + 1 >= def.maxLevel) unlock(ctx, 'doctrine-max')
   advanceTutorial(ctx, 5)
+}
+
+/**
+ * Перегрузка ядра.
+ *
+ * Единственная покупка без потолка: к концу партии дерево выкуплено, а
+ * доход продолжает капать, и излишкам некуда деться. Цена растёт с каждым
+ * уровнем, отдача — нет.
+ */
+function doOverdrive(ctx: Ctx): void {
+  const cost = overdriveCost(ctx.s.overdrive)
+  if (!payCost(ctx, cost)) return
+  ctx.s.overdrive += 1
+  gainXp(ctx, BALANCE.overdrive.xp)
+  ctx.log(`Перегрузка ядра: уровень ${ctx.s.overdrive}.`, 'good')
+  ctx.notices.push({ message: `Перегрузка ${ctx.s.overdrive}`, tone: 'good' })
 }
 
 function doBuyTech(ctx: Ctx, id: string): void {

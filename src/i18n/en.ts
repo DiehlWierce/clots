@@ -141,6 +141,11 @@ export const en: Dictionary = {
     available: 'Available to buy',
     nothingAvailable: 'Nothing is affordable yet. Gather resources or end the cycle.',
     pathChosen: 'The path is chosen. The others are closed for good and hidden.',
+    overdriveTitle: 'Core Overdrive',
+    overdriveHint:
+      'Endless reinforcement for late-game surplus. Each level costs more than the last.',
+    overdriveLevel: 'Overdrive level',
+    overdriveBuy: 'Overdrive',
   },
   common: {
     cancel: 'Cancel',

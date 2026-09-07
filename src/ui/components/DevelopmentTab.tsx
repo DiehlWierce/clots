@@ -1,7 +1,15 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { DOCTRINES, DOCTRINE_PATHS, MODULES, TECHS } from '@/engine/content'
-import { canAfford, doctrineForkBlocked, nextCost, requirementsMet } from '@/engine/selectors'
+import {
+  canAfford,
+  doctrineForkBlocked,
+  derive,
+  nextCost,
+  overdriveCost,
+  requirementsMet,
+} from '@/engine/selectors'
+import { BALANCE } from '@/engine/balance'
 import { usePersistentState } from '../hooks/usePersistentState'
 import { haptics } from '@/telegram'
 import { formatCost, formatEffects } from '../format'
@@ -272,7 +280,68 @@ function Listing<T extends Sortable>({
   )
 }
 
+/**
+ * Перегрузка ядра — единственная покупка без потолка.
+ *
+ * Показывается всегда, но цена рассчитана на позднюю партию: к тому моменту,
+ * когда дерево выкуплено, излишкам нужно назначение, иначе доход перестаёт
+ * что-либо значить.
+ */
+function OverdriveCard({
+  state,
+  dispatch,
+  t,
+}: {
+  state: GameState
+  dispatch: (action: GameAction) => void
+  t: Dictionary
+}) {
+  const cost = overdriveCost(state.overdrive)
+  const affordable = canAfford(state, cost)
+  const perLevel = BALANCE.overdrive.perLevel
+
+  return (
+    <div className="node node--owned" style={{ marginBottom: 'var(--sp-4)' }}>
+      <div className="node__head">
+        <div>
+          <div className="node__name">{t.development.overdriveTitle}</div>
+          <div className="node__desc">{t.development.overdriveHint}</div>
+        </div>
+        <span className="node__level">
+          <span className="pips" aria-label={`${t.development.overdriveLevel}: ${state.overdrive}`}>
+            ×{state.overdrive}
+          </span>
+        </span>
+      </div>
+
+      <div className="effects">
+        {formatEffects(perLevel, t.effects, 1).map(text => (
+          <span key={text} className="tag tag--good">
+            {text}
+          </span>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        className={`btn${affordable ? ' btn--primary' : ''} btn--block`}
+        disabled={!affordable}
+        onClick={() => {
+          haptics.tap()
+          dispatch({ type: 'overdrive/buy' })
+        }}
+      >
+        {t.development.overdriveBuy} · {formatCost(cost)}
+      </button>
+    </div>
+  )
+}
+
+/** Уровень цитадели, с которого показывается перегрузка ядра. */
+const OVERDRIVE_FROM_LEVEL = 6
+
 export function DevelopmentTab({ state, dispatch, tc, t }: Props) {
+  const derived = derive(state)
   const [section, setSection] = useState<Section>('modules')
   // Выбор пути и развилки необратим до конца партии, поэтому такие покупки
   // проходят через подтверждение, а не совершаются одним нажатием.
@@ -356,6 +425,12 @@ export function DevelopmentTab({ state, dispatch, tc, t }: Props) {
             ? t.development.sortHintAvailable
             : t.development.sortHintCheapest}
       </p>
+
+      {/* Перегрузка — поздняя механика. До середины партии она заняла бы
+          лучшее место в списке, будучи заведомо недоступной. */}
+      {section === 'modules' && (derived.level >= OVERDRIVE_FROM_LEVEL || state.overdrive > 0) && (
+        <OverdriveCard state={state} dispatch={dispatch} t={t} />
+      )}
 
       {section === 'modules' && (
         <Listing
