@@ -22,7 +22,12 @@ import {
   SECTORS,
   getEnemy,
 } from '@/engine/content'
-import { pickReclaimTarget, raidChance, reclaimChance } from '@/engine/systems/threat'
+import {
+  pickReclaimTarget,
+  raidChance,
+  raidDifficulty,
+  reclaimChance,
+} from '@/engine/systems/threat'
 import { Rng } from '@/engine/rng'
 import type { GameAction } from '@/engine/actions'
 import type { GameState } from '@/engine/types'
@@ -940,5 +945,54 @@ describe('перегрузка ядра', () => {
   it('без ресурсов покупка не проходит', () => {
     const poor: GameState = { ...deepGame(), plasma: 0, clots: 0, essence: 0 }
     expect(reduce(poor, { type: 'overdrive/buy' }).state.overdrive).toBe(0)
+  })
+})
+
+describe('лечение и рейды ограничены', () => {
+  it('за цикл ядро восстанавливается не больше доли максимума', () => {
+    // Лечение стоит 2 энергии, а к концу партии её почти три десятка: ядро
+    // чинилось до полного каждый ход, и урон переставал что-либо значить.
+    const s: GameState = {
+      ...newGame(9),
+      xp: 40_000,
+      plasma: 100_000,
+      energy: 30,
+      integrity: 1,
+    }
+    const stats = derive(s)
+    const after = run(
+      s,
+      ...Array.from({ length: 12 }, () => ({ type: 'action/mend' }) as GameAction),
+    )
+    const budget = Math.max(
+      BALANCE.actions.mend.heal,
+      Math.round(stats.maxIntegrity * BALANCE.actions.mend.cyclePerCycle),
+    )
+    expect(after.integrity - s.integrity).toBeLessThanOrEqual(budget)
+    expect(after.healedThisCycle).toBeGreaterThan(0)
+  })
+
+  it('новый цикл возвращает бюджет лечения', () => {
+    let s: GameState = { ...newGame(9), xp: 40_000, plasma: 100_000, energy: 30, integrity: 1 }
+    s = run(s, { type: 'action/mend' })
+    expect(s.healedThisCycle).toBeGreaterThan(0)
+    s = reduce(s, { type: 'cycle/end' }).state
+    expect(s.healedThisCycle).toBe(0)
+  })
+
+  it('рейд растёт вместе с игроком, а не упирается в потолок', () => {
+    // Было min(угроза/10, уровень) — не выше десяти при сложности секторов
+    // до семнадцати: рейд физически не мог стать опасным.
+    const weak = raidDifficulty(100, 4, 4)
+    const strong = raidDifficulty(100, 12, 36)
+    expect(strong).toBeGreaterThan(weak)
+    expect(strong).toBeGreaterThan(12)
+    // У порога рейдов он заметно легче, чем на пределе угрозы.
+    expect(raidDifficulty(60, 12, 36)).toBeLessThan(strong)
+  })
+
+  it('рейд бьёт сильнее гарнизона той же ступени', () => {
+    // Пассивная регенерация возвращала больше, чем рейд отнимал.
+    expect(BALANCE.combat.raidDamageMultiplier).toBeGreaterThan(1)
   })
 })

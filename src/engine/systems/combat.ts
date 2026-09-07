@@ -29,7 +29,11 @@ function buildCombat(
 ): CombatState {
   const c = BALANCE.combat
   const hp = Math.round(enemy.hp + difficulty * c.hpPerDifficulty)
-  const attack = Math.round((enemy.attack + difficulty * c.attackPerDifficulty) * 10) / 10
+  // Рейд бьёт по ядру напрямую, поэтому его удар тяжелее гарнизонного:
+  // без этого пассивная регенерация возвращала больше, чем рейд отнимал.
+  const raidPower = forced ? c.raidDamageMultiplier : 1
+  const attack =
+    Math.round((enemy.attack + difficulty * c.attackPerDifficulty) * raidPower * 10) / 10
   return {
     sectorId,
     enemyId: enemy.id,

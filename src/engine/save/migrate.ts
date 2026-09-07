@@ -24,6 +24,7 @@ const MIGRATIONS: Record<number, Migration> = {
     pendingEvent: null,
     reliefUsed: 0,
     eventCycles: {},
+    healedThisCycle: 0,
     overdrive: 0,
     lastEventCycle: 0,
     seenEvents: [],

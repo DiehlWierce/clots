@@ -38,14 +38,20 @@ export function pickRaider(threat: number, regionsUnlocked: number, rng: Rng): E
 }
 
 /**
- * Сложность рейда: растёт с угрозой, но не отрывается от силы цитадели —
- * рейд должен быть наказанием за беспечность, а не приговором.
+ * Сложность рейда: доля от силы империи, заданная текущей угрозой.
+ *
+ * Было `min(угроза/10, уровень)` — то есть не выше десяти при сложности
+ * секторов до семнадцати. Рейд физически не мог стать опасным, и стиль,
+ * который вовсе не сбивал угрозу, выигрывал 50 забегов из 50 без единой
+ * гибели. Теперь рейд растёт вместе с игроком — и по уровню, и по размеру
+ * империи: на пределе угрозы он тяжелее того, что игрок берёт по своему
+ * выбору, а у порога рейдов заметно легче.
  */
-export function raidDifficulty(threat: number, level: number): number {
-  const fromThreat = Math.round(threat / 10)
-  // Потолок — уровень цитадели: рейд навязан, поэтому он обязан быть слабее
-  // гарнизона той же ступени, который игрок атакует по своему выбору.
-  return Math.max(1, Math.min(fromThreat, level))
+export function raidDifficulty(threat: number, level: number, sectors: number): number {
+  const t = BALANCE.threat
+  const share = Math.max(0, Math.min(1, threat / t.max))
+  const power = level + t.raidLevelMargin + sectors / t.raidSectorsPerStep
+  return Math.max(1, Math.round(share * power))
 }
 
 /** Шанс потерять сектор за цикл. Работает выше собственного порога. */

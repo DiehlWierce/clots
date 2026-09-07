@@ -15,7 +15,7 @@ export const MODULES: ModuleDef[] = [
     tier: 1,
     maxLevel: 3,
     costs: [{ plasma: 45 }, { plasma: 90, clots: 12 }, { plasma: 180, clots: 30 }],
-    effects: { plasmaYield: 0.14 },
+    effects: { plasmaYield: 0.049 },
   },
   {
     id: 'osmotic-web',
@@ -29,7 +29,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 260, clots: 45 },
       { plasma: 460, clots: 80 },
     ],
-    effects: { plasmaYield: 0.16, xpYield: 0.05 },
+    effects: { plasmaYield: 0.056, xpYield: 0.017 },
     requires: ['pulse-harvester'],
   },
   {
@@ -44,7 +44,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 520, clots: 110, essence: 6 },
       { plasma: 880, clots: 190, essence: 10 },
     ],
-    effects: { clotYield: 0.2, plasmaYield: 0.08 },
+    effects: { clotYield: 0.07, plasmaYield: 0.028 },
     requires: ['osmotic-web'],
   },
   {
@@ -59,7 +59,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 1050, clots: 260, essence: 18 },
       { plasma: 1700, clots: 420, essence: 30 },
     ],
-    effects: { plasmaYield: 0.18, clotYield: 0.12, essenceYield: 0.1 },
+    effects: { plasmaYield: 0.063, clotYield: 0.042, essenceYield: 0.035 },
     requires: ['blood-matrix'],
   },
   {
@@ -74,7 +74,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 1500, clots: 430, essence: 34 },
       { plasma: 2400, clots: 700, essence: 55 },
     ],
-    effects: { clotYield: 0.25, essenceYield: 0.15, attack: 3 },
+    effects: { clotYield: 0.087, essenceYield: 0.052, attack: 3 },
     requires: ['sanguine-pylon'],
   },
   {
@@ -89,7 +89,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 2600, clots: 860, essence: 72 },
       { plasma: 4200, clots: 1400, essence: 115 },
     ],
-    effects: { plasmaYield: 0.3, clotYield: 0.3, essenceYield: 0.3, xpYield: 0.2 },
+    effects: { plasmaYield: 0.105, clotYield: 0.105, essenceYield: 0.105, xpYield: 0.07 },
     requires: ['crimson-forge'],
   },
 
@@ -347,7 +347,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 460, clots: 110, essence: 6 },
       { plasma: 800, clots: 190, essence: 11 },
     ],
-    effects: { logistics: 1, plasmaYield: 0.08 },
+    effects: { logistics: 1, plasmaYield: 0.028 },
     requires: ['flow-relay'],
   },
   {
@@ -362,7 +362,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 1050, clots: 260, essence: 16 },
       { plasma: 1700, clots: 430, essence: 26 },
     ],
-    effects: { logistics: 2, clotYield: 0.1 },
+    effects: { logistics: 2, clotYield: 0.035 },
     requires: ['pressure-column'],
   },
   {
@@ -376,7 +376,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 1500, clots: 380, essence: 24 },
       { plasma: 2600, clots: 660, essence: 40 },
     ],
-    effects: { logistics: 3, plasmaYield: 0.12, essenceYield: 0.12 },
+    effects: { logistics: 3, plasmaYield: 0.042, essenceYield: 0.042 },
     requires: ['vascular-grid'],
   },
 
@@ -406,7 +406,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 560, clots: 130, essence: 8 },
       { plasma: 950, clots: 220, essence: 14 },
     ],
-    effects: { xpYield: 0.12, masking: 1 },
+    effects: { xpYield: 0.042, masking: 1 },
     requires: ['energy-loop'],
   },
   {
@@ -434,7 +434,7 @@ export const MODULES: ModuleDef[] = [
       { plasma: 1600, clots: 400, essence: 30 },
       { plasma: 2800, clots: 720, essence: 52 },
     ],
-    effects: { maxEnergy: 1, regen: 8, xpYield: 0.15 },
+    effects: { maxEnergy: 1, regen: 8, xpYield: 0.052 },
     requires: ['surge-capacitor'],
   },
 ]
@@ -724,7 +724,7 @@ export const TECHS: TechDef[] = [
     tier: 1,
     maxLevel: 3,
     costs: [{ plasma: 55 }, { plasma: 120 }, { plasma: 250 }],
-    effects: { plasmaYield: 0.1 },
+    effects: { plasmaYield: 0.16 },
   },
   {
     id: 'plasma-lattice',
@@ -738,7 +738,7 @@ export const TECHS: TechDef[] = [
       { plasma: 380, clots: 60 },
       { plasma: 680, clots: 110 },
     ],
-    effects: { plasmaYield: 0.14 },
+    effects: { plasmaYield: 0.224 },
     requires: ['flux-cores'],
   },
   {
@@ -753,7 +753,7 @@ export const TECHS: TechDef[] = [
       { plasma: 1050, clots: 220, essence: 11 },
       { plasma: 1700, clots: 360, essence: 18 },
     ],
-    effects: { plasmaYield: 0.2 },
+    effects: { plasmaYield: 0.32 },
     requires: ['plasma-lattice'],
   },
   {
@@ -768,7 +768,7 @@ export const TECHS: TechDef[] = [
       { plasma: 2300, clots: 500, essence: 26 },
       { plasma: 3600, clots: 800, essence: 42 },
     ],
-    effects: { plasmaYield: 0.26, xpYield: 0.1 },
+    effects: { plasmaYield: 0.416, xpYield: 0.16 },
     requires: ['hyper-osmosis'],
   },
   {
@@ -782,7 +782,7 @@ export const TECHS: TechDef[] = [
       { plasma: 3000, clots: 700, essence: 40 },
       { plasma: 5000, clots: 1200, essence: 68 },
     ],
-    effects: { plasmaYield: 0.35 },
+    effects: { plasmaYield: 0.56 },
     requires: ['tidal-conduits'],
   },
 
@@ -799,7 +799,7 @@ export const TECHS: TechDef[] = [
       { plasma: 150, clots: 30 },
       { plasma: 300, clots: 65 },
     ],
-    effects: { clotYield: 0.12 },
+    effects: { clotYield: 0.192 },
   },
   {
     id: 'clot-cascade',
@@ -813,7 +813,7 @@ export const TECHS: TechDef[] = [
       { plasma: 440, clots: 95 },
       { plasma: 780, clots: 170 },
     ],
-    effects: { clotYield: 0.16 },
+    effects: { clotYield: 0.256 },
     requires: ['granulation'],
   },
   {
@@ -828,7 +828,7 @@ export const TECHS: TechDef[] = [
       { plasma: 1100, clots: 280, essence: 11 },
       { plasma: 1800, clots: 460, essence: 18 },
     ],
-    effects: { clotYield: 0.2, attack: 3 },
+    effects: { clotYield: 0.32, attack: 3 },
     requires: ['clot-cascade'],
   },
   {
@@ -843,7 +843,7 @@ export const TECHS: TechDef[] = [
       { plasma: 2400, clots: 620, essence: 26 },
       { plasma: 3800, clots: 1000, essence: 42 },
     ],
-    effects: { clotYield: 0.26, defense: 4 },
+    effects: { clotYield: 0.416, defense: 4 },
     requires: ['harmonic-forge'],
   },
   {
@@ -857,7 +857,7 @@ export const TECHS: TechDef[] = [
       { plasma: 3200, clots: 900, essence: 40 },
       { plasma: 5200, clots: 1500, essence: 68 },
     ],
-    effects: { clotYield: 0.35, attack: 6 },
+    effects: { clotYield: 0.56, attack: 6 },
     requires: ['iron-weave'],
   },
 
@@ -874,7 +874,7 @@ export const TECHS: TechDef[] = [
       { plasma: 260, clots: 65 },
       { plasma: 520, clots: 130 },
     ],
-    effects: { essenceYield: 0.14 },
+    effects: { essenceYield: 0.224 },
   },
   {
     id: 'ether-siphon',
@@ -888,7 +888,7 @@ export const TECHS: TechDef[] = [
       { plasma: 600, clots: 150, essence: 6 },
       { plasma: 1000, clots: 260, essence: 10 },
     ],
-    effects: { essenceYield: 0.18, suppression: 0.05 },
+    effects: { essenceYield: 0.288, suppression: 0.05 },
     requires: ['essence-distill'],
   },
   {
@@ -903,7 +903,7 @@ export const TECHS: TechDef[] = [
       { plasma: 1300, clots: 330, essence: 17 },
       { plasma: 2100, clots: 540, essence: 28 },
     ],
-    effects: { essenceYield: 0.2, suppression: 0.09, masking: 3 },
+    effects: { essenceYield: 0.32, suppression: 0.09, masking: 3 },
     requires: ['ether-siphon'],
   },
   {
@@ -918,7 +918,7 @@ export const TECHS: TechDef[] = [
       { plasma: 2700, clots: 720, essence: 36 },
       { plasma: 4200, clots: 1150, essence: 58 },
     ],
-    effects: { essenceYield: 0.28, xpYield: 0.12 },
+    effects: { essenceYield: 0.448, xpYield: 0.192 },
     requires: ['null-resonance'],
   },
   {
@@ -932,7 +932,7 @@ export const TECHS: TechDef[] = [
       { plasma: 3600, clots: 1000, essence: 55 },
       { plasma: 5800, clots: 1700, essence: 90 },
     ],
-    effects: { essenceYield: 0.4, suppression: 0.1 },
+    effects: { essenceYield: 0.64, suppression: 0.1 },
     requires: ['quintessence'],
   },
 ]

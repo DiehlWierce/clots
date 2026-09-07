@@ -65,6 +65,7 @@ export function createInitialState(seed: number): GameState {
     seenEvents: [],
     reliefUsed: 0,
     eventCycles: {},
+    healedThisCycle: 0,
     overdrive: 0,
 
     siegeCyclesLeft: 0,

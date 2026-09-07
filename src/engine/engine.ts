@@ -431,13 +431,24 @@ function doMend(ctx: Ctx): void {
     ctx.warn('Целостность уже полная.')
     return
   }
+  // Бюджет цикла: за один ход ядро восстанавливается не больше чем на долю
+  // максимума. Иначе поздней энергии хватает, чтобы чинить его до полного
+  // каждый ход, и урон перестаёт что-либо значить.
+  const budget = Math.max(cfg.heal, Math.round(stats.maxIntegrity * cfg.cyclePerCycle))
+  const room = budget - ctx.s.healedThisCycle
+  if (room <= 0) {
+    ctx.warn('Ядро больше не примет восстановление в этом цикле.')
+    return
+  }
   if (!spendEnergy(ctx, cfg.energy)) return
   if (!payCost(ctx, cfg.cost)) {
     ctx.s.energy += cfg.energy
     return
   }
-  const healed = Math.max(cfg.heal, Math.round(stats.maxIntegrity * cfg.healShare))
+  const perAction = Math.max(cfg.heal, Math.round(stats.maxIntegrity * cfg.healShare))
+  const healed = Math.min(perAction, room, stats.maxIntegrity - ctx.s.integrity)
   ctx.s.integrity += healed
+  ctx.s.healedThisCycle += healed
   ctx.log(`Ядро восстановлено: +${healed} целостности.`, 'good')
   unlock(ctx, 'first-blood')
 }
@@ -967,6 +978,7 @@ function doEndCycle(ctx: Ctx): void {
   // Бюджет снижения угрозы обнуляется вместе с энергией: это ограничение
   // на ход, а не на партию.
   s.reliefUsed = 0
+  s.healedThisCycle = 0
 
   // 5. Энергия восстанавливается полностью — цикл и есть «ход».
   s.energy = stats.maxEnergy
@@ -985,6 +997,9 @@ function doEndCycle(ctx: Ctx): void {
       s.controlled = s.controlled.filter(id => id !== lost)
       // Сектор возвращается в разведанные: его можно отбить обратно.
       if (!s.revealed.includes(lost)) s.revealed.push(lost)
+      // Потеря сектора снимает угрозу мимо бюджета цикла: это не выбор
+      // игрока, а последствие, и оно должно стабилизировать империю, а не
+      // добавлять к штрафу ещё и невозможность отдышаться.
       s.threat = clampThreat(s.threat - BALANCE.threat.reclaimRelief)
       s.stats.sectorsLost += 1
       ctx.log(`Иммунитет отбил сектор «${sector?.name ?? lost}». Доход упал.`, 'bad')
@@ -998,7 +1013,9 @@ function doEndCycle(ctx: Ctx): void {
     const raider = pickRaider(s.threat, s.regions.length, ctx.rng)
     if (raider) {
       const difficulty = Math.round(
-        raidDifficulty(s.threat, stats.level) * mutationRaidPower(s) * pressure,
+        raidDifficulty(s.threat, stats.level, s.controlled.length) *
+          mutationRaidPower(s) *
+          pressure,
       )
       s.combat = createRaidCombat(raider, difficulty, ctx.rng)
       s.phase = 'combat'
