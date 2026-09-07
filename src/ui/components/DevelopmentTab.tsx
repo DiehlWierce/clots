@@ -337,9 +337,6 @@ function OverdriveCard({
   )
 }
 
-/** Уровень цитадели, с которого показывается перегрузка ядра. */
-const OVERDRIVE_FROM_LEVEL = 6
-
 export function DevelopmentTab({ state, dispatch, tc, t }: Props) {
   const derived = derive(state)
   const [section, setSection] = useState<Section>('modules')
@@ -428,9 +425,10 @@ export function DevelopmentTab({ state, dispatch, tc, t }: Props) {
 
       {/* Перегрузка — поздняя механика. До середины партии она заняла бы
           лучшее место в списке, будучи заведомо недоступной. */}
-      {section === 'modules' && (derived.level >= OVERDRIVE_FROM_LEVEL || state.overdrive > 0) && (
-        <OverdriveCard state={state} dispatch={dispatch} t={t} />
-      )}
+      {section === 'modules' &&
+        (derived.level >= BALANCE.overdrive.minLevel || state.overdrive > 0) && (
+          <OverdriveCard state={state} dispatch={dispatch} t={t} />
+        )}
 
       {section === 'modules' && (
         <Listing

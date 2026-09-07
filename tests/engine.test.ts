@@ -898,6 +898,9 @@ describe('бюджет снижения угрозы', () => {
 })
 
 describe('перегрузка ядра', () => {
+  /** Партия, дошедшая до уровня, с которого перегрузка открыта. */
+  const deepGame = (): GameState => ({ ...newGame(3), xp: 40_000 })
+
   it('покупается бесконечно, но каждый уровень дороже', () => {
     // Пустой эндгейм: в разобранной партии игрока на сотом цикле лежали
     // 16 224 плазмы, которые некуда девать. Перегрузка — сток для излишков.
@@ -907,15 +910,24 @@ describe('перегрузка ядра', () => {
   })
 
   it('уровень перегрузки усиливает цитадель', () => {
-    const base: GameState = { ...newGame(3), plasma: 200_000, clots: 200_000, essence: 20_000 }
+    const base: GameState = { ...deepGame(), plasma: 200_000, clots: 200_000, essence: 20_000 }
     const before = derive(base)
     const after = derive({ ...base, overdrive: 5 })
     expect(after.maxIntegrity).toBeGreaterThan(before.maxIntegrity)
     expect(after.attack).toBeGreaterThan(before.attack)
   })
 
+  it('до нужного уровня цитадели перегрузка недоступна', () => {
+    // Правило жило только в интерфейсе, а движок пускал покупку с первого
+    // цикла: стиль, топивший излишки в перегрузку вместо дерева, обгонял
+    // обычные. Источник правды — движок.
+    const early: GameState = { ...newGame(3), plasma: 200_000, clots: 200_000, essence: 20_000 }
+    expect(derive(early).level).toBeLessThan(BALANCE.overdrive.minLevel)
+    expect(reduce(early, { type: 'overdrive/buy' }).state.overdrive).toBe(0)
+  })
+
   it('покупка списывает ресурсы и поднимает уровень', () => {
-    const rich: GameState = { ...newGame(3), plasma: 200_000, clots: 200_000, essence: 20_000 }
+    const rich: GameState = { ...deepGame(), plasma: 200_000, clots: 200_000, essence: 20_000 }
     const after = reduce(rich, { type: 'overdrive/buy' }).state
     expect(after.overdrive).toBe(1)
     expect(after.plasma).toBeLessThan(rich.plasma)
@@ -926,7 +938,7 @@ describe('перегрузка ядра', () => {
   })
 
   it('без ресурсов покупка не проходит', () => {
-    const poor: GameState = { ...newGame(3), plasma: 0, clots: 0, essence: 0 }
+    const poor: GameState = { ...deepGame(), plasma: 0, clots: 0, essence: 0 }
     expect(reduce(poor, { type: 'overdrive/buy' }).state.overdrive).toBe(0)
   })
 })
