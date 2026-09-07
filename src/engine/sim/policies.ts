@@ -127,10 +127,19 @@ export interface Policy {
    */
   avoidCombat: boolean
   /**
-   * Не тратить ходы на маскировку вовсе.
+   * Не заниматься угрозой вообще: ни разведкой, ни маскировкой.
    *
    * Отдельный рычаг, а не «высокий expandBelowThreat»: фермеру рейдов
    * угроза нужна, он живёт с неё, и путать это с безрассудством нельзя.
+   */
+  ignoresThreat: boolean
+  /**
+   * Не пользоваться маскировкой, но угрозу сбивать разведкой.
+   *
+   * Раньше это был один флаг с ignoresThreat, и «Разведчик» из-за него
+   * не разведывал вовсе: за партию девять раз и гибель на 33-м цикле.
+   * Стиль обязан делать то, что заявлено в его названии, иначе он меряет
+   * не игру, а ошибку в своём описании.
    */
   neverMask: boolean
   /**
@@ -167,6 +176,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -185,6 +195,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -203,6 +214,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -224,6 +236,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -245,6 +258,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -266,6 +280,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -289,7 +304,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'order',
     avoidCombat: false,
-    neverMask: true,
+    ignoresThreat: true,
+    neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
   },
@@ -310,6 +326,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'safest',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -331,7 +348,8 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'safest',
     avoidCombat: false,
-    neverMask: true,
+    ignoresThreat: true,
+    neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
   },
@@ -352,6 +370,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'safest',
     avoidCombat: true,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -374,6 +393,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'frontier',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -397,6 +417,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'techs',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -416,6 +437,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'modules',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -439,6 +461,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -461,6 +484,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: true,
     overdriveFirst: false,
@@ -482,6 +506,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: true,
     neverHeal: false,
     overdriveFirst: false,
@@ -503,6 +528,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'order',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: true,
@@ -525,6 +551,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'safest',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -549,6 +576,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'frontier',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -570,6 +598,7 @@ export const POLICIES: Record<PolicyId, Policy> = {
     buy: 'all',
     target: 'safest',
     avoidCombat: false,
+    ignoresThreat: false,
     neverMask: false,
     neverHeal: false,
     overdriveFirst: false,
@@ -686,7 +715,7 @@ export function step(state: GameState, policy: Policy): GameState {
   // нечем: захват поднимет её ещё выше. Раньше эту роль играла сама ветка
   // ниже, потому что она всегда возвращала ход; теперь она умеет ничего не
   // делать, и запрет на расширение приходится держать отдельно.
-  const overThreat = !policy.neverMask && s.threat > policy.expandBelowThreat
+  const overThreat = !policy.ignoresThreat && s.threat > policy.expandBelowThreat
 
   if (overThreat && s.energy >= 1) {
     // Инструменты разные, и путать их нельзя: маскировка замедляет прирост
@@ -700,7 +729,10 @@ export function step(state: GameState, policy: Policy): GameState {
     // проверок бот тратил впустую почти половину ходов и мерил этим
     // собственную бестолковость, а не баланс игры.
     const reliefLeft = s.reliefUsed < BALANCE.threat.reliefCapPerCycle
-    const canMask = s.masking < BALANCE.masking.max && s.plasma >= BALANCE.masking.actionCost.plasma
+    const canMask =
+      !policy.neverMask &&
+      s.masking < BALANCE.masking.max &&
+      s.plasma >= BALANCE.masking.actionCost.plasma
     const needsRelief = s.threat >= BALANCE.threat.raidThreshold
     if (needsRelief && reliefLeft) return act(s, { type: 'action/scan' })
     if (canMask) return act(s, { type: 'action/mask' })
