@@ -3,7 +3,7 @@ import { reduce } from '@/engine/engine'
 import { createInitialState } from '@/engine/state'
 import { derive, isAchievementEarned, threatGain } from '@/engine/selectors'
 import { BALANCE } from '@/engine/balance'
-import { MUTATIONS, SECTORS } from '@/engine/content'
+import { EVENTS, EVENT_BY_ID, MUTATIONS, SECTORS, getEnemy } from '@/engine/content'
 import { pickReclaimTarget, raidChance, reclaimChance } from '@/engine/systems/threat'
 import { Rng } from '@/engine/rng'
 import type { GameAction } from '@/engine/actions'
@@ -391,5 +391,117 @@ describe('потеря секторов', () => {
     expect(s.stats.sectorsLost).toBeGreaterThan(0)
     // Отбитый сектор снова доступен для захвата.
     expect(s.revealed.length).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * События — короткие развилки между циклами. Проверяем, что они выпадают,
+ * не повторяются, соблюдают промежуток и честно применяют последствия.
+ */
+describe('события', () => {
+  /** Прокручивает циклы, доигрывая бои, пока не выпадет событие. */
+  function untilEvent(seed: number, limit = 200): GameState {
+    let s = newGame(seed)
+    for (let i = 0; i < limit && s.phase !== 'event'; i += 1) {
+      if (s.phase === 'combat') {
+        s = reduce(s, { type: 'combat/withdraw' }).state
+        continue
+      }
+      if (s.phase !== 'command') break
+      s = reduce(s, { type: 'cycle/end' }).state
+    }
+    return s
+  }
+
+  it('событие выпадает и блокирует остальные действия', () => {
+    const s = untilEvent(11)
+    expect(s.phase).toBe('event')
+    expect(s.pendingEvent).not.toBeNull()
+
+    const { state: after, notices } = reduce(s, { type: 'action/harvest' })
+    expect(after.plasma).toBe(s.plasma)
+    expect(notices.some(n => n.message.includes('событие'))).toBe(true)
+  })
+
+  it('выбор варианта применяет последствия и возвращает к игре', () => {
+    let s = untilEvent(11)
+    const event = EVENT_BY_ID.get(s.pendingEvent ?? '')
+    expect(event).toBeDefined()
+    if (!event) return
+    const option = event.options[0]
+    if (!option) return
+
+    const before = { plasma: s.plasma, threat: s.threat }
+    s = reduce(s, { type: 'event/choose', optionId: option.id }).state
+    expect(['command', 'combat']).toContain(s.phase)
+    expect(s.pendingEvent).toBeNull()
+    expect(s.seenEvents).toContain(event.id)
+
+    if (option.resources?.plasma) {
+      expect(s.plasma).not.toBe(before.plasma)
+    }
+    if (option.threat) {
+      expect(s.threat).not.toBe(before.threat)
+    }
+  })
+
+  it('одно и то же событие не повторяется', () => {
+    let s = newGame(11)
+    const seen: string[] = []
+    for (let i = 0; i < 400; i += 1) {
+      if (s.phase === 'event' && s.pendingEvent) {
+        seen.push(s.pendingEvent)
+        const event = EVENT_BY_ID.get(s.pendingEvent)
+        const option = event?.options.find(o => !o.requires && !o.fight) ?? event?.options[0]
+        if (!option) break
+        s = reduce(s, { type: 'event/choose', optionId: option.id }).state
+        continue
+      }
+      if (s.phase === 'combat') {
+        s = reduce(s, { type: 'combat/withdraw' }).state
+        continue
+      }
+      if (s.phase !== 'command') break
+      s = reduce(s, { type: 'cycle/end' }).state
+    }
+    expect(seen.length).toBeGreaterThan(1)
+    expect(new Set(seen).size).toBe(seen.length)
+  })
+
+  it('события не идут подряд', () => {
+    const s = untilEvent(11)
+    expect(s.cycle - s.lastEventCycle).toBeLessThanOrEqual(1)
+    // Следующее возможно не раньше, чем через cooldown циклов.
+    expect(BALANCE.events.cooldown).toBeGreaterThan(1)
+  })
+
+  it('недоступный по ресурсам вариант не проходит', () => {
+    let s: GameState = {
+      ...newGame(1),
+      phase: 'event',
+      pendingEvent: 'immune-defector',
+      essence: 0,
+    }
+    const before = s.essence
+    s = reduce(s, { type: 'event/choose', optionId: 'hire' }).state
+    expect(s.phase).toBe('event')
+    expect(s.essence).toBe(before)
+  })
+
+  it('вариант с боем запускает бой', () => {
+    let s: GameState = { ...newGame(1), phase: 'event', pendingEvent: 'clot-cannibals' }
+    s = reduce(s, { type: 'event/choose', optionId: 'purge' }).state
+    expect(s.phase).toBe('combat')
+    expect(s.combat?.forced).toBe(true)
+  })
+
+  it('все требования вариантов ссылаются на реальные ресурсы', () => {
+    for (const event of EVENTS) {
+      expect(event.options.length, `${event.id}: нет вариантов`).toBeGreaterThan(0)
+      for (const option of event.options) {
+        if (!option.fight) continue
+        expect(getEnemy(option.fight), `${event.id}/${option.id}: нет врага`).toBeDefined()
+      }
+    }
   })
 })

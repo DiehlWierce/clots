@@ -13,6 +13,7 @@ import { SettingsTab } from '@/ui/components/SettingsTab'
 import { CombatOverlay } from '@/ui/components/CombatOverlay'
 import { VaultOverlay } from '@/ui/components/VaultOverlay'
 import { MutationOverlay } from '@/ui/components/MutationOverlay'
+import { EventOverlay } from '@/ui/components/EventOverlay'
 import { EndOverlay } from '@/ui/components/EndOverlay'
 import { TutorialHint } from '@/ui/components/TutorialHint'
 import { TelegramGate } from '@/ui/components/TelegramGate'
@@ -149,6 +150,9 @@ export default function App() {
 
       {state.phase === 'mutation' ? (
         <MutationOverlay offer={state.mutationOffer} dispatch={dispatch} />
+      ) : null}
+      {state.phase === 'event' && state.pendingEvent ? (
+        <EventOverlay state={state} eventId={state.pendingEvent} dispatch={dispatch} />
       ) : null}
       {state.phase === 'combat' && state.combat ? (
         <CombatOverlay state={state} combat={state.combat} stats={stats} dispatch={dispatch} />

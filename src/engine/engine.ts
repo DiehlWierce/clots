@@ -4,6 +4,8 @@ import {
   ACHIEVEMENTS,
   ALL_CHAPTERS,
   DOCTRINE_BY_ID,
+  EVENTS,
+  EVENT_BY_ID,
   MODULE_BY_ID,
   MUTATION_BY_ID,
   REGIONS,
@@ -81,6 +83,10 @@ export function reduce(state: GameState, action: GameAction): ReduceResult {
       ctx.warn('Выберите содержимое хранилища.')
       return
     }
+    if (draft.phase === 'event' && !action.type.startsWith('event/')) {
+      ctx.warn('Сначала ответьте на событие.')
+      return
+    }
     // Пока не выбрана мутация, партия ещё не началась.
     if (draft.phase === 'mutation' && action.type !== 'mutation/choose') {
       ctx.warn('Сначала выберите мутацию империи.')
@@ -125,6 +131,9 @@ export function reduce(state: GameState, action: GameAction): ReduceResult {
         break
       case 'mutation/choose':
         doChooseMutation(ctx, action.id)
+        break
+      case 'event/choose':
+        doEventChoice(ctx, action.optionId)
         break
       case 'module/buy':
         doBuyModule(ctx, action.id)
@@ -840,8 +849,95 @@ function doEndCycle(ctx: Ctx): void {
     }
   }
 
+  // 8. Событие — только если цикл не занят боем: два оверлея подряд
+  //    превращают ход в череду модальных окон.
+  if (s.phase === 'command') rollEvent(ctx)
+
   if (s.cycle >= 50) unlock(ctx, 'cycle-50')
   advanceTutorial(ctx, 6)
+}
+
+// ─── События ────────────────────────────────────────────────────────────────
+
+/** Подходит ли событие текущему состоянию партии. */
+function eventAvailable(state: GameState, def: (typeof EVENTS)[number]): boolean {
+  if (state.seenEvents.includes(def.id)) return false
+  if (def.minCycle !== undefined && state.cycle < def.minCycle) return false
+  if (def.minSectors !== undefined && state.controlled.length < def.minSectors) return false
+  if (def.minThreat !== undefined && state.threat < def.minThreat) return false
+  return true
+}
+
+function rollEvent(ctx: Ctx): void {
+  const s = ctx.s
+  const cfg = BALANCE.events
+  if (s.cycle - s.lastEventCycle < cfg.cooldown) return
+  if (!ctx.rng.chance(cfg.chance)) return
+
+  const pool = EVENTS.filter(def => eventAvailable(s, def))
+  if (pool.length === 0) return
+
+  const picked = ctx.rng.pick(pool)
+  s.pendingEvent = picked.id
+  s.lastEventCycle = s.cycle
+  s.phase = 'event'
+  ctx.log(`Событие: ${picked.title}.`)
+}
+
+function doEventChoice(ctx: Ctx, optionId: string): void {
+  const s = ctx.s
+  const def = s.pendingEvent ? EVENT_BY_ID.get(s.pendingEvent) : undefined
+  const option = def?.options.find(o => o.id === optionId)
+  if (!def || !option) {
+    ctx.warn('Такого варианта у события нет.')
+    return
+  }
+  if (option.requires && !canAfford(s, option.requires)) {
+    ctx.warn('Недостаточно ресурсов для этого варианта.')
+    return
+  }
+
+  s.seenEvents.push(def.id)
+  s.pendingEvent = null
+  s.phase = 'command'
+
+  // Ресурсы могут уходить в минус по замыслу варианта — списываем напрямую,
+  // а не через grant, чтобы множители добычи не искажали цену решения.
+  if (option.resources) {
+    s.plasma += option.resources.plasma ?? 0
+    s.clots += option.resources.clots ?? 0
+    s.essence += option.resources.essence ?? 0
+    if (option.resources.plasma && option.resources.plasma > 0) {
+      s.stats.plasmaEarned += option.resources.plasma
+    }
+  }
+  if (option.integrity) {
+    if (option.integrity < 0) damageCitadel(ctx, -option.integrity)
+    else s.integrity += option.integrity
+  }
+  if (option.energy) {
+    // Прибавка к максимуму оформлена трофеем, как награды хранилищ.
+    s.modules[VAULT_ENERGY] = (s.modules[VAULT_ENERGY] ?? 0) + option.energy
+    s.energy += option.energy
+  }
+  if (option.threat) s.threat = clampThreat(s.threat + option.threat)
+  if (option.masking) s.masking += option.masking
+  if (option.xp) gainXp(ctx, option.xp)
+
+  ctx.log(
+    `${def.title}: ${option.label}. ${option.outcome}`,
+    option.threat && option.threat > 0 ? 'bad' : 'good',
+  )
+
+  if (option.fight) {
+    const enemy = getEnemy(option.fight)
+    if (enemy) {
+      const stats = derive(s)
+      s.combat = createRaidCombat(enemy, Math.max(1, Math.round(stats.level * 0.8)), ctx.rng)
+      s.phase = 'combat'
+      ctx.log(`Столкновение: ${enemy.name}.`, 'bad')
+    }
+  }
 }
 
 // ─── Обучение, достижения, лор ──────────────────────────────────────────────

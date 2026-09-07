@@ -193,6 +193,38 @@ export interface CombatState {
 
 // ─── Прочее ─────────────────────────────────────────────────────────────────
 
+/** Один вариант ответа на событие. */
+export interface EventOption {
+  id: string
+  label: string
+  /** Что произойдёт — формулируется до выбора, без скрытых последствий. */
+  outcome: string
+  /** Разовое изменение ресурсов; отрицательные значения — трата. */
+  resources?: { plasma?: number; clots?: number; essence?: number }
+  integrity?: number
+  energy?: number
+  threat?: number
+  masking?: number
+  xp?: number
+  /** Требование к ресурсам, без которого вариант недоступен. */
+  requires?: ResourceBag
+  /** Немедленный бой с этим противником. */
+  fight?: string
+}
+
+export interface EventDef {
+  id: string
+  title: string
+  text: string
+  /** Событие не выпадет раньше этого цикла. */
+  minCycle?: number
+  /** Событие требует хотя бы столько захваченных секторов. */
+  minSectors?: number
+  /** Событие выпадает только при угрозе не ниже указанной. */
+  minThreat?: number
+  options: EventOption[]
+}
+
 export interface MutationDef {
   id: string
   name: string
@@ -251,7 +283,7 @@ export interface LogEntry {
   tone: 'info' | 'good' | 'bad'
 }
 
-export type Phase = 'mutation' | 'command' | 'combat' | 'vault' | 'collapsed' | 'victory'
+export type Phase = 'mutation' | 'command' | 'combat' | 'vault' | 'event' | 'collapsed' | 'victory'
 
 /** Прогресс покупаемой вещи: 0 — не открыто. */
 export type LevelMap = Record<string, number>
@@ -301,6 +333,13 @@ export interface GameState {
   mutation: string | null
   /** Три варианта мутации, предложенные на старте. */
   mutationOffer: string[]
+
+  /** Событие, ждущее ответа игрока. */
+  pendingEvent: string | null
+  /** Цикл последнего события — чтобы они не шли подряд. */
+  lastEventCycle: number
+  /** Уже случившиеся события: одно и то же не повторяется. */
+  seenEvents: string[]
 
   achievements: LevelMap
   log: LogEntry[]

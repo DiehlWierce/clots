@@ -60,6 +60,10 @@ export function createInitialState(seed: number): GameState {
     mutation: null,
     mutationOffer: rollMutationOffer(seed),
 
+    pendingEvent: null,
+    lastEventCycle: 0,
+    seenEvents: [],
+
     achievements: {},
     log: [
       {

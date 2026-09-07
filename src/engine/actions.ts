@@ -19,6 +19,8 @@ export type GameAction =
   | { type: 'vault/choose'; optionId: string }
   // Стартовая мутация
   | { type: 'mutation/choose'; id: string }
+  // Событие
+  | { type: 'event/choose'; optionId: string }
   // Развитие
   | { type: 'module/buy'; id: string }
   | { type: 'doctrine/buy'; id: string }

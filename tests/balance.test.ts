@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { reduce } from '@/engine/engine'
 import { derive, isSectorReachable, nextCost, canAfford, requirementsMet } from '@/engine/selectors'
-import { MODULES, SECTORS, TECHS, getSector } from '@/engine/content'
+import { EVENT_BY_ID, MODULES, SECTORS, TECHS, getSector } from '@/engine/content'
 import { BALANCE } from '@/engine/balance'
 import { currentIntent } from '@/engine/systems/combat'
 import type { GameState } from '@/engine/types'
@@ -53,6 +53,15 @@ function playout(seed: number, cycles: number): GameState {
     if (s.phase === 'vault' && s.pendingVault) {
       const option = getSector(s.pendingVault)?.cache?.[0]
       if (option) act({ type: 'vault/choose', optionId: option.id })
+    }
+
+    // События: берём первый вариант, который по карману. Бот не должен
+    // застревать на оверлее — иначе все остальные проверки теряют смысл.
+    if (s.phase === 'event' && s.pendingEvent) {
+      const event = EVENT_BY_ID.get(s.pendingEvent)
+      const option =
+        event?.options.find(o => !o.requires || canAfford(s, o.requires)) ?? event?.options[0]
+      if (option) act({ type: 'event/choose', optionId: option.id })
     }
 
     if (s.phase === 'collapsed' || s.phase === 'victory') break
@@ -164,7 +173,7 @@ describe('баланс: игра проходима и не тривиальна
       expect(s.threat).toBeGreaterThanOrEqual(0)
       expect(s.threat).toBeLessThanOrEqual(100)
       expect(s.integrity).toBeGreaterThanOrEqual(0)
-      expect(['command', 'combat', 'vault', 'collapsed', 'victory']).toContain(s.phase)
+      expect(['command', 'combat', 'vault', 'event', 'collapsed', 'victory']).toContain(s.phase)
     }
   })
 })

@@ -2,6 +2,7 @@ import { BALANCE } from '../balance'
 import {
   ACHIEVEMENT_BY_ID,
   DOCTRINE_BY_ID,
+  EVENT_BY_ID,
   MUTATION_BY_ID,
   MODULE_BY_ID,
   REGIONS,
@@ -134,6 +135,13 @@ export function sanitizeState(input: unknown): GameState | null {
       typeof raw.mutation === 'string' && MUTATION_BY_ID.has(raw.mutation) ? raw.mutation : null,
     mutationOffer: idList(raw.mutationOffer, new Set(MUTATION_BY_ID.keys())),
 
+    pendingEvent:
+      typeof raw.pendingEvent === 'string' && EVENT_BY_ID.has(raw.pendingEvent)
+        ? raw.pendingEvent
+        : null,
+    lastEventCycle: int(raw.lastEventCycle, 0, 0),
+    seenEvents: idList(raw.seenEvents, new Set(EVENT_BY_ID.keys())),
+
     combat: null,
     pendingVault:
       typeof raw.pendingVault === 'string' && SECTOR_IDS.has(raw.pendingVault)
@@ -157,6 +165,8 @@ export function sanitizeState(input: unknown): GameState | null {
   if (state.pendingVault === null && state.phase === 'vault') state.phase = 'command'
   // Фаза выбора мутации без вариантов заперла бы игру на пустом экране.
   if (state.phase === 'mutation' && state.mutationOffer.length === 0) state.phase = 'command'
+  // Фаза события без самого события заперла бы игру на пустом оверлее.
+  if (state.phase === 'event' && state.pendingEvent === null) state.phase = 'command'
   if (state.mutation !== null && state.phase === 'mutation') state.phase = 'command'
   if (state.integrity <= 0) {
     state.phase = 'collapsed'
