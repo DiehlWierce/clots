@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { isTelegram, supports } from '@/telegram/sdk'
 import { detectTheme, resolveTheme } from '@/telegram/theme'
 import { haptics, isHapticsEnabled, setHapticsEnabled } from '@/telegram/haptics'
+import { buildRunSummary, buildShareUrl } from '@/telegram/share'
+import { createInitialState } from '@/engine/state'
+import type { GameState } from '@/engine/types'
 import type { TelegramWebApp } from '@/telegram/types'
 
 /** Подставляет фейковый WebApp в глобальный объект. */
@@ -182,5 +185,42 @@ describe('режим отладки в браузере', () => {
     mockLocation('?playtest=нет')
     const { isPlaytest } = await import('@/telegram/playtest')
     expect(isPlaytest()).toBe(false)
+  })
+})
+
+describe('итог забега', () => {
+  const finished = (): GameState => ({
+    ...createInitialState(1),
+    phase: 'victory',
+    cycle: 42,
+    controlled: ['cap-core', 'cap-drift'],
+    stats: { ...createInitialState(1).stats, battlesWon: 17, raidsSurvived: 5 },
+  })
+
+  it('сводка содержит исход и ключевые числа', () => {
+    const summary = buildRunSummary(finished(), 38)
+    expect(summary).toContain('выстояла')
+    expect(summary).toContain('42')
+    expect(summary).toContain('2 из 38')
+    expect(summary).toContain('17')
+  })
+
+  it('поражение описывается иначе, чем победа', () => {
+    const lost: GameState = { ...finished(), phase: 'collapsed' }
+    expect(buildRunSummary(lost, 38)).toContain('пала')
+  })
+
+  it('в сводке отмечается порядок цикла для New Game+', () => {
+    const plus: GameState = { ...finished(), ngPlus: 2 }
+    expect(buildRunSummary(plus, 38)).toContain('3-го порядка')
+  })
+
+  it('ссылка «поделиться» экранирует текст и ведёт на бота', () => {
+    const url = buildShareUrl('Итог: 42 цикла\nи перенос строки')
+    expect(url.startsWith('https://t.me/share/url?')).toBe(true)
+    expect(url).toContain('t.me')
+    // Перенос строки и пробелы обязаны быть закодированы, иначе ссылка рвётся.
+    expect(url).not.toContain('\n')
+    expect(url).not.toContain(' ')
   })
 })

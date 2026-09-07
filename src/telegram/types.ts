@@ -52,6 +52,26 @@ export interface TelegramCloudStorage {
   removeItem?: (key: string, callback?: (error: string | null, removed?: boolean) => void) => void
 }
 
+export interface TelegramMainButton {
+  isVisible?: boolean
+  isActive?: boolean
+  text?: string
+  show?: () => void
+  hide?: () => void
+  enable?: () => void
+  disable?: () => void
+  setText?: (text: string) => void
+  setParams?: (params: {
+    text?: string
+    color?: string
+    text_color?: string
+    is_active?: boolean
+    is_visible?: boolean
+  }) => void
+  onClick?: (handler: () => void) => void
+  offClick?: (handler: () => void) => void
+}
+
 export interface TelegramWebApp {
   version?: string
   platform?: string
@@ -66,6 +86,7 @@ export interface TelegramWebApp {
   HapticFeedback?: TelegramHapticFeedback
   CloudStorage?: TelegramCloudStorage
   BackButton?: TelegramBackButton
+  MainButton?: TelegramMainButton
 
   ready?: () => void
   expand?: () => void
@@ -77,6 +98,8 @@ export interface TelegramWebApp {
   enableClosingConfirmation?: () => void
   disableVerticalSwipes?: () => void
   lockOrientation?: () => void
+  openTelegramLink?: (url: string) => void
+  shareMessage?: (messageId: string, callback?: (sent: boolean) => void) => void
   onEvent?: (event: string, handler: () => void) => void
   offEvent?: (event: string, handler: () => void) => void
 }

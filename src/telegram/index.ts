@@ -4,6 +4,7 @@ export { applyTheme, detectTheme, readThemeMode, resolveTheme, writeThemeMode } 
 export type { ThemeMode, ResolvedTheme } from './theme'
 export { watchViewport } from './viewport'
 export { isPlaytest } from './playtest'
+export { shareRun, buildRunSummary, buildShareUrl } from './share'
 export {
   cloudGet,
   cloudSet,

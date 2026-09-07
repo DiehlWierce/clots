@@ -1,4 +1,5 @@
 import { SECTORS } from '@/engine/content'
+import { haptics, shareRun } from '@/telegram'
 import type { GameState } from '@/engine/types'
 
 interface Props {
@@ -76,6 +77,18 @@ export function EndOverlay({ state, onRestart, onNewGamePlus }: Props) {
             <dd>{s.plasmaEarned}</dd>
           </div>
         </dl>
+
+        <button
+          type="button"
+          className="btn btn--block"
+          style={{ marginBottom: 'var(--sp-2)' }}
+          onClick={() => {
+            haptics.tap()
+            shareRun(state, SECTORS.length)
+          }}
+        >
+          📤 Поделиться итогом
+        </button>
 
         {victory ? (
           <>

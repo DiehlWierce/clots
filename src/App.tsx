@@ -4,6 +4,7 @@ import { useDerived } from '@/ui/hooks/useDerived'
 import { useScrollLock } from '@/ui/hooks/useScrollLock'
 import { useTheme } from '@/ui/hooks/useTheme'
 import { useBackButton } from '@/ui/hooks/useBackButton'
+import { useMainButton } from '@/ui/hooks/useMainButton'
 import { Hud } from '@/ui/components/Hud'
 import { CommandTab } from '@/ui/components/CommandTab'
 import { MapTab } from '@/ui/components/MapTab'
@@ -101,13 +102,21 @@ export default function App() {
     dispatch({ type: 'cycle/end' })
   }, [dispatch])
 
+  // Главную кнопку рисует сам Telegram: она всегда на месте и освобождает
+  // место на экране. Вне Telegram остаётся обычная кнопка в интерфейсе.
+  const busyPhase = state.phase !== 'command'
+  const nativeButton = useMainButton({
+    visible: !busyPhase,
+    enabled: !busyPhase,
+    text: `Завершить цикл ${state.cycle}`,
+    onClick: endCycle,
+  })
+
   // Игра работает только внутри Telegram. Исключения — локальная разработка
   // и скрытый режим отладки (?playtest=hem), о котором игрок не знает.
   if (!isTelegram() && !import.meta.env.DEV && !isPlaytest()) {
     return <TelegramGate />
   }
-
-  const busy = state.phase !== 'command'
 
   return (
     <div className="app">
@@ -135,14 +144,16 @@ export default function App() {
       </main>
 
       <div className="cycle-bar">
-        <button
-          type="button"
-          className="btn btn--primary btn--block"
-          disabled={busy}
-          onClick={endCycle}
-        >
-          ⏭️ Завершить цикл {state.cycle}
-        </button>
+        {nativeButton ? null : (
+          <button
+            type="button"
+            className="btn btn--primary btn--block"
+            disabled={busyPhase}
+            onClick={endCycle}
+          >
+            ⏭️ Завершить цикл {state.cycle}
+          </button>
+        )}
         <div className="cycle-bar__hint">
           Доход +{stats.income.plasma}💧 · энергия {stats.maxEnergy}⚡ · угроза +{stats.threatGain}%
         </div>
