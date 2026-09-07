@@ -497,11 +497,13 @@ export const DOCTRINES: DoctrineDef[] = [
     effects: { clotYield: 0.2, xpYield: 0.2 },
     requires: ['reaver-1'],
   },
+  // Развилка Разорителя: точечная резня против широкой волны.
   {
-    id: 'reaver-3',
-    name: 'Вскрытие брони',
-    description: 'Империя прошивает даже фаланги и кустодов.',
+    id: 'reaver-3a',
+    name: 'Резня',
+    description: 'Всё в один удар: пробитие и урон против одиночных целей.',
     path: 'reaver',
+    fork: 'reaver-3',
     tier: 3,
     maxLevel: 3,
     costs: [
@@ -509,7 +511,23 @@ export const DOCTRINES: DoctrineDef[] = [
       { essence: 34, clots: 560 },
       { essence: 55, clots: 900 },
     ],
-    effects: { pierce: 8, attack: 6 },
+    effects: { pierce: 10, attack: 8 },
+    requires: ['reaver-2'],
+  },
+  {
+    id: 'reaver-3b',
+    name: 'Волна',
+    description: 'Каждая победа гасит внимание системы и кормит цитадель.',
+    path: 'reaver',
+    fork: 'reaver-3',
+    tier: 3,
+    maxLevel: 3,
+    costs: [
+      { essence: 20, clots: 320 },
+      { essence: 34, clots: 560 },
+      { essence: 55, clots: 900 },
+    ],
+    effects: { attack: 5, suppression: 0.1, clotYield: 0.18 },
     requires: ['reaver-2'],
   },
   {
@@ -525,7 +543,8 @@ export const DOCTRINES: DoctrineDef[] = [
       { essence: 100, clots: 1800, plasma: 2400 },
     ],
     effects: { attack: 16, pierce: 8, maxEnergy: 1 },
-    requires: ['reaver-3'],
+    requires: ['reaver-3a', 'reaver-3b'],
+    requiresAny: true,
   },
 
   // Хранитель
@@ -554,11 +573,13 @@ export const DOCTRINES: DoctrineDef[] = [
     effects: { regen: 10, maxIntegrity: 40 },
     requires: ['warden-1'],
   },
+  // Развилка Хранителя: глухая стена против живучести и восстановления.
   {
-    id: 'warden-3',
+    id: 'warden-3a',
     name: 'Стена имени крови',
     description: 'Рейды разбиваются о защиту, не доходя до ядра.',
     path: 'warden',
+    fork: 'warden-3',
     tier: 3,
     maxLevel: 3,
     costs: [
@@ -566,7 +587,23 @@ export const DOCTRINES: DoctrineDef[] = [
       { essence: 34, plasma: 800, clots: 300 },
       { essence: 55, plasma: 1300, clots: 500 },
     ],
-    effects: { defense: 10, maxIntegrity: 70 },
+    effects: { defense: 14, maxIntegrity: 50 },
+    requires: ['warden-2'],
+  },
+  {
+    id: 'warden-3b',
+    name: 'Живая ткань',
+    description: 'Ядро не столько держит удар, сколько мгновенно зарастает.',
+    path: 'warden',
+    fork: 'warden-3',
+    tier: 3,
+    maxLevel: 3,
+    costs: [
+      { essence: 20, plasma: 460, clots: 160 },
+      { essence: 34, plasma: 800, clots: 300 },
+      { essence: 55, plasma: 1300, clots: 500 },
+    ],
+    effects: { defense: 5, maxIntegrity: 100, regen: 16 },
     requires: ['warden-2'],
   },
   {
@@ -582,7 +619,8 @@ export const DOCTRINES: DoctrineDef[] = [
       { essence: 100, plasma: 3500, clots: 1300 },
     ],
     effects: { defense: 18, maxIntegrity: 150, regen: 18 },
-    requires: ['warden-3'],
+    requires: ['warden-3a', 'warden-3b'],
+    requiresAny: true,
   },
 
   // Ткач
@@ -611,11 +649,13 @@ export const DOCTRINES: DoctrineDef[] = [
     effects: { plasmaYield: 0.22, essenceYield: 0.18 },
     requires: ['weaver-1'],
   },
+  // Развилка Ткача: невидимость против логистики и охвата.
   {
-    id: 'weaver-3',
+    id: 'weaver-3a',
     name: 'Немыслимая сеть',
-    description: 'Империя работает быстрее и остаётся невидимой.',
+    description: 'Империи будто не существует: система ищет не там.',
     path: 'weaver',
+    fork: 'weaver-3',
     tier: 3,
     maxLevel: 3,
     costs: [
@@ -623,7 +663,23 @@ export const DOCTRINES: DoctrineDef[] = [
       { essence: 34, plasma: 740, clots: 260 },
       { essence: 55, plasma: 1200, clots: 440 },
     ],
-    effects: { suppression: 0.12, maxEnergy: 1, xpYield: 0.15 },
+    effects: { suppression: 0.16, masking: 6, maxEnergy: 1 },
+    requires: ['weaver-2'],
+  },
+  {
+    id: 'weaver-3b',
+    name: 'Живая магистраль',
+    description: 'Расстояний для империи почти не остаётся.',
+    path: 'weaver',
+    fork: 'weaver-3',
+    tier: 3,
+    maxLevel: 3,
+    costs: [
+      { essence: 20, plasma: 420, clots: 140 },
+      { essence: 34, plasma: 740, clots: 260 },
+      { essence: 55, plasma: 1200, clots: 440 },
+    ],
+    effects: { logistics: 3, plasmaYield: 0.15, xpYield: 0.15 },
     requires: ['weaver-2'],
   },
   {
@@ -639,7 +695,8 @@ export const DOCTRINES: DoctrineDef[] = [
       { essence: 100, plasma: 3300, clots: 1150 },
     ],
     effects: { masking: 12, suppression: 0.18, plasmaYield: 0.25, essenceYield: 0.25 },
-    requires: ['weaver-3'],
+    requires: ['weaver-3a', 'weaver-3b'],
+    requiresAny: true,
   },
 ]
 

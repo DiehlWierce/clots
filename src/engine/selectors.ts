@@ -1,6 +1,7 @@
 import { BALANCE, levelForXp, xpForNextLevel } from './balance'
 import {
   ACHIEVEMENT_BY_ID,
+  DOCTRINES,
   DOCTRINE_BY_ID,
   MUTATION_BY_ID,
   MODULE_BY_ID,
@@ -10,7 +11,14 @@ import {
   neighborsOf,
 } from './content'
 import { START_SECTOR } from './content/sectors'
-import type { CitadelEffects, DerivedStats, GameState, ResourceBag, SectorDef } from './types'
+import type {
+  CitadelEffects,
+  DerivedStats,
+  DoctrineDef,
+  GameState,
+  ResourceBag,
+  SectorDef,
+} from './types'
 
 const EFFECT_KEYS = [
   'attack',
@@ -322,9 +330,27 @@ export function techLevel(state: GameState, id: string): number {
 export function requirementsMet(
   levels: Record<string, number>,
   requires?: readonly string[],
+  any = false,
 ): boolean {
   if (!requires?.length) return true
-  return requires.every(id => (levels[id] ?? 0) > 0)
+  // После развилки достаточно любой из взаимоисключающих ветвей.
+  return any
+    ? requires.some(id => (levels[id] ?? 0) > 0)
+    : requires.every(id => (levels[id] ?? 0) > 0)
+}
+
+/**
+ * Закрыта ли доктрина выбором на развилке.
+ *
+ * Доктрины с одинаковым fork взаимоисключающие: взяв одну, вторую уже не
+ * получить. Это второе значимое решение партии после выбора самого пути.
+ */
+export function doctrineForkBlocked(state: GameState, def: DoctrineDef): boolean {
+  if (!def.fork) return false
+  if ((state.doctrines[def.id] ?? 0) > 0) return false
+  return DOCTRINES.some(
+    other => other.fork === def.fork && other.id !== def.id && (state.doctrines[other.id] ?? 0) > 0,
+  )
 }
 
 /** Сектор доступен для захвата, если он разведан и граничит с уже захваченным. */

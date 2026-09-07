@@ -112,11 +112,19 @@ export interface DoctrineDef {
   description: string
   /** Ветка-путь: выбрав одну, остальные закрываются навсегда. */
   path: DoctrinePath
+  /**
+   * Развилка внутри пути: доктрины с одинаковым fork взаимоисключающие.
+   * Выбрав одну, вторую взять уже нельзя — это второе значимое решение
+   * партии после выбора самого пути.
+   */
+  fork?: string
   tier: number
   maxLevel: number
   costs: ResourceBag[]
   effects: CitadelEffects
   requires?: string[]
+  /** Достаточно любого из requires, а не всех: используется после развилки. */
+  requiresAny?: boolean
 }
 
 export type DoctrinePath = 'reaver' | 'warden' | 'weaver'

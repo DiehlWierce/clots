@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { DOCTRINES, DOCTRINE_PATHS, MODULES, TECHS } from '@/engine/content'
-import { canAfford, nextCost, requirementsMet } from '@/engine/selectors'
+import { canAfford, doctrineForkBlocked, nextCost, requirementsMet } from '@/engine/selectors'
 import { haptics } from '@/telegram'
 import { formatCost, formatEffects } from '../format'
 import type { GameAction } from '@/engine/actions'
@@ -21,6 +21,7 @@ interface UpgradeLike {
   costs: ResourceBag[]
   effects: CitadelEffects
   requires?: string[]
+  requiresAny?: boolean
 }
 
 function Pips({ level, max }: { level: number; max: number }) {
@@ -50,7 +51,7 @@ function UpgradeCard({
 }) {
   const maxed = level >= item.maxLevel
   const cost = nextCost(item.costs, level)
-  const requirementsOk = requirementsMet(levels, item.requires)
+  const requirementsOk = requirementsMet(levels, item.requires, item.requiresAny)
   const affordable = cost ? canAfford(state, cost) : false
   const locked = lockedReason !== undefined || !requirementsOk
 
@@ -199,20 +200,29 @@ export function DevelopmentTab({ state, dispatch }: Props) {
                   {path.name} — «{path.motto}»
                 </div>
                 <p className="muted" style={{ marginBottom: 'var(--sp-2)' }}>
-                  {path.description}
+                  {path.description} На третьей ступени путь расходится: взяв одну доктрину,
+                  соседнюю уже не получить.
                 </p>
                 <div className="grid">
-                  {items.map(item => (
-                    <UpgradeCard
-                      key={item.id}
-                      item={item}
-                      level={state.doctrines[item.id] ?? 0}
-                      levels={state.doctrines}
-                      state={state}
-                      onBuy={() => dispatch({ type: 'doctrine/buy', id: item.id })}
-                      {...(blocked ? { lockedReason: 'Путь закрыт: выбран другой' } : {})}
-                    />
-                  ))}
+                  {items.map(item => {
+                    const forkBlocked = doctrineForkBlocked(state, item)
+                    const reason = blocked
+                      ? 'Путь закрыт: выбран другой'
+                      : forkBlocked
+                        ? 'Развилка пройдена: выбрана соседняя доктрина'
+                        : undefined
+                    return (
+                      <UpgradeCard
+                        key={item.id}
+                        item={item}
+                        level={state.doctrines[item.id] ?? 0}
+                        levels={state.doctrines}
+                        state={state}
+                        onBuy={() => dispatch({ type: 'doctrine/buy', id: item.id })}
+                        {...(reason !== undefined ? { lockedReason: reason } : {})}
+                      />
+                    )
+                  })}
                 </div>
               </div>
             )

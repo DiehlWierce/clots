@@ -23,6 +23,7 @@ import {
   mutationRaidPower,
   isAchievementEarned,
   isSectorReachable,
+  doctrineForkBlocked,
   nextCost,
   requirementsMet,
   VAULT_ENERGY,
@@ -800,7 +801,11 @@ function doBuyDoctrine(ctx: Ctx, id: string): void {
   }
   const level = ctx.s.doctrines[id] ?? 0
   if (level >= def.maxLevel) return
-  if (!requirementsMet(ctx.s.doctrines, def.requires)) {
+  if (doctrineForkBlocked(ctx.s, def)) {
+    ctx.warn('На развилке уже выбрана другая доктрина.')
+    return
+  }
+  if (!requirementsMet(ctx.s.doctrines, def.requires, def.requiresAny)) {
     ctx.warn('Сначала укрепите предыдущую доктрину пути.')
     return
   }

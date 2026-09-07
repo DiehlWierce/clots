@@ -4,13 +4,22 @@ import { createInitialState } from '@/engine/state'
 import {
   derive,
   deliveryFactor,
+  doctrineForkBlocked,
   hopsToHub,
   isAchievementEarned,
   sectorDelivery,
   threatGain,
 } from '@/engine/selectors'
 import { BALANCE } from '@/engine/balance'
-import { EVENTS, EVENT_BY_ID, MUTATIONS, SECTORS, getEnemy } from '@/engine/content'
+import {
+  DOCTRINES,
+  DOCTRINE_BY_ID,
+  EVENTS,
+  EVENT_BY_ID,
+  MUTATIONS,
+  SECTORS,
+  getEnemy,
+} from '@/engine/content'
 import { pickReclaimTarget, raidChance, reclaimChance } from '@/engine/systems/threat'
 import { Rng } from '@/engine/rng'
 import type { GameAction } from '@/engine/actions'
@@ -662,5 +671,70 @@ describe('пропускная способность сети', () => {
     expect(sectorDelivery(withRelay, 'cap-forge').hops).toBeLessThan(
       sectorDelivery(without, 'cap-forge').hops,
     )
+  })
+})
+
+/**
+ * Развилки доктрин: на третьей ступени путь расходится, и взяв одну
+ * доктрину, соседнюю уже не получить. Это второе значимое решение партии.
+ */
+describe('развилки доктрин', () => {
+  const rich = (): GameState => ({
+    ...newGame(1),
+    plasma: 99999,
+    clots: 99999,
+    essence: 9999,
+  })
+
+  it('в каждом пути ровно одна развилка из двух доктрин', () => {
+    for (const path of ['reaver', 'warden', 'weaver'] as const) {
+      const forks = new Map<string, number>()
+      for (const d of DOCTRINES.filter(d => d.path === path && d.fork)) {
+        forks.set(d.fork ?? '', (forks.get(d.fork ?? '') ?? 0) + 1)
+      }
+      expect(forks.size, `путь ${path}`).toBe(1)
+      expect([...forks.values()][0], `путь ${path}`).toBe(2)
+    }
+  })
+
+  it('выбор одной ветви закрывает соседнюю', () => {
+    let s = rich()
+    for (const id of ['reaver-1', 'reaver-2', 'reaver-3a']) {
+      s = reduce(s, { type: 'doctrine/buy', id }).state
+    }
+    expect(s.doctrines['reaver-3a']).toBe(1)
+
+    const blocked = DOCTRINE_BY_ID.get('reaver-3b')
+    expect(blocked).toBeDefined()
+    if (!blocked) return
+    expect(doctrineForkBlocked(s, blocked)).toBe(true)
+
+    const { state: after, notices } = reduce(s, { type: 'doctrine/buy', id: 'reaver-3b' })
+    expect(after.doctrines['reaver-3b']).toBeUndefined()
+    expect(notices.some(n => n.message.includes('развилке'))).toBe(true)
+  })
+
+  it('четвёртая ступень открывается любой из ветвей развилки', () => {
+    for (const fork of ['reaver-3a', 'reaver-3b']) {
+      let s = rich()
+      for (const id of ['reaver-1', 'reaver-2', fork, 'reaver-4']) {
+        s = reduce(s, { type: 'doctrine/buy', id }).state
+      }
+      expect(s.doctrines['reaver-4'], `через ${fork}`).toBe(1)
+    }
+  })
+
+  it('ветви развилки дают разные эффекты', () => {
+    const build = (fork: string): GameState => {
+      let s = rich()
+      for (const id of ['reaver-1', 'reaver-2', fork]) {
+        s = reduce(s, { type: 'doctrine/buy', id }).state
+      }
+      return s
+    }
+    const slaughter = derive(build('reaver-3a'))
+    const wave = derive(build('reaver-3b'))
+    expect(slaughter.pierce).toBeGreaterThan(wave.pierce)
+    expect(wave.suppression).toBeGreaterThan(slaughter.suppression)
   })
 })
