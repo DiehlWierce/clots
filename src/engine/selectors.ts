@@ -1,5 +1,6 @@
 import { BALANCE, levelForXp, xpForNextLevel } from './balance'
 import {
+  ACHIEVEMENT_BY_ID,
   DOCTRINE_BY_ID,
   MODULE_BY_ID,
   SECTORS,
@@ -193,6 +194,21 @@ export function nextCost(
   currentLevel: number,
 ): ResourceBag | undefined {
   return costs[currentLevel]
+}
+
+/**
+ * Получено ли достижение.
+ *
+ * В state.achievements лежит ПРОГРЕСС, а не флаг: у накопительных достижений
+ * это текущее значение счётчика. Поэтому «есть запись» и «достижение получено» —
+ * разные вещи, и правило обязано жить в одном месте: иначе, например, лор
+ * открывался на старте, приняв прогресс «1 сектор из 10» за выполнение.
+ */
+export function isAchievementEarned(state: GameState, id: string): boolean {
+  const value = state.achievements[id] ?? 0
+  if (value <= 0) return false
+  const target = ACHIEVEMENT_BY_ID.get(id)?.target
+  return target === undefined ? true : value >= target
 }
 
 export function moduleLevel(state: GameState, id: string): number {

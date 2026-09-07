@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ACHIEVEMENTS, ALL_CHAPTERS, LORE } from '@/engine/content'
+import { isAchievementEarned } from '@/engine/selectors'
 import { haptics } from '@/telegram'
 import type { GameState } from '@/engine/types'
 
@@ -13,10 +14,7 @@ export function ChronicleTab({ state }: { state: GameState }) {
   const [section, setSection] = useState<Section>('journal')
 
   const unlockedLore = new Set(state.lore)
-  const doneCount = ACHIEVEMENTS.filter(a => {
-    const value = state.achievements[a.id] ?? 0
-    return a.target ? value >= a.target : value > 0
-  }).length
+  const doneCount = ACHIEVEMENTS.filter(a => isAchievementEarned(state, a.id)).length
 
   const sections: { id: Section; label: string }[] = [
     { id: 'journal', label: 'Журнал' },
@@ -88,7 +86,7 @@ export function ChronicleTab({ state }: { state: GameState }) {
         <div className="grid">
           {ACHIEVEMENTS.map(a => {
             const value = state.achievements[a.id] ?? 0
-            const complete = a.target ? value >= a.target : value > 0
+            const complete = isAchievementEarned(state, a.id)
             const hidden = a.secret === true && !complete
             return (
               <div key={a.id} className={`ach${complete ? ' ach--done' : ''}`}>

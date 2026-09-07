@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { reduce } from '@/engine/engine'
 import { createInitialState } from '@/engine/state'
-import { derive, threatGain } from '@/engine/selectors'
+import { derive, isAchievementEarned, threatGain } from '@/engine/selectors'
 import { BALANCE } from '@/engine/balance'
+import { SECTORS } from '@/engine/content'
 import { raidChance } from '@/engine/systems/threat'
 import type { GameAction } from '@/engine/actions'
 import type { GameState } from '@/engine/types'
@@ -239,5 +240,38 @@ describe('обучение', () => {
     expect(s.tutorialDismissed).toBe(true)
     s = reduce(s, { type: 'action/harvest' }).state
     expect(s.plasma).toBeGreaterThan(BALANCE.start.plasma)
+  })
+})
+
+/**
+ * Лор открывается по выполненным достижениям, а не по их прогрессу.
+ * В state.achievements лежит счётчик, и глава VI («Цена территории»,
+ * условие sectors-10) открывалась на старте, приняв «1 сектор из 10» за успех.
+ */
+describe('открытие лора', () => {
+  it('на старте открыта ровно одна глава', () => {
+    const s = reduce(start(), { type: 'action/harvest' }).state
+    expect(s.lore).toEqual(['origin-spark'])
+  })
+
+  it('прогресс накопительного достижения не считается выполнением', () => {
+    const s = reduce(start(), { type: 'action/harvest' }).state
+    // Счётчик уже есть, но цель не достигнута.
+    expect(s.achievements['sectors-10']).toBeGreaterThan(0)
+    expect(isAchievementEarned(s, 'sectors-10')).toBe(false)
+    expect(s.lore).not.toContain('forge-cost')
+  })
+
+  it('глава открывается, когда достижение действительно получено', () => {
+    let s = start()
+    s = { ...s, controlled: SECTORS.slice(0, 12).map(sec => sec.id) }
+    s = reduce(s, { type: 'action/harvest' }).state
+    expect(isAchievementEarned(s, 'sectors-10')).toBe(true)
+    expect(s.lore).toContain('forge-cost')
+  })
+
+  it('бинарное достижение засчитывается сразу', () => {
+    const s = reduce(start(), { type: 'action/harvest' }).state
+    expect(isAchievementEarned(s, 'first-blood')).toBe(true)
   })
 })

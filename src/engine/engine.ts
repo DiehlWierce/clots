@@ -17,6 +17,7 @@ import {
   canAfford,
   collectEffects,
   derive,
+  isAchievementEarned,
   isSectorReachable,
   nextCost,
   requirementsMet,
@@ -865,7 +866,7 @@ function loreUnlocked(state: GameState, unlockRule: LoreUnlock, level: number): 
     case 'sector':
       return state.controlled.includes(unlockRule.value)
     case 'achievement':
-      return (state.achievements[unlockRule.value] ?? 0) > 0
+      return isAchievementEarned(state, unlockRule.value)
   }
 }
 

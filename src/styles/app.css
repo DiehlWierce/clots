@@ -285,6 +285,7 @@
 
 .btn {
   display: inline-flex;
+  text-decoration: none;
   align-items: center;
   justify-content: center;
   gap: var(--sp-2);

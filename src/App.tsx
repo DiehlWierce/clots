@@ -17,6 +17,7 @@ import { TutorialHint } from '@/ui/components/TutorialHint'
 import { TelegramGate } from '@/ui/components/TelegramGate'
 import { Toasts } from '@/ui/components/Toasts'
 import { ACHIEVEMENTS } from '@/engine/content'
+import { isAchievementEarned } from '@/engine/selectors'
 import { haptics, initWebApp, isTelegram, watchViewport } from '@/telegram'
 
 type TabId = 'command' | 'map' | 'development' | 'chronicle' | 'settings'
@@ -41,7 +42,6 @@ export default function App() {
   const dismissToast = useGame(s => s.dismissToast)
 
   const [tab, setTab] = useState<TabId>(HOME)
-  const [bypassGate, setBypassGate] = useState(false)
   const { mode: themeMode, setMode: setThemeMode } = useTheme()
   const stats = useDerived(state)
 
@@ -64,12 +64,10 @@ export default function App() {
         Object.keys(state.modules).length +
         Object.keys(state.doctrines).length +
         Object.keys(state.techs).length,
-      chronicle: ACHIEVEMENTS.filter(a => {
-        const value = state.achievements[a.id] ?? 0
-        return a.target ? value >= a.target : value > 0
-      }).length,
+      chronicle: ACHIEVEMENTS.filter(a => isAchievementEarned(state, a.id)).length,
     }),
-    [state.controlled, state.modules, state.doctrines, state.techs, state.achievements],
+    // Состояние иммутабельно: одна зависимость точнее набора его полей.
+    [state],
   )
 
   const handleDismiss = useCallback((id: number) => dismissToast(id), [dismissToast])
@@ -84,8 +82,10 @@ export default function App() {
     dispatch({ type: 'cycle/end' })
   }, [dispatch])
 
-  if (!isTelegram() && !bypassGate && !import.meta.env.DEV) {
-    return <TelegramGate onContinue={() => setBypassGate(true)} />
+  // Игра работает только внутри Telegram. Единственное исключение —
+  // локальная разработка: в продакшен-сборке этой ветки нет.
+  if (!isTelegram() && !import.meta.env.DEV) {
+    return <TelegramGate />
   }
 
   const busy = state.phase !== 'command'
