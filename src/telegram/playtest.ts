@@ -19,12 +19,15 @@ export function isPlaytest(): boolean {
   if (typeof window === 'undefined') return false
 
   try {
+    // Обращаемся через window, а не к глобальному sessionStorage: так модуль
+    // остаётся проверяемым вне браузера.
+    const storage = window.sessionStorage
     const params = new URLSearchParams(window.location.search)
     if (params.get(PARAM) === KEY) {
-      sessionStorage.setItem(FLAG, '1')
+      storage.setItem(FLAG, '1')
       return true
     }
-    return sessionStorage.getItem(FLAG) === '1'
+    return storage.getItem(FLAG) === '1'
   } catch {
     return false
   }

@@ -137,20 +137,29 @@ describe('таптик', () => {
 })
 
 describe('режим отладки в браузере', () => {
-  function mockLocation(search: string): void {
-    const target = globalThis as { window?: unknown }
-    const store = new Map<string, string>()
-    target.window = {
-      location: { search },
-      sessionStorage: {
-        getItem: (k: string) => store.get(k) ?? null,
-        setItem: (k: string, v: string) => void store.set(k, v),
-      },
+  interface FakeWindow {
+    location: { search: string }
+    sessionStorage: {
+      getItem: (key: string) => string | null
+      setItem: (key: string, value: string) => void
     }
-    ;(globalThis as { sessionStorage?: unknown }).sessionStorage = (
-      target.window as { sessionStorage: unknown }
-    ).sessionStorage
   }
+
+  /** Общее на весь тест хранилище вкладки: режим обязан переживать навигацию. */
+  const store = new Map<string, string>()
+  const storage = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => void store.set(key, value),
+  }
+
+  function mockLocation(search: string): void {
+    const target = globalThis as { window?: FakeWindow }
+    target.window = { location: { search }, sessionStorage: storage }
+  }
+
+  beforeEach(() => {
+    store.clear()
+  })
 
   it('без параметра выключен', async () => {
     mockLocation('')
@@ -162,9 +171,10 @@ describe('режим отладки в браузере', () => {
     mockLocation('?playtest=hem')
     const { isPlaytest } = await import('@/telegram/playtest')
     expect(isPlaytest()).toBe(true)
-    // После перехода по внутренней ссылке параметр из адреса пропадает,
+
+    // После перехода внутри приложения параметр из адреса пропадает,
     // но режим обязан сохраниться до конца сессии.
-    mockLocationKeepStorage('')
+    mockLocation('')
     expect(isPlaytest()).toBe(true)
   })
 
@@ -173,11 +183,4 @@ describe('режим отладки в браузере', () => {
     const { isPlaytest } = await import('@/telegram/playtest')
     expect(isPlaytest()).toBe(false)
   })
-
-  let keptStorage: unknown = null
-  function mockLocationKeepStorage(search: string): void {
-    const target = globalThis as { window?: { sessionStorage?: unknown } }
-    keptStorage = target.window?.sessionStorage
-    target.window = { location: { search }, sessionStorage: keptStorage }
-  }
 })
