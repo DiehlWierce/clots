@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { en } from '@/i18n/en'
 import { ru } from '@/i18n/ru'
+import { createTranslator } from '@/i18n/content/translate'
+import {
+  ACHIEVEMENTS,
+  ALL_CHAPTERS,
+  DOCTRINES,
+  ENEMIES,
+  EPOCH_MODIFIERS,
+  EVENTS,
+  MODULES,
+  MUTATIONS,
+  SECTORS,
+  TECHS,
+} from '@/engine/content'
 
 /**
  * Словари: русский — эталон формы, английский обязан её повторять.
@@ -52,5 +65,88 @@ describe('словари интерфейса', () => {
         expect(/[а-яА-ЯёЁ]/.test(String(value)), `кириллица в ${key}`).toBe(false)
       }
     }
+  })
+})
+
+/**
+ * Перевод контента: русский текст в src/engine/content — эталон, английский
+ * пакет накладывается поверх по идентификаторам. Непереведённая строка
+ * остаётся русской, а не исчезает.
+ */
+describe('перевод контента', () => {
+  const en = createTranslator('en')
+  const ru = createTranslator('ru')
+
+  it('русский пакет пуст и отдаёт исходный текст', () => {
+    for (const sector of SECTORS) {
+      expect(ru.sector(sector.id, 'name', sector.name)).toBe(sector.name)
+    }
+  })
+
+  it('каждый сектор переведён', () => {
+    for (const sector of SECTORS) {
+      const name = en.sector(sector.id, 'name', sector.name)
+      expect(name, `сектор ${sector.id}`).not.toBe(sector.name)
+      expect(/[а-яА-ЯёЁ]/.test(name), `кириллица в ${sector.id}`).toBe(false)
+    }
+  })
+
+  it('каждый враг переведён', () => {
+    for (const enemy of ENEMIES) {
+      expect(en.enemy(enemy.id, 'name', enemy.name), `враг ${enemy.id}`).not.toBe(enemy.name)
+    }
+  })
+
+  it('каждый модуль, доктрина и технология переведены', () => {
+    for (const item of MODULES) {
+      expect(en.module(item.id, 'name', item.name), `модуль ${item.id}`).not.toBe(item.name)
+    }
+    for (const item of DOCTRINES) {
+      expect(en.doctrine(item.id, 'name', item.name), `доктрина ${item.id}`).not.toBe(item.name)
+    }
+    for (const item of TECHS) {
+      expect(en.tech(item.id, 'name', item.name), `технология ${item.id}`).not.toBe(item.name)
+    }
+  })
+
+  it('каждая глава летописи переведена целиком', () => {
+    for (const chapter of ALL_CHAPTERS) {
+      const title = en.loreChapterTitle(chapter.id, chapter.title)
+      expect(title, `глава ${chapter.id}`).not.toBe(chapter.title)
+
+      const paragraphs = en.loreChapterParagraphs(chapter.id, chapter.paragraphs)
+      expect(paragraphs.length, `абзацы ${chapter.id}`).toBe(chapter.paragraphs.length)
+      for (const text of paragraphs) {
+        expect(/[а-яА-ЯёЁ]/.test(text), `кириллица в ${chapter.id}`).toBe(false)
+      }
+    }
+  })
+
+  it('каждое событие и его варианты переведены', () => {
+    for (const event of EVENTS) {
+      expect(en.event(event.id, 'title', event.title), `событие ${event.id}`).not.toBe(event.title)
+      for (const option of event.options) {
+        expect(
+          en.eventOption(option.id, 'label', option.label),
+          `вариант ${event.id}/${option.id}`,
+        ).not.toBe(option.label)
+      }
+    }
+  })
+
+  it('каждая мутация, эпоха и достижение переведены', () => {
+    for (const m of MUTATIONS) {
+      expect(en.mutation(m.id, 'name', m.name), `мутация ${m.id}`).not.toBe(m.name)
+    }
+    for (const e of EPOCH_MODIFIERS) {
+      expect(en.epoch(e.id, 'name', e.name), `эпоха ${e.id}`).not.toBe(e.name)
+    }
+    for (const a of ACHIEVEMENTS) {
+      expect(en.achievement(a.id, 'title', a.title), `достижение ${a.id}`).not.toBe(a.title)
+    }
+  })
+
+  it('неизвестный идентификатор отдаёт запасной текст', () => {
+    expect(en.sector('нет-такого', 'name', 'запасной')).toBe('запасной')
   })
 })

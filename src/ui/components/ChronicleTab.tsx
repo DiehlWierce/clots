@@ -4,6 +4,7 @@ import { isAchievementEarned } from '@/engine/selectors'
 import { haptics } from '@/telegram'
 import { Empty } from './Empty'
 import type { GameState } from '@/engine/types'
+import type { ContentTranslator } from '@/i18n/content/translate'
 
 type Section = 'journal' | 'lore' | 'achievements'
 
@@ -11,7 +12,7 @@ type Section = 'journal' | 'lore' | 'achievements'
  * Журнал, летопись и достижения объединены в одну вкладку: на телефоне в
  * нижнюю панель помещается пять пунктов, а не семь.
  */
-export function ChronicleTab({ state }: { state: GameState }) {
+export function ChronicleTab({ state, tc }: { state: GameState; tc: ContentTranslator }) {
   const [section, setSection] = useState<Section>('journal')
 
   const unlockedLore = new Set(state.lore)
@@ -73,15 +74,15 @@ export function ChronicleTab({ state }: { state: GameState }) {
         LORE.map(era => (
           <div key={era.id} className="era">
             <div className="region__title">
-              <h3>{era.title}</h3>
-              <span className="region__meta">{era.period}</span>
+              <h3>{tc.loreEra(era.id, 'title', era.title)}</h3>
+              <span className="region__meta">{tc.loreEra(era.id, 'period', era.period)}</span>
             </div>
-            <p className="region__desc">{era.summary}</p>
+            <p className="region__desc">{tc.loreEra(era.id, 'summary', era.summary)}</p>
             {era.chapters.map(chapter =>
               unlockedLore.has(chapter.id) ? (
                 <article key={chapter.id} className="chapter">
-                  <h4>{chapter.title}</h4>
-                  {chapter.paragraphs.map((text, i) => (
+                  <h4>{tc.loreChapterTitle(chapter.id, chapter.title)}</h4>
+                  {tc.loreChapterParagraphs(chapter.id, chapter.paragraphs).map((text, i) => (
                     <p key={i}>{text}</p>
                   ))}
                 </article>
@@ -107,9 +108,13 @@ export function ChronicleTab({ state }: { state: GameState }) {
                   {complete ? '🏆' : hidden ? '❓' : '⬚'}
                 </span>
                 <div style={{ minWidth: 0 }}>
-                  <div className="ach__title">{hidden ? 'Секретное достижение' : a.title}</div>
+                  <div className="ach__title">
+                    {hidden ? 'Секретное достижение' : tc.achievement(a.id, 'title', a.title)}
+                  </div>
                   <div className="ach__desc">
-                    {hidden ? 'Условие станет известно, когда оно выполнится.' : a.description}
+                    {hidden
+                      ? 'Условие станет известно, когда оно выполнится.'
+                      : tc.achievement(a.id, 'description', a.description)}
                   </div>
                   {a.target && !complete ? (
                     <>

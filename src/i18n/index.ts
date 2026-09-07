@@ -36,6 +36,17 @@ function readStored(): Locale | null {
   }
 }
 
+/** Языки, доступные игроку. */
+export const LOCALES: { id: Locale; label: string }[] = [
+  { id: 'ru', label: 'Русский' },
+  { id: 'en', label: 'English' },
+]
+
+/** Язык, выбранный игроком вручную, или null — если следуем системе. */
+export function readStoredLocale(): Locale | null {
+  return readStored()
+}
+
 export function setLocale(locale: Locale): void {
   if (typeof localStorage === 'undefined') return
   try {

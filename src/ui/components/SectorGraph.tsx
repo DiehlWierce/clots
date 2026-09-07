@@ -4,9 +4,11 @@ import { REGIONS, getSector } from '@/engine/content'
 import { isSectorReachable } from '@/engine/selectors'
 import { SECTOR_TYPE_ICON } from '../format'
 import type { GameState } from '@/engine/types'
+import type { ContentTranslator } from '@/i18n/content/translate'
 
 interface Props {
   state: GameState
+  tc: ContentTranslator
   onSelect: (sectorId: string) => void
 }
 
@@ -39,7 +41,7 @@ const FILL: Record<Status, string> = {
  * карточек: связи, ради которых он делался, были невидимы. Здесь видно, что
  * откуда достижимо и какие маршруты ведут вглубь системы.
  */
-export function SectorGraph({ state, onSelect }: Props) {
+export function SectorGraph({ state, tc, onSelect }: Props) {
   const { nodes, edges, regionBounds } = MAP_LAYOUT
 
   const visibleRegions = useMemo(() => new Set(state.regions), [state.regions])
@@ -92,7 +94,7 @@ export function SectorGraph({ state, onSelect }: Props) {
                 rx={12}
               />
               <text x={10} y={top + 18} className="graph__region">
-                {region.name}
+                {tc.region(region.id, 'name', region.name)}
               </text>
             </g>
           )
@@ -140,7 +142,13 @@ export function SectorGraph({ state, onSelect }: Props) {
               onClick={() => onSelect(node.id)}
               role="button"
               tabIndex={0}
-              aria-label={`${sector.name}, ${status === 'owned' ? 'под контролем' : status === 'reachable' ? 'доступен' : 'разведан'}`}
+              aria-label={`${tc.sector(sector.id, 'name', sector.name)}, ${
+                status === 'owned'
+                  ? 'под контролем'
+                  : status === 'reachable'
+                    ? 'доступен'
+                    : 'разведан'
+              }`}
               onKeyDown={event => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault()
@@ -180,7 +188,10 @@ export function SectorGraph({ state, onSelect }: Props) {
                 <circle cx={cx + RADIUS - 4} cy={cy - RADIUS + 4} r={5} fill="var(--c-bad)" />
               ) : null}
               <text x={cx} y={cy + RADIUS + 14} className="graph__label">
-                {sector.name.length > 14 ? `${sector.name.slice(0, 13)}…` : sector.name}
+                {(() => {
+                  const label = tc.sector(sector.id, 'name', sector.name)
+                  return label.length > 14 ? `${label.slice(0, 13)}…` : label
+                })()}
               </text>
             </g>
           )

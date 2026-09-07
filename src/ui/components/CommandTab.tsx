@@ -5,11 +5,13 @@ import { raidChance, reclaimChance } from '@/engine/systems/threat'
 import { formatCost } from '../format'
 import type { GameAction } from '@/engine/actions'
 import type { DerivedStats, GameState } from '@/engine/types'
+import type { ContentTranslator } from '@/i18n/content/translate'
 
 interface Props {
   state: GameState
   stats: DerivedStats
   dispatch: (action: GameAction) => void
+  tc: ContentTranslator
 }
 
 interface ActionSpec {
@@ -21,7 +23,7 @@ interface ActionSpec {
   disabled?: boolean
 }
 
-export function CommandTab({ state, stats, dispatch }: Props) {
+export function CommandTab({ state, stats, dispatch, tc }: Props) {
   const a = BALANCE.actions
 
   const specs: ActionSpec[] = [
@@ -140,7 +142,7 @@ export function CommandTab({ state, stats, dispatch }: Props) {
       {state.epochModifiers.length > 0 ? (
         <section className="panel">
           <div className="panel__head">
-            <h2>{epochName(state.epoch)}</h2>
+            <h2>{tc.epochName(state.epoch, epochName(state.epoch))}</h2>
             <p>Правила, которые система ввела по ходу партии. Они не отменяются.</p>
           </div>
           {state.epochModifiers.map(id => {
@@ -148,8 +150,10 @@ export function CommandTab({ state, stats, dispatch }: Props) {
             if (!modifier) return null
             return (
               <div key={id} className="node" style={{ marginBottom: 'var(--sp-2)' }}>
-                <div className="node__name">{modifier.name}</div>
-                <div className="node__desc">{modifier.description}</div>
+                <div className="node__name">{tc.epoch(modifier.id, 'name', modifier.name)}</div>
+                <div className="node__desc">
+                  {tc.epoch(modifier.id, 'description', modifier.description)}
+                </div>
               </div>
             )
           })}

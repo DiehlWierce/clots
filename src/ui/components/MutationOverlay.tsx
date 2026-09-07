@@ -2,10 +2,14 @@ import { MUTATION_BY_ID } from '@/engine/content'
 import { haptics } from '@/telegram'
 import { formatEffects } from '../format'
 import type { GameAction } from '@/engine/actions'
+import type { ContentTranslator } from '@/i18n/content/translate'
+import type { Dictionary } from '@/i18n'
 
 interface Props {
   offer: string[]
   dispatch: (action: GameAction) => void
+  tc: ContentTranslator
+  t: Dictionary
 }
 
 /**
@@ -14,22 +18,19 @@ interface Props {
  * Решение принимается до первого хода и действует всю партию, поэтому
  * компромисс каждой мутации показывается явно: и плюсы, и минусы одним списком.
  */
-export function MutationOverlay({ offer, dispatch }: Props) {
+export function MutationOverlay({ offer, dispatch, tc, t }: Props) {
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="Выбор мутации">
+    <div className="overlay" role="dialog" aria-modal="true" aria-label={t.mutation.title}>
       <div className="overlay__card">
         <div className="overlay__grip" aria-hidden="true" />
-        <h2 className="overlay__title">🧬 Форма империи</h2>
-        <p className="overlay__sub">
-          Поток сомкнулся не там, где обычно. Выберите, какой уродилась ваша кровь — это решение
-          действует всю партию.
-        </p>
+        <h2 className="overlay__title">{t.mutation.title}</h2>
+        <p className="overlay__sub">{t.mutation.subtitle}</p>
 
         <div className="grid">
           {offer.map(id => {
             const mutation = MUTATION_BY_ID.get(id)
             if (!mutation) return null
-            const effects = formatEffects(mutation.effects)
+            const effects = formatEffects(mutation.effects, t.effects)
             return (
               <button
                 key={id}
@@ -40,8 +41,10 @@ export function MutationOverlay({ offer, dispatch }: Props) {
                   dispatch({ type: 'mutation/choose', id })
                 }}
               >
-                <span className="action__title">{mutation.name}</span>
-                <span className="action__desc">{mutation.description}</span>
+                <span className="action__title">{tc.mutation(id, 'name', mutation.name)}</span>
+                <span className="action__desc">
+                  {tc.mutation(id, 'description', mutation.description)}
+                </span>
                 <span className="effects">
                   {effects.map(text => (
                     <span
@@ -55,20 +58,24 @@ export function MutationOverlay({ offer, dispatch }: Props) {
                     <span
                       className={`tag ${mutation.heatMultiplier > 1 ? 'tag--bad' : 'tag--good'}`}
                     >
-                      Шум ×{mutation.heatMultiplier}
+                      {t.effects.heat} ×{mutation.heatMultiplier}
                     </span>
                   ) : null}
                   {mutation.raidPower !== undefined ? (
-                    <span className="tag tag--bad">Сила рейдов ×{mutation.raidPower}</span>
+                    <span className="tag tag--bad">
+                      {t.effects.raidPower} ×{mutation.raidPower}
+                    </span>
                   ) : null}
                   {mutation.startThreat !== undefined ? (
-                    <span className="tag tag--bad">Старт с угрозой {mutation.startThreat}%</span>
+                    <span className="tag tag--bad">
+                      {t.effects.startThreat} {mutation.startThreat}%
+                    </span>
                   ) : null}
                   {mutation.startBonus ? (
-                    <span className="tag tag--good">Богатый старт</span>
+                    <span className="tag tag--good">{t.effects.richStart}</span>
                   ) : null}
                 </span>
-                <span className="action__cost">{mutation.tagline}</span>
+                <span className="action__cost">{tc.mutation(id, 'tagline', mutation.tagline)}</span>
               </button>
             )
           })}

@@ -8,19 +8,27 @@ import { Empty } from './Empty'
 import { haptics } from '@/telegram'
 import type { GameAction } from '@/engine/actions'
 import type { GameState, SectorDef } from '@/engine/types'
+import type { ContentTranslator } from '@/i18n/content/translate'
+import type { Dictionary } from '@/i18n'
 
 interface Props {
   state: GameState
   dispatch: (action: GameAction) => void
+  tc: ContentTranslator
+  t: Dictionary
 }
 
 function SectorCard({
   sector,
   state,
+  tc,
+  t,
   onSelect,
 }: {
   sector: SectorDef
   state: GameState
+  tc: ContentTranslator
+  t: Dictionary
   onSelect: () => void
 }) {
   const owned = state.controlled.includes(sector.id)
@@ -39,21 +47,29 @@ function SectorCard({
     >
       <span className="sector__top">
         <span className="sector__name">
-          {SECTOR_TYPE_ICON[sector.type]} {sector.name}
+          {SECTOR_TYPE_ICON[sector.type]} {tc.sector(sector.id, 'name', sector.name)}
         </span>
-        <span className="sector__type">{SECTOR_TYPE_LABEL[sector.type]}</span>
+        <span className="sector__type">
+          {tc.sectorType(sector.type, SECTOR_TYPE_LABEL[sector.type])}
+        </span>
       </span>
       <span className="sector__row">
         {owned ? (
-          <span className="tag tag--good">под контролем</span>
+          <span className="tag tag--good">{t.map.owned}</span>
         ) : reachable ? (
-          <span className="tag tag--info">доступен</span>
+          <span className="tag tag--info">{t.map.available}</span>
         ) : (
-          <span className="tag">нужен сосед</span>
+          <span className="tag">{t.map.needNeighbour}</span>
         )}
-        {sector.garrison && !owned ? <span className="tag tag--bad">гарнизон</span> : null}
-        <span className="tag">сложность {sector.difficulty}</span>
-        {sector.heat > 0 ? <span className="tag tag--warn">шум +{sector.heat}</span> : null}
+        {sector.garrison && !owned ? <span className="tag tag--bad">{t.map.garrison}</span> : null}
+        <span className="tag">
+          {t.map.difficulty} {sector.difficulty}
+        </span>
+        {sector.heat > 0 ? (
+          <span className="tag tag--warn">
+            {t.map.noise} +{sector.heat}
+          </span>
+        ) : null}
       </span>
       {income.length > 0 ? (
         <span className="sector__row">
@@ -64,7 +80,8 @@ function SectorCard({
           ))}
           {delivery && delivery.factor < 1 ? (
             <span className="tag tag--warn">
-              доходит {Math.round(delivery.factor * 100)}% · {delivery.hops} шагов до узла
+              {t.map.delivered} {Math.round(delivery.factor * 100)}% · {delivery.hops}{' '}
+              {t.map.hopsToHub}
             </span>
           ) : null}
         </span>
@@ -73,7 +90,7 @@ function SectorCard({
   )
 }
 
-export function MapTab({ state, dispatch }: Props) {
+export function MapTab({ state, dispatch, tc, t }: Props) {
   const [view, setView] = useState<'graph' | 'list'>('graph')
   const selected = state.selectedSector ? getSector(state.selectedSector) : null
   const selectedOwned = selected ? state.controlled.includes(selected.id) : false
@@ -87,10 +104,10 @@ export function MapTab({ state, dispatch }: Props) {
     <>
       <section className="panel">
         <div className="panel__head">
-          <h2>Сосудистая сеть</h2>
+          <h2>{t.map.title}</h2>
           <p>
-            Захвачено {state.controlled.length} из {SECTORS.length}. Сектор доступен, только если
-            граничит с уже вашим.
+            {t.map.captured} {state.controlled.length} {t.map.of} {SECTORS.length}.{' '}
+            {t.map.reachRule}
           </p>
         </div>
 
@@ -105,7 +122,7 @@ export function MapTab({ state, dispatch }: Props) {
               haptics.select()
             }}
           >
-            Схема
+            {t.map.schema}
           </button>
           <button
             type="button"
@@ -117,7 +134,7 @@ export function MapTab({ state, dispatch }: Props) {
               haptics.select()
             }}
           >
-            Список
+            {t.map.list}
           </button>
         </div>
 
@@ -125,6 +142,7 @@ export function MapTab({ state, dispatch }: Props) {
           <>
             <SectorGraph
               state={state}
+              tc={tc}
               onSelect={id => {
                 haptics.select()
                 dispatch({ type: 'map/select', sectorId: id })
@@ -175,18 +193,22 @@ export function MapTab({ state, dispatch }: Props) {
             return (
               <div key={region.id} className="region">
                 <div className="region__title">
-                  <h3>{region.name}</h3>
+                  <h3>{tc.region(region.id, 'name', region.name)}</h3>
                   <span className="region__meta">
-                    {region.subtitle} · {owned} / {total}
+                    {tc.region(region.id, 'subtitle', region.subtitle)} · {owned} / {total}
                   </span>
                 </div>
-                <p className="region__desc">{region.description}</p>
+                <p className="region__desc">
+                  {tc.region(region.id, 'description', region.description)}
+                </p>
                 <div className="grid">
                   {visible.map(sector => (
                     <SectorCard
                       key={sector.id}
                       sector={sector}
                       state={state}
+                      tc={tc}
+                      t={t}
                       onSelect={() => dispatch({ type: 'map/select', sectorId: sector.id })}
                     />
                   ))}
@@ -210,22 +232,28 @@ export function MapTab({ state, dispatch }: Props) {
         <section className="panel">
           <div className="panel__head">
             <h2>
-              {SECTOR_TYPE_ICON[selected.type]} {selected.name}
+              {SECTOR_TYPE_ICON[selected.type]} {tc.sector(selected.id, 'name', selected.name)}
             </h2>
-            <p>{SECTOR_TYPE_LABEL[selected.type]}</p>
+            <p>{tc.sectorType(selected.type, SECTOR_TYPE_LABEL[selected.type])}</p>
           </div>
           <p className="muted" style={{ marginBottom: 'var(--sp-3)' }}>
-            {selected.description}
+            {tc.sector(selected.id, 'description', selected.description)}
           </p>
 
           {garrison && !selectedOwned ? (
             <div className="enemy">
               <div className="node__head">
                 <div>
-                  <div className="node__name">Гарнизон: {garrison.name}</div>
-                  <div className="node__desc">{garrison.description}</div>
+                  <div className="node__name">
+                    Гарнизон: {tc.enemy(garrison.id, 'name', garrison.name)}
+                  </div>
+                  <div className="node__desc">
+                    {tc.enemy(garrison.id, 'description', garrison.description)}
+                  </div>
                 </div>
-                <span className="node__level">{garrison.title}</span>
+                <span className="node__level">
+                  {tc.enemy(garrison.id, 'title', garrison.title)}
+                </span>
               </div>
               <div className="effects" style={{ marginTop: 'var(--sp-2)' }}>
                 <span className="tag tag--bad">броня {garrison.armor}</span>
@@ -242,14 +270,17 @@ export function MapTab({ state, dispatch }: Props) {
           ) : null}
 
           <p className="muted" style={{ marginBottom: 'var(--sp-3)' }}>
-            Соседние секторы:{' '}
+            {t.map.neighbours}:{' '}
             {neighborsOf(selected.id)
-              .map(id => getSector(id)?.name ?? id)
+              .map(id => {
+                const neighbor = getSector(id)
+                return neighbor ? tc.sector(neighbor.id, 'name', neighbor.name) : id
+              })
               .join(', ') || '—'}
           </p>
 
           {selectedOwned ? (
-            <span className="tag tag--good">Сектор уже под контролем империи</span>
+            <span className="tag tag--good">{t.map.alreadyOwned}</span>
           ) : selectedReachable ? (
             <button
               type="button"
@@ -258,11 +289,11 @@ export function MapTab({ state, dispatch }: Props) {
               onClick={() => dispatch({ type: 'map/capture', sectorId: selected.id })}
             >
               {selected.garrison
-                ? `⚔️ Штурмовать (⚡${captureEnergy})`
-                : `🚩 Занять сектор (⚡${captureEnergy})`}
+                ? `${t.map.assault} (⚡${captureEnergy})`
+                : `${t.map.occupy} (⚡${captureEnergy})`}
             </button>
           ) : (
-            <span className="tag">Недостижим: сначала возьмите соседний сектор</span>
+            <span className="tag">{t.map.unreachable}</span>
           )}
         </section>
       ) : null}

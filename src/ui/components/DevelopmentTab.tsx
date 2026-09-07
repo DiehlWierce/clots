@@ -5,10 +5,14 @@ import { haptics } from '@/telegram'
 import { formatCost, formatEffects } from '../format'
 import type { GameAction } from '@/engine/actions'
 import type { CitadelEffects, DoctrinePath, GameState, ResourceBag } from '@/engine/types'
+import type { ContentTranslator } from '@/i18n/content/translate'
+import type { Dictionary } from '@/i18n'
 
 interface Props {
   state: GameState
   dispatch: (action: GameAction) => void
+  tc: ContentTranslator
+  t: Dictionary
 }
 
 type Section = 'modules' | 'doctrines' | 'techs'
@@ -42,6 +46,9 @@ function UpgradeCard({
   onBuy,
   lockedReason,
   confirmNote,
+  name,
+  description,
+  labels,
 }: {
   item: UpgradeLike
   level: number
@@ -51,6 +58,9 @@ function UpgradeCard({
   lockedReason?: string | undefined
   /** Предупреждение перед необратимой покупкой. */
   confirmNote?: string | undefined
+  name: string
+  description: string
+  labels: Record<string, string>
 }) {
   const maxed = level >= item.maxLevel
   const cost = nextCost(item.costs, level)
@@ -62,8 +72,8 @@ function UpgradeCard({
     <div className={`node${level > 0 ? ' node--owned' : ''}${locked ? ' node--locked' : ''}`}>
       <div className="node__head">
         <div>
-          <div className="node__name">{item.name}</div>
-          <div className="node__desc">{item.description}</div>
+          <div className="node__name">{name}</div>
+          <div className="node__desc">{description}</div>
         </div>
         <span className="node__level">
           <Pips level={level} max={item.maxLevel} />
@@ -71,7 +81,7 @@ function UpgradeCard({
       </div>
 
       <div className="effects">
-        {formatEffects(item.effects, Math.max(1, level)).map(text => (
+        {formatEffects(item.effects, labels, Math.max(1, level)).map(text => (
           <span key={text} className="tag tag--good">
             {text}
           </span>
@@ -116,7 +126,7 @@ function groupByBranch<T extends { branch: string; tier: number }>(items: T[]): 
   ])
 }
 
-export function DevelopmentTab({ state, dispatch }: Props) {
+export function DevelopmentTab({ state, dispatch, tc, t }: Props) {
   const [section, setSection] = useState<Section>('modules')
   // Выбор пути и развилки необратим до конца партии, поэтому такие покупки
   // проходят через подтверждение, а не совершаются одним нажатием.
@@ -168,6 +178,9 @@ export function DevelopmentTab({ state, dispatch }: Props) {
                   level={state.modules[item.id] ?? 0}
                   levels={state.modules}
                   state={state}
+                  labels={t.effects}
+                  name={tc.module(item.id, 'name', item.name)}
+                  description={tc.module(item.id, 'description', item.description)}
                   onBuy={() => dispatch({ type: 'module/buy', id: item.id })}
                 />
               ))}
@@ -187,6 +200,9 @@ export function DevelopmentTab({ state, dispatch }: Props) {
                   level={state.techs[item.id] ?? 0}
                   levels={state.techs}
                   state={state}
+                  labels={t.effects}
+                  name={tc.tech(item.id, 'name', item.name)}
+                  description={tc.tech(item.id, 'description', item.description)}
                   onBuy={() => dispatch({ type: 'tech/buy', id: item.id })}
                 />
               ))}
@@ -208,11 +224,12 @@ export function DevelopmentTab({ state, dispatch }: Props) {
             return (
               <div key={pathId} className="branch">
                 <div className="branch__name">
-                  {path.name} — «{path.motto}»
+                  {tc.doctrinePath(pathId, 'name', path.name)} — «
+                  {tc.doctrinePath(pathId, 'motto', path.motto)}»
                 </div>
                 <p className="muted" style={{ marginBottom: 'var(--sp-2)' }}>
-                  {path.description} На третьей ступени путь расходится: взяв одну доктрину,
-                  соседнюю уже не получить.
+                  {tc.doctrinePath(pathId, 'description', path.description)} На третьей ступени путь
+                  расходится: взяв одну доктрину, соседнюю уже не получить.
                 </p>
                 <div className="grid">
                   {items.map(item => {
@@ -229,6 +246,9 @@ export function DevelopmentTab({ state, dispatch }: Props) {
                         level={state.doctrines[item.id] ?? 0}
                         levels={state.doctrines}
                         state={state}
+                        labels={t.effects}
+                        name={tc.doctrine(item.id, 'name', item.name)}
+                        description={tc.doctrine(item.id, 'description', item.description)}
                         onBuy={() => {
                           const irreversible =
                             (state.doctrinePath === null || item.fork !== undefined) &&

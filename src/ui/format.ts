@@ -17,28 +17,43 @@ export function formatNumber(value: number): string {
   return String(Math.round(value))
 }
 
-const EFFECT_LABELS: Record<keyof CitadelEffects, { label: string; percent?: boolean }> = {
-  attack: { label: 'Атака' },
-  defense: { label: 'Защита' },
-  maxIntegrity: { label: 'Целостность' },
-  maxEnergy: { label: 'Энергия' },
-  masking: { label: 'Маскировка/цикл' },
-  plasmaYield: { label: 'Плазма', percent: true },
-  clotYield: { label: 'Сгустки', percent: true },
-  essenceYield: { label: 'Эссенция', percent: true },
-  suppression: { label: 'Подавление угрозы', percent: true },
-  xpYield: { label: 'Опыт', percent: true },
-  pierce: { label: 'Пробитие' },
-  regen: { label: 'Регенерация/цикл' },
-  logistics: { label: 'Радиус сети' },
-}
+/** Какие эффекты показываются в процентах, а какие числом. */
+const PERCENT_EFFECTS = new Set<keyof CitadelEffects>([
+  'plasmaYield',
+  'clotYield',
+  'essenceYield',
+  'suppression',
+  'xpYield',
+])
 
-export function formatEffects(effects: CitadelEffects, multiplier = 1): string[] {
+const EFFECT_ORDER: (keyof CitadelEffects)[] = [
+  'attack',
+  'defense',
+  'maxIntegrity',
+  'maxEnergy',
+  'masking',
+  'plasmaYield',
+  'clotYield',
+  'essenceYield',
+  'suppression',
+  'xpYield',
+  'pierce',
+  'regen',
+  'logistics',
+]
+
+/**
+ * Подписи эффектов приходят из словаря: они видны игроку и потому
+ * локализуются, в отличие от идентификаторов.
+ */
+export function formatEffects(
+  effects: CitadelEffects,
+  labels: Record<string, string>,
+  multiplier = 1,
+): string[] {
   const out: string[] = []
-  for (const [key, config] of Object.entries(EFFECT_LABELS) as [
-    keyof CitadelEffects,
-    { label: string; percent?: boolean },
-  ][]) {
+  for (const key of EFFECT_ORDER) {
+    const config = { label: labels[key] ?? key, percent: PERCENT_EFFECTS.has(key) }
     const value = effects[key]
     if (value === undefined || value === 0) continue
     const scaled = value * multiplier

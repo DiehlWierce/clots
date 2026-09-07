@@ -4,12 +4,16 @@ import { canAfford } from '@/engine/selectors'
 import { currentIntent, effectiveArmor, momentumCost } from '@/engine/systems/combat'
 import type { GameAction } from '@/engine/actions'
 import type { CombatState, DerivedStats, GameState, PlayerCombatAction } from '@/engine/types'
+import type { ContentTranslator } from '@/i18n/content/translate'
+import type { Dictionary } from '@/i18n'
 
 interface Props {
   state: GameState
   combat: CombatState
   stats: DerivedStats
   dispatch: (action: GameAction) => void
+  tc: ContentTranslator
+  t: Dictionary
 }
 
 interface MoveSpec {
@@ -20,17 +24,17 @@ interface MoveSpec {
 }
 
 /** Полоса импульса: ресурс копится ударами и тратится на сильные приёмы. */
-function MomentumBar({ value, max }: { value: number; max: number }) {
+function MomentumBar({ value, max, label }: { value: number; max: number; label: string }) {
   return (
-    <div className="momentum" title="Импульс: копится ударами, тратится на сильные приёмы">
-      <span className="momentum__label">Импульс</span>
+    <div className="momentum" title={label}>
+      <span className="momentum__label">{label}</span>
       <div
         className="momentum__pips"
         role="meter"
         aria-valuenow={value}
         aria-valuemin={0}
         aria-valuemax={max}
-        aria-label="Импульс"
+        aria-label={label}
       >
         {Array.from({ length: max }, (_, i) => (
           <span key={i} className={`momentum__pip${i < value ? ' momentum__pip--on' : ''}`} />
@@ -43,7 +47,7 @@ function MomentumBar({ value, max }: { value: number; max: number }) {
   )
 }
 
-export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
+export function CombatOverlay({ state, combat, stats, dispatch, tc, t }: Props) {
   const enemy = getEnemy(combat.enemyId)
   const intent = currentIntent(combat)
   const c = BALANCE.combat
@@ -85,7 +89,7 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
       <div className="overlay__card">
         <div className="overlay__grip" aria-hidden="true" />
         <h2 className="overlay__title">
-          {combat.forced ? '🚨 Иммунный рейд' : '⚔️ Штурм'} — раунд {combat.round}
+          {combat.forced ? t.combat.raid : t.combat.assault} — {t.combat.round} {combat.round}
         </h2>
         <p className="overlay__sub">
           {combat.forced
@@ -96,10 +100,16 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
         <div className="enemy">
           <div className="node__head">
             <div>
-              <div className="node__name">{enemy?.name ?? 'Противник'}</div>
-              <div className="node__desc">{enemy?.description}</div>
+              <div className="node__name">
+                {enemy ? tc.enemy(enemy.id, 'name', enemy.name) : 'Противник'}
+              </div>
+              <div className="node__desc">
+                {enemy ? tc.enemy(enemy.id, 'description', enemy.description) : ''}
+              </div>
             </div>
-            <span className="node__level">{enemy?.title}</span>
+            <span className="node__level">
+              {enemy ? tc.enemy(enemy.id, 'title', enemy.title) : ''}
+            </span>
           </div>
 
           <div
@@ -121,16 +131,24 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
               {combat.hp} / {combat.maxHp} HP
             </span>
             {combat.shield > 0 ? <span className="tag tag--info">щит {combat.shield}</span> : null}
-            <span className="tag tag--bad">броня {effectiveArmor(combat)}</span>
+            <span className="tag tag--bad">
+              {t.combat.armor} {effectiveArmor(combat)}
+            </span>
             {combat.statuses.corrode > 0 ? (
-              <span className="tag tag--good">разъедание {combat.statuses.corrode}</span>
+              <span className="tag tag--good">
+                {t.combat.corrode} {combat.statuses.corrode}
+              </span>
             ) : null}
             {combat.statuses.bleed > 0 ? (
-              <span className="tag tag--good">кровотечение {combat.statuses.bleed}</span>
+              <span className="tag tag--good">
+                {t.combat.bleed} {combat.statuses.bleed}
+              </span>
             ) : null}
             {combat.statuses.stun > 0 ? <span className="tag tag--good">оглушён</span> : null}
             {enemy?.weakness ? (
-              <span className="tag tag--good">уязвим: {moveName(enemy.weakness)}</span>
+              <span className="tag tag--good">
+                {t.combat.weakTo}: {moveName(enemy.weakness)}
+              </span>
             ) : null}
           </div>
         </div>
@@ -148,7 +166,7 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
           </div>
         </div>
 
-        <MomentumBar value={combat.momentum} max={c.momentum.max} />
+        <MomentumBar value={combat.momentum} max={c.momentum.max} label={t.combat.momentum} />
 
         <div className="effects" style={{ marginBottom: 'var(--sp-3)' }}>
           <span className="tag">
@@ -178,7 +196,7 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
               >
                 <span className="move__title">{move.label}</span>
                 <span className="move__hint">{move.hint}</span>
-                <span className="move__cost">{price || 'без затрат'}</span>
+                <span className="move__cost">{price || t.combat.free}</span>
               </button>
             )
           })}
@@ -202,8 +220,8 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
           onClick={() => dispatch({ type: 'combat/withdraw' })}
         >
           {combat.forced
-            ? `🏳️ Пропустить удар (−${BALANCE.threat.raidBreachDamage} целостности)`
-            : `🏳️ Отступить (+${c.withdraw.threatPenalty}% угрозы)`}
+            ? `${t.combat.breach} (−${BALANCE.threat.raidBreachDamage})`
+            : `${t.combat.withdraw} (+${c.withdraw.threatPenalty}%)`}
         </button>
       </div>
     </div>

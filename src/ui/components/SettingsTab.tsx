@@ -8,12 +8,16 @@ import {
   isTelegram,
   setHapticsEnabled,
 } from '@/telegram'
+import { LOCALES, dictionary } from '@/i18n'
+import type { Locale } from '@/i18n'
 import type { ThemeMode } from '@/telegram'
 import type { GameState } from '@/engine/types'
 
 interface Props {
   state: GameState
   cloudBusy: boolean
+  locale: Locale
+  onLocaleChange: (locale: Locale) => void
   onCloudPush: () => Promise<boolean>
   onCloudPull: () => Promise<void>
   themeMode: ThemeMode
@@ -28,11 +32,7 @@ const REASONS: Record<string, string> = {
   incompatible: 'Код от несовместимой версии игры.',
 }
 
-const THEMES: { id: ThemeMode; label: string }[] = [
-  { id: 'auto', label: 'Авто' },
-  { id: 'light', label: 'Светлая' },
-  { id: 'dark', label: 'Тёмная' },
-]
+const THEME_IDS: ThemeMode[] = ['auto', 'light', 'dark']
 
 function Switch({
   checked,
@@ -60,6 +60,8 @@ function Switch({
 export function SettingsTab({
   state,
   cloudBusy,
+  locale,
+  onLocaleChange,
   onCloudPush,
   onCloudPull,
   themeMode,
@@ -72,6 +74,7 @@ export function SettingsTab({
   const [confirmReset, setConfirmReset] = useState(false)
   const [hapticsOn, setHapticsOn] = useState(isHapticsEnabled)
 
+  const t = dictionary(locale)
   const inTelegram = isTelegram()
   const platform = getWebApp()?.platform
 
@@ -110,31 +113,59 @@ export function SettingsTab({
     <>
       <section className="panel">
         <div className="panel__head">
-          <h2>Оформление</h2>
+          <h2>{t.settings.appearance}</h2>
         </div>
 
         <div className="setting">
           <div>
-            <div className="setting__label">Тема</div>
+            <div className="setting__label">{t.settings.language}</div>
+            <div className="setting__hint">{t.settings.languageHint}</div>
+          </div>
+        </div>
+        <div className="segmented" role="radiogroup" aria-label={t.settings.language}>
+          {LOCALES.map(item => (
+            <button
+              key={item.id}
+              type="button"
+              role="radio"
+              className="segmented__item"
+              aria-checked={locale === item.id}
+              onClick={() => {
+                onLocaleChange(item.id)
+                haptics.select()
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="setting">
+          <div>
+            <div className="setting__label">{t.settings.theme}</div>
             <div className="setting__hint">
               «Авто» — как в {inTelegram ? 'Telegram' : 'системе'}.
             </div>
           </div>
         </div>
-        <div className="segmented" role="radiogroup" aria-label="Тема оформления">
-          {THEMES.map(theme => (
+        <div className="segmented" role="radiogroup" aria-label={t.settings.theme}>
+          {THEME_IDS.map(id => (
             <button
-              key={theme.id}
+              key={id}
               type="button"
               role="radio"
               className="segmented__item"
-              aria-checked={themeMode === theme.id}
+              aria-checked={themeMode === id}
               onClick={() => {
-                onThemeChange(theme.id)
+                onThemeChange(id)
                 haptics.select()
               }}
             >
-              {theme.label}
+              {id === 'auto'
+                ? t.settings.themeAuto
+                : id === 'light'
+                  ? t.settings.themeLight
+                  : t.settings.themeDark}
             </button>
           ))}
         </div>

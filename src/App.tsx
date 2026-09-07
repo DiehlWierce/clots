@@ -5,7 +5,8 @@ import { useScrollLock } from '@/ui/hooks/useScrollLock'
 import { useTheme } from '@/ui/hooks/useTheme'
 import { useBackButton } from '@/ui/hooks/useBackButton'
 import { useMainButton } from '@/ui/hooks/useMainButton'
-import { useDictionary } from '@/ui/hooks/useDictionary'
+import { useLocale } from '@/ui/hooks/useLocale'
+import { useContent } from '@/ui/hooks/useContent'
 import { Hud } from '@/ui/components/Hud'
 import { CommandTab } from '@/ui/components/CommandTab'
 import { MapTab } from '@/ui/components/MapTab'
@@ -59,7 +60,8 @@ export default function App() {
 
   const [tab, setTab] = useState<TabId>(HOME)
   const { mode: themeMode, setMode: setThemeMode } = useTheme()
-  const t = useDictionary()
+  const { locale, setLocale, t } = useLocale()
+  const tc = useContent(locale)
   const stats = useDerived(state)
 
   // Инициализация мини-приложения: разворот окна, безопасные зоны, свайпы.
@@ -135,12 +137,16 @@ export default function App() {
       <main className="content">
         {!state.tutorialDismissed ? <TutorialHint state={state} dispatch={dispatch} /> : null}
 
-        {tab === 'command' && <CommandTab state={state} stats={stats} dispatch={dispatch} />}
-        {tab === 'map' && <MapTab state={state} dispatch={dispatch} />}
-        {tab === 'development' && <DevelopmentTab state={state} dispatch={dispatch} />}
+        {tab === 'command' && (
+          <CommandTab state={state} stats={stats} dispatch={dispatch} tc={tc} />
+        )}
+        {tab === 'map' && <MapTab state={state} dispatch={dispatch} tc={tc} t={t} />}
+        {tab === 'development' && (
+          <DevelopmentTab state={state} dispatch={dispatch} tc={tc} t={t} />
+        )}
         {tab === 'chronicle' && (
           <Suspense fallback={<p className="muted">Загружаем хронику…</p>}>
-            <ChronicleTab state={state} />
+            <ChronicleTab state={state} tc={tc} />
           </Suspense>
         )}
         {tab === 'settings' && (
@@ -148,6 +154,8 @@ export default function App() {
             <SettingsTab
               state={state}
               cloudBusy={cloudBusy}
+              locale={locale}
+              onLocaleChange={setLocale}
               onCloudPush={pushToCloud}
               onCloudPull={syncFromCloud}
               themeMode={themeMode}
@@ -197,16 +205,23 @@ export default function App() {
       </nav>
 
       {state.phase === 'mutation' ? (
-        <MutationOverlay offer={state.mutationOffer} dispatch={dispatch} />
+        <MutationOverlay offer={state.mutationOffer} dispatch={dispatch} tc={tc} t={t} />
       ) : null}
       {state.phase === 'event' && state.pendingEvent ? (
-        <EventOverlay state={state} eventId={state.pendingEvent} dispatch={dispatch} />
+        <EventOverlay state={state} eventId={state.pendingEvent} dispatch={dispatch} tc={tc} />
       ) : null}
       {state.phase === 'combat' && state.combat ? (
-        <CombatOverlay state={state} combat={state.combat} stats={stats} dispatch={dispatch} />
+        <CombatOverlay
+          state={state}
+          combat={state.combat}
+          stats={stats}
+          dispatch={dispatch}
+          tc={tc}
+          t={t}
+        />
       ) : null}
       {state.phase === 'vault' && state.pendingVault ? (
-        <VaultOverlay sectorId={state.pendingVault} dispatch={dispatch} />
+        <VaultOverlay sectorId={state.pendingVault} dispatch={dispatch} tc={tc} />
       ) : null}
       {state.phase === 'collapsed' || state.phase === 'victory' ? (
         <EndOverlay state={state} onRestart={restart} onNewGamePlus={newGamePlus} />
