@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { reduce } from '@/engine/engine'
 import { createInitialState } from '@/engine/state'
-import { derive, isAchievementEarned, threatGain } from '@/engine/selectors'
+import {
+  derive,
+  deliveryFactor,
+  hopsToHub,
+  isAchievementEarned,
+  sectorDelivery,
+  threatGain,
+} from '@/engine/selectors'
 import { BALANCE } from '@/engine/balance'
 import { EVENTS, EVENT_BY_ID, MUTATIONS, SECTORS, getEnemy } from '@/engine/content'
 import { pickReclaimTarget, raidChance, reclaimChance } from '@/engine/systems/threat'
@@ -597,5 +604,63 @@ describe('осада и New Game+', () => {
       return next.combat?.maxHp ?? 0
     }
     expect(fight(plus)).toBeGreaterThan(fight(base))
+  })
+})
+
+/**
+ * Пропускная способность: расстояние до узла сети перестало быть бесплатным.
+ * Раньше сектор в четырнадцати переходах доставлял столько же, сколько
+ * соседний, и граф карты работал только на проверку достижимости.
+ */
+describe('пропускная способность сети', () => {
+  it('доля доставки падает с расстоянием', () => {
+    expect(deliveryFactor(0)).toBe(1)
+    expect(deliveryFactor(4)).toBeLessThan(deliveryFactor(1))
+    expect(deliveryFactor(20)).toBeLessThan(deliveryFactor(7))
+    expect(deliveryFactor(20)).toBeGreaterThan(0)
+  })
+
+  it('стартовый сектор и ретрансляторы — узлы сети', () => {
+    const s: GameState = {
+      ...newGame(1),
+      controlled: ['cap-core', 'cap-drift', 'cap-weave', 'cap-relay'],
+    }
+    const hops = hopsToHub(s, 0)
+    expect(hops.get('cap-core')).toBe(0)
+    expect(hops.get('cap-relay')).toBe(0)
+    expect(hops.get('cap-drift')).toBe(1)
+  })
+
+  it('доставка считается только через свои секторы', () => {
+    // cap-cache соединён с cap-weave и cap-forge; без них он отрезан.
+    const s: GameState = { ...newGame(1), controlled: ['cap-core', 'cap-cache'] }
+    const hops = hopsToHub(s, 0)
+    expect(hops.get('cap-cache')).toBeGreaterThan(10)
+  })
+
+  it('дальний сектор доставляет меньше, чем тот же сектор рядом с узлом', () => {
+    const near: GameState = { ...newGame(1), controlled: ['cap-core', 'cap-drift'] }
+    const chain = ['cap-core', 'cap-drift', 'cap-weave', 'cap-cache', 'cap-forge', 'cap-nexus']
+    const far: GameState = { ...newGame(1), controlled: chain }
+    expect(sectorDelivery(far, 'cap-nexus').hops).toBeGreaterThan(
+      sectorDelivery(near, 'cap-drift').hops,
+    )
+  })
+
+  it('модули логистики уменьшают потери', () => {
+    const chain = ['cap-core', 'cap-drift', 'cap-weave', 'cap-cache', 'cap-forge', 'cap-nexus']
+    const plain: GameState = { ...newGame(1), controlled: chain }
+    const wired: GameState = { ...plain, modules: { 'flow-relay': 3, 'pressure-column': 3 } }
+    expect(derive(wired).logisticsLoss).toBeLessThanOrEqual(derive(plain).logisticsLoss)
+    expect(derive(wired).logistics).toBeGreaterThan(derive(plain).logistics)
+  })
+
+  it('захват ретранслятора поднимает доставку соседей', () => {
+    const chain = ['cap-core', 'cap-drift', 'cap-weave', 'cap-cache', 'cap-forge']
+    const without: GameState = { ...newGame(1), controlled: chain }
+    const withRelay: GameState = { ...newGame(1), controlled: [...chain, 'cap-relay'] }
+    expect(sectorDelivery(withRelay, 'cap-forge').hops).toBeLessThan(
+      sectorDelivery(without, 'cap-forge').hops,
+    )
   })
 })

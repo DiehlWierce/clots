@@ -30,6 +30,7 @@ const EFFECT_LABELS: Record<keyof CitadelEffects, { label: string; percent?: boo
   xpYield: { label: 'Опыт', percent: true },
   pierce: { label: 'Пробитие' },
   regen: { label: 'Регенерация/цикл' },
+  logistics: { label: 'Радиус сети' },
 }
 
 export function formatEffects(effects: CitadelEffects, multiplier = 1): string[] {

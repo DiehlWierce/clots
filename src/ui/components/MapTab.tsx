@@ -1,6 +1,6 @@
 import { BALANCE } from '@/engine/balance'
 import { REGIONS, SECTORS, getEnemy, getSector, neighborsOf } from '@/engine/content'
-import { isSectorReachable } from '@/engine/selectors'
+import { isSectorReachable, sectorDelivery } from '@/engine/selectors'
 import { SECTOR_TYPE_ICON, SECTOR_TYPE_LABEL, formatIncome } from '../format'
 import type { GameAction } from '@/engine/actions'
 import type { GameState, SectorDef } from '@/engine/types'
@@ -22,6 +22,9 @@ function SectorCard({
   const owned = state.controlled.includes(sector.id)
   const reachable = isSectorReachable(state, sector.id)
   const income = sector.income ? formatIncome(sector.income) : []
+  // Доход физически идёт по сети: показываем, сколько реально доходит,
+  // иначе потери на доставке выглядели бы как «числа какие-то не те».
+  const delivery = owned && sector.income ? sectorDelivery(state, sector.id) : null
 
   return (
     <button
@@ -55,6 +58,11 @@ function SectorCard({
               {item}
             </span>
           ))}
+          {delivery && delivery.factor < 1 ? (
+            <span className="tag tag--warn">
+              доходит {Math.round(delivery.factor * 100)}% · {delivery.hops} шагов до узла
+            </span>
+          ) : null}
         </span>
       ) : null}
     </button>

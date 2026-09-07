@@ -317,6 +317,69 @@ export const MODULES: ModuleDef[] = [
     requires: ['phase-screen'],
   },
 
+  // ─── Ветка: Логистика ─────────────────────────────────────────────────────
+  // Вторая ось развития помимо военной: не «бить сильнее» и не «прятаться
+  // лучше», а дотягиваться дальше. Без неё дальние богатые секторы теряют
+  // на доставке больше половины дохода.
+  {
+    id: 'flow-relay',
+    name: 'Проточный ретранслятор',
+    description: 'Расширяет зону полной отдачи вокруг каждого узла сети.',
+    branch: 'Логистика',
+    tier: 1,
+    maxLevel: 3,
+    costs: [
+      { plasma: 90, clots: 18 },
+      { plasma: 200, clots: 45 },
+      { plasma: 400, clots: 95 },
+    ],
+    effects: { logistics: 1 },
+  },
+  {
+    id: 'pressure-column',
+    name: 'Напорная колонна',
+    description: 'Держит давление на дальних маршрутах: потери на доставке падают.',
+    branch: 'Логистика',
+    tier: 2,
+    maxLevel: 3,
+    costs: [
+      { plasma: 260, clots: 60, essence: 3 },
+      { plasma: 460, clots: 110, essence: 6 },
+      { plasma: 800, clots: 190, essence: 11 },
+    ],
+    effects: { logistics: 1, plasmaYield: 0.08 },
+    requires: ['flow-relay'],
+  },
+  {
+    id: 'vascular-grid',
+    name: 'Сосудистая решётка',
+    description: 'Сеть перестаёт зависеть от расстояния почти полностью.',
+    branch: 'Логистика',
+    tier: 3,
+    maxLevel: 3,
+    costs: [
+      { plasma: 620, clots: 150, essence: 9 },
+      { plasma: 1050, clots: 260, essence: 16 },
+      { plasma: 1700, clots: 430, essence: 26 },
+    ],
+    effects: { logistics: 2, clotYield: 0.1 },
+    requires: ['pressure-column'],
+  },
+  {
+    id: 'omni-conduit',
+    name: 'Всеобщая магистраль',
+    description: 'Империя доставляет всё и отовсюду, будто расстояний нет.',
+    branch: 'Логистика',
+    tier: 4,
+    maxLevel: 2,
+    costs: [
+      { plasma: 1500, clots: 380, essence: 24 },
+      { plasma: 2600, clots: 660, essence: 40 },
+    ],
+    effects: { logistics: 3, plasmaYield: 0.12, essenceYield: 0.12 },
+    requires: ['vascular-grid'],
+  },
+
   // ─── Ветка: Энергетический купол ──────────────────────────────────────────
   {
     id: 'energy-loop',

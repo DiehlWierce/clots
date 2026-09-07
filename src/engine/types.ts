@@ -88,6 +88,8 @@ export interface CitadelEffects {
   pierce?: number
   /** Восстановление целостности за цикл. */
   regen?: number
+  /** Радиус узла сети: на сколько шагов ретранслятор тянет полную отдачу. */
+  logistics?: number
 }
 
 export interface ModuleDef {
@@ -394,4 +396,8 @@ export interface DerivedStats {
   income: { plasma: number; clots: number; essence: number }
   /** Прирост угрозы за цикл. */
   threatGain: number
+  /** Радиус узлов сети от модулей и технологий. */
+  logistics: number
+  /** Доля дохода, теряемая на доставке. 0 — потерь нет. */
+  logisticsLoss: number
 }

@@ -167,6 +167,14 @@ export function CommandTab({ state, stats, dispatch }: Props) {
             <dd>{Math.round(stats.suppression * 100)}%</dd>
           </div>
           <div>
+            <dt>Радиус сети</dt>
+            <dd>{stats.logistics}</dd>
+          </div>
+          <div>
+            <dt>Потери доставки</dt>
+            <dd>{Math.round(stats.logisticsLoss * 100)}%</dd>
+          </div>
+          <div>
             <dt>Добыча плазмы</dt>
             <dd>+{Math.round(stats.plasmaYield * 100)}%</dd>
           </div>

@@ -9,6 +9,7 @@ import {
   getSector,
   neighborsOf,
 } from './content'
+import { START_SECTOR } from './content/sectors'
 import type { CitadelEffects, DerivedStats, GameState, ResourceBag, SectorDef } from './types'
 
 const EFFECT_KEYS = [
@@ -24,6 +25,7 @@ const EFFECT_KEYS = [
   'xpYield',
   'pierce',
   'regen',
+  'logistics',
 ] as const satisfies ReadonlyArray<keyof CitadelEffects>
 
 /** Служебные ключи трофеев из хранилищ (не настоящие модули). */
@@ -46,6 +48,7 @@ function emptyEffects(): EffectTotals {
     xpYield: 0,
     pierce: 0,
     regen: 0,
+    logistics: 0,
   }
 }
 
@@ -112,21 +115,94 @@ export function collectEffects(state: GameState): EffectTotals {
   return total
 }
 
+/**
+ * Расстояние от каждого захваченного сектора до ближайшего узла сети.
+ *
+ * Узлы — стартовый сектор и захваченные ретрансляторы. Радиус узла (модули
+ * и технологии логистики) добавляет запас: он вычитается из расстояния.
+ * Обход идёт только по своим секторам — доставка через чужие русла невозможна.
+ */
+export function hopsToHub(state: GameState, radius: number): Map<string, number> {
+  const owned = new Set(state.controlled)
+  const distance = new Map<string, number>()
+  const queue: string[] = []
+
+  for (const id of state.controlled) {
+    const sector = getSector(id)
+    if (id === START_SECTOR || sector?.type === 'relay') {
+      distance.set(id, 0)
+      queue.push(id)
+    }
+  }
+
+  // Если ни одного узла нет (стартовый потерян быть не может, но подстрахуемся),
+  // считаем всё максимально удалённым.
+  while (queue.length > 0) {
+    const current = queue.shift()
+    if (current === undefined) break
+    const next = (distance.get(current) ?? 0) + 1
+    for (const neighbor of neighborsOf(current)) {
+      if (!owned.has(neighbor)) continue
+      if (distance.has(neighbor)) continue
+      distance.set(neighbor, next)
+      queue.push(neighbor)
+    }
+  }
+
+  const result = new Map<string, number>()
+  for (const id of state.controlled) {
+    const raw = distance.get(id)
+    result.set(id, Math.max(0, (raw ?? Number.MAX_SAFE_INTEGER) - radius))
+  }
+  return result
+}
+
+/** Какая доля дохода доходит до цитадели с указанного расстояния. */
+export function deliveryFactor(hops: number): number {
+  for (const tier of BALANCE.logistics.tiers) {
+    if (hops <= tier.hops) return tier.delivered
+  }
+  return 1
+}
+
 /** Сырой доход с секторов до множителей. */
-export function baseIncome(state: GameState): { plasma: number; clots: number; essence: number } {
+export function baseIncome(
+  state: GameState,
+  radius = 0,
+): { plasma: number; clots: number; essence: number; raw: number; delivered: number } {
   const base = BALANCE.citadel.baseIncome
   let plasma = base.plasma
   let clots: number = base.clots
   let essence: number = base.essence
 
+  const hops = hopsToHub(state, radius)
+  let raw = 0
+  let delivered = 0
+
   for (const sectorId of state.controlled) {
     const income = getSector(sectorId)?.income
     if (!income) continue
-    plasma += income.plasma ?? 0
-    clots += income.clots ?? 0
-    essence += income.essence ?? 0
+    // Доход физически проходит по сети: чем дальше от узла, тем больше потерь.
+    const factor = deliveryFactor(hops.get(sectorId) ?? 0)
+    const sectorRaw = (income.plasma ?? 0) + (income.clots ?? 0) + (income.essence ?? 0)
+    raw += sectorRaw
+    delivered += sectorRaw * factor
+
+    plasma += (income.plasma ?? 0) * factor
+    clots += (income.clots ?? 0) * factor
+    essence += (income.essence ?? 0) * factor
   }
-  return { plasma, clots, essence }
+  return { plasma, clots, essence, raw, delivered }
+}
+
+/** Сколько сектор реально доставляет с учётом расстояния и множителей. */
+export function sectorDelivery(
+  state: GameState,
+  sectorId: string,
+): { hops: number; factor: number } {
+  const radius = Math.round(collectEffects(state).logistics + BALANCE.logistics.relayRadius)
+  const hops = hopsToHub(state, radius).get(sectorId) ?? 0
+  return { hops, factor: deliveryFactor(hops) }
 }
 
 /** Суммарный «шум» от захваченных секторов — основной драйвер угрозы. */
@@ -170,7 +246,8 @@ export function derive(state: GameState): DerivedStats {
   const curve = BALANCE.progression.xpCurve
   const currentThreshold = curve[level - 1] ?? 0
   const nextThreshold = xpForNextLevel(level)
-  const income = baseIncome(state)
+  const radius = Math.round(effects.logistics + BALANCE.logistics.relayRadius)
+  const income = baseIncome(state, radius)
 
   return {
     level,
@@ -194,6 +271,8 @@ export function derive(state: GameState): DerivedStats {
       essence: Math.round(income.essence * (1 + effects.essenceYield)),
     },
     threatGain: threatGain(state, effects),
+    logistics: radius,
+    logisticsLoss: income.raw > 0 ? round2(1 - income.delivered / income.raw) : 0,
   }
 }
 
