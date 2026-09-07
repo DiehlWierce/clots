@@ -41,12 +41,9 @@ jobs:
         run: npx vite build
 
   balance:
-    name: Балансные прогоны
+    name: Балансный отчёт
     needs: verify
     runs-on: ubuntu-latest
-    # Проверка баланса — не гейт корректности: она измеряет игру, а не ловит
-    # поломку кода. Её падение не должно останавливать деплой.
-    continue-on-error: true
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -55,8 +52,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Симуляции
-        run: npm run test:balance
+
+      # Отчёт, а не проверка. Баланс — это измерение игры, а не корректность
+      # кода: он меняется от правки к правке, и порог «сколько побед считать
+      # нормой» — продуктовое решение, а не то, что должно ронять сборку.
+      # Сами утверждения о жизнеспособности стилей живут в npm run test:balance
+      # и запускаются осознанно.
+      - name: Стили игры
+        run: npm run balance 12
+
+      - name: Мутации
+        run: npm run balance:mutations 4
 
   e2e:
     name: E2E-проверки интерфейса
