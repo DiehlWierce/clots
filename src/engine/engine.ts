@@ -23,6 +23,7 @@ import {
   collectEffects,
   derive,
   mutationRaidPower,
+  mendOutcome,
   isSectorReachable,
   doctrineForkBlocked,
   epochMultiplier,
@@ -42,8 +43,6 @@ import {
   createRaidCombat,
   createSectorCombat,
   currentIntent,
-  momentumCost,
-  momentumGain,
   resolveEnemyTurn,
   resolvePlayerHit,
 } from './systems/combat'
@@ -649,52 +648,37 @@ function doCombatAction(ctx: Ctx, action: PlayerCombatAction): void {
   const c = BALANCE.combat
   const stats = derive(ctx.s)
 
-  // Импульс — плата за сильные приёмы. Он же делает «Фокус» и «Щит»
-  // осмысленными: они не наносят урона, но копят ресурс на следующий удар.
-  const cost = momentumCost(action)
-  if (cost > 0 && combat.momentum < cost) {
-    ctx.warn(`Нужно ${cost} импульса, накоплено ${combat.momentum}.`)
-    return
-  }
-
-  if (action === 'surge' && !payCost(ctx, c.surge.cost)) return
-
-  if (cost > 0) combat.momentum -= cost
-  combat.momentum = Math.min(c.momentum.max, combat.momentum + momentumGain(action))
-
-  if (action === 'focus') {
-    combat.focused = true
-    ctx.log(`Импульс сфокусирован: следующий удар тяжелее (+${c.momentum.perFocus} импульса).`)
+  // Замах: ход без урона, зато входящий удар вдвое слабее. Следующий удар
+  // становится супер-ударом. Это одновременно подготовка и защита — иначе
+  // приём повторил бы судьбу «Фокуса», который стоил ход и не окупался.
+  if (action === 'charge') {
+    combat.charging = true
+    ctx.log(`Замах: следующий удар ×${c.super.power}, входящий — вполсилы.`)
     enemyTurn(ctx)
     return
   }
 
-  if (action === 'guard') {
-    combat.guarded = true
-    ctx.log(`Щит поднят: удар придёт ослабленным (+${c.momentum.perGuard} импульса).`)
+  // Перевязка в бою берёт из того же бюджета цикла, что и ремонт в штабе:
+  // правило одно, и игрок не держит в голове два разных.
+  if (action === 'mend') {
+    const outcome = mendOutcome(ctx.s, stats)
+    const heal = Math.min(outcome.left, Math.round(stats.maxIntegrity * c.mend.share))
+    if (heal <= 0) {
+      ctx.warn('Ядро приняло весь ремонт этого цикла.')
+      return
+    }
+    ctx.s.integrity = Math.min(stats.maxIntegrity, ctx.s.integrity + heal)
+    ctx.s.healedThisCycle += heal
+    combat.mended += heal
+    ctx.s.stats.mendsUsed += 1
+    ctx.log(`Перевязка: +${heal} целостности.`, 'good')
     enemyTurn(ctx)
     return
   }
 
-  // Вскрытие срабатывает ДО расчёта урона: иначе его собственный удар гасился
-  // бы щитом, который он в этот же момент срывает.
-  if (action === 'rupture') {
-    combat.armorBroken = Math.min(combat.armor, combat.armorBroken + c.rupture.armorBreak)
-    const stripped = combat.shield
-    combat.shield = 0
-    combat.statuses.corrode += c.rupture.corrode
-    const stunned = ctx.rng.chance(c.rupture.stunChance)
-    if (stunned) combat.statuses.stun += 1
-    ctx.log(
-      `Вскрытие: ${[
-        stripped > 0 ? `щит сорван (−${stripped})` : null,
-        `броня ослаблена (−${c.rupture.armorBreak})`,
-        `разъедание +${c.rupture.corrode}`,
-        stunned ? 'противник оглушён' : null,
-      ]
-        .filter(Boolean)
-        .join(', ')}.`,
-    )
+  if (action === 'super' && !combat.charging) {
+    ctx.warn('Супер-удар требует замаха.')
+    return
   }
 
   const hit = resolvePlayerHit(
@@ -705,24 +689,17 @@ function doCombatAction(ctx: Ctx, action: PlayerCombatAction): void {
     epochMultiplier(ctx.s, 'combatDamage'),
   )
 
-  if (hit.absorbed > 0) {
-    combat.shield = Math.max(0, combat.shield - hit.absorbed)
-  }
   combat.hp = Math.max(0, combat.hp - hit.damage)
-  combat.focused = false
+  combat.charging = false
   ctx.s.stats.damageDealt += hit.damage
 
-  // Пульс-удар оставляет кровотечение: урон продолжает капать сам.
+  // Обычный удар оставляет кровотечение: урон продолжает капать сам.
   if (action === 'strike') combat.statuses.bleed = Math.max(combat.statuses.bleed, c.strike.bleed)
 
   const suffix = [hit.crit ? 'крит' : null, hit.weakness ? 'уязвимость' : null]
     .filter(Boolean)
     .join(', ')
-  ctx.log(
-    `${actionLabel(action)}: −${hit.damage}${suffix ? ` (${suffix})` : ''}${
-      hit.absorbed > 0 ? `, щит поглотил ${hit.absorbed}` : ''
-    }.`,
-  )
+  ctx.log(`${actionLabel(action)}: −${hit.damage}${suffix ? ` (${suffix})` : ''}.`)
 
   if (combat.hp <= 0) {
     winCombat(ctx)
@@ -735,11 +712,11 @@ function doCombatAction(ctx: Ctx, action: PlayerCombatAction): void {
 function actionLabel(action: string): string {
   switch (action) {
     case 'strike':
-      return 'Пульс-удар'
-    case 'surge':
-      return 'Гемо-всплеск'
-    case 'rupture':
-      return 'Вскрытие'
+      return 'Удар'
+    case 'super':
+      return 'Супер-удар'
+    case 'charge':
+      return 'Замах'
     default:
       return 'Действие'
   }
@@ -771,20 +748,12 @@ function enemyTurn(ctx: Ctx): void {
   const enemy = getEnemy(combat.enemyId)
 
   if (result.damage > 0) damageCitadel(ctx, result.damage)
-  if (result.energyDrained > 0) ctx.s.energy = Math.max(0, ctx.s.energy - result.energyDrained)
   if (result.healed > 0) combat.hp = Math.min(combat.maxHp, combat.hp + result.healed)
-  if (result.shielded > 0) combat.shield += result.shielded
   ctx.s.threat += result.threat
 
-  combat.guarded = false
+  // Замах противника объявляется за ход: игрок видит, что будет дальше.
+  combat.enemyCharging = result.intent.kind === 'charge'
   combat.round += 1
-  if (result.stunned) {
-    // Оглушённый враг теряет ход, но намерение не сменяется: игрок видит,
-    // что именно он не успел применить.
-    combat.statuses.stun -= 1
-    ctx.log(`${enemy?.name ?? 'Противник'} оглушён и пропускает ход.`, 'good')
-    return
-  }
   combat.intentIndex += 1
 
   const parts = [

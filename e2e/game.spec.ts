@@ -76,8 +76,12 @@ test('бой: оверлей открывается, приём наносит �
 
   const hp = combat.locator('.tag', { hasText: 'HP' })
   const before = await hp.textContent()
-  await combat.getByRole('button', { name: /Пульс-удар/ }).click()
+  await combat.getByRole('button', { name: /Удар/ }).first().click()
   await expect(hp).not.toHaveText(before ?? '')
+
+  // Замах виден как отдельный приём и превращается в супер-удар.
+  await combat.getByRole('button', { name: /Замах/ }).click()
+  await expect(combat.getByRole('button', { name: /Супер-удар/ })).toBeVisible()
 
   await combat.getByRole('button', { name: /Отступить/ }).click()
   await expect(combat).toBeHidden()

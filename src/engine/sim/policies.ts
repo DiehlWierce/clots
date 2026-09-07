@@ -5,6 +5,7 @@ import {
   MODULES,
   SECTORS,
   TECHS,
+  getEnemy,
   getSector,
 } from '../content'
 import { reduce } from '../engine'
@@ -13,12 +14,12 @@ import {
   derive,
   doctrineForkBlocked,
   isSectorReachable,
+  mendOutcome,
   nextCost,
   overdriveCost,
   overdriveUnlocked,
   requirementsMet,
 } from '../selectors'
-import { currentIntent, momentumCost } from '../systems/combat'
 import type { GameAction } from '../actions'
 import type { DoctrinePath, GameState, SectorDef } from '../types'
 
@@ -862,23 +863,28 @@ function fightStep(s: GameState, policy: Policy): GameState {
   const combat = s.combat
   if (!combat) return s
   const stats = derive(s)
-  const intent = currentIntent(combat).kind
-  const needsRupture = combat.shield > 0 || combat.armor - combat.armorBroken > 8
 
-  if (needsRupture && combat.momentum >= momentumCost('rupture')) {
-    return act(s, { type: 'combat/act', action: 'rupture' })
+  // Замах противника виден за ход: принять его в собственном замахе вдвое
+  // дешевле, и это же готовит супер-удар. Именно на этом стоит новый бой.
+  if (combat.enemyCharging && !combat.charging) {
+    return act(s, { type: 'combat/act', action: 'charge' })
   }
-  // Осторожная политика чаще уходит в защиту.
-  const guardThreshold = policy.id === 'cautious' ? 0.7 : 0.4
-  if (intent === 'heavy' && s.integrity < stats.maxIntegrity * guardThreshold) {
-    return act(s, { type: 'combat/act', action: 'guard' })
+
+  // Накопленный замах тратится сразу: он не переносится и не копится.
+  if (combat.charging) return act(s, { type: 'combat/act', action: 'super' })
+
+  // На грани — перевязка, пока бюджет цикла позволяет.
+  const low = s.integrity < stats.maxIntegrity * (policy.id === 'cautious' ? 0.5 : 0.3)
+  if (!policy.neverHeal && low && mendOutcome(s, stats).left > 0) {
+    return act(s, { type: 'combat/act', action: 'mend' })
   }
-  if (
-    combat.momentum >= momentumCost('surge') &&
-    s.clots >= BALANCE.combat.surge.cost.clots &&
-    !needsRupture
-  ) {
-    return act(s, { type: 'combat/act', action: 'surge' })
+
+  // Броню обходит только супер-удар, поэтому против бронированных врагов
+  // выгоднее замахиваться, чем бить в лоб.
+  const enemy = getEnemy(combat.enemyId)
+  if (combat.armor > stats.pierce + stats.attack * 0.2 || enemy?.weakness === 'super') {
+    return act(s, { type: 'combat/act', action: 'charge' })
   }
+
   return act(s, { type: 'combat/act', action: 'strike' })
 }

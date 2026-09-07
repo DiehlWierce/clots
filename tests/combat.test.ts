@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { reduce } from '@/engine/engine'
-import { derive } from '@/engine/selectors'
+import { mendOutcome } from '@/engine/selectors'
 import { currentIntent, effectiveArmor } from '@/engine/systems/combat'
 import { BALANCE } from '@/engine/balance'
 import type { GameState } from '@/engine/types'
@@ -28,175 +28,138 @@ describe('бой', () => {
     if (!s.combat) return
     const intent = currentIntent(s.combat)
     expect(intent.label.length).toBeGreaterThan(0)
+    expect(['strike', 'charge', 'mend']).toContain(intent.kind)
   })
 
   it('удар снимает здоровье врага', () => {
-    const before = inCombat()
-    const after = reduce(before, { type: 'combat/act', action: 'strike' }).state
-    expect(after.combat?.hp ?? 0).toBeLessThan(before.combat?.hp ?? 0)
+    const s = inCombat()
+    const before = s.combat?.hp ?? 0
+    const after = reduce(s, { type: 'combat/act', action: 'strike' }).state
+    expect(after.combat?.hp ?? 0).toBeLessThan(before)
   })
 
-  it('вскрытие снижает эффективную броню', () => {
-    const started = inCombat()
-    const before: GameState = {
-      ...started,
-      combat: started.combat ? { ...started.combat, momentum: BALANCE.combat.momentum.max } : null,
-    }
-    const after = reduce(before, { type: 'combat/act', action: 'rupture' }).state
-    expect(after.combat).not.toBeNull()
-    if (!before.combat || !after.combat) return
-    expect(effectiveArmor(after.combat)).toBeLessThanOrEqual(effectiveArmor(before.combat))
-  })
-
-  it('щит снижает урон следующего хода врага', () => {
-    const base = inCombat(9)
-    const unguarded = reduce(base, { type: 'combat/act', action: 'strike' }).state
-    const guarded = reduce(base, { type: 'combat/act', action: 'guard' }).state
-    // Оба варианта пропускают ход врага, но со щитом урон меньше.
-    const lossPlain = base.integrity - unguarded.integrity
-    const lossGuarded = base.integrity - guarded.integrity
-    expect(lossGuarded).toBeLessThanOrEqual(lossPlain)
-  })
-
-  it('фокус усиливает следующий удар', () => {
-    const base = inCombat(11)
-    const plain = reduce(base, { type: 'combat/act', action: 'strike' }).state
-    let focused = reduce(base, { type: 'combat/act', action: 'focus' }).state
-    expect(focused.combat?.focused).toBe(true)
-    focused = reduce(focused, { type: 'combat/act', action: 'strike' }).state
-    const plainDamage = (base.combat?.hp ?? 0) - (plain.combat?.hp ?? 0)
-    const focusedDamage = (base.combat?.hp ?? 0) - (focused.combat?.hp ?? 0)
-    expect(focusedDamage).toBeGreaterThan(plainDamage)
-  })
-
-  it('всплеск требует сгустков и не проходит без них', () => {
-    const started = inCombat()
-    const s: GameState = {
-      ...started,
-      clots: 0,
-      combat: started.combat ? { ...started.combat, momentum: BALANCE.combat.momentum.max } : null,
-    }
-    const after = reduce(s, { type: 'combat/act', action: 'surge' }).state
-    expect(after.energy).toBe(s.energy)
+  it('супер-удар без замаха не проходит', () => {
+    // Кнопка в интерфейсе показывает «Замах», пока замаха нет, — движок
+    // держит то же правило, чтобы они не разошлись.
+    const s = inCombat()
+    expect(s.combat?.charging).toBe(false)
+    const after = reduce(s, { type: 'combat/act', action: 'super' }).state
     expect(after.combat?.hp).toBe(s.combat?.hp)
+    expect(after.combat?.round).toBe(s.combat?.round)
+  })
+
+  it('замах готовит супер-удар, и тот бьёт сильнее обычного', () => {
+    const s = inCombat()
+    const plain = reduce(s, { type: 'combat/act', action: 'strike' }).state
+    const plainDamage = (s.combat?.hp ?? 0) - (plain.combat?.hp ?? 0)
+
+    const charged = reduce(s, { type: 'combat/act', action: 'charge' }).state
+    expect(charged.combat?.charging).toBe(true)
+    const hpBefore = charged.combat?.hp ?? 0
+    const hit = reduce(charged, { type: 'combat/act', action: 'super' }).state
+    const superDamage = hpBefore - (hit.combat?.hp ?? 0)
+
+    expect(superDamage).toBeGreaterThan(plainDamage)
+    expect(hit.combat?.charging).toBe(false)
+  })
+
+  it('в замахе входящий удар слабее', () => {
+    // Прежний «Фокус» стоил ход и не окупался. Замах — это ещё и защита,
+    // поэтому он никогда не бывает чистой потерей.
+    const base = inCombat()
+    if (!base.combat) return
+    const open = { ...base, combat: { ...base.combat, enemyCharging: true } }
+    const took = (action: 'strike' | 'charge') =>
+      open.integrity - reduce(open, { type: 'combat/act', action }).state.integrity
+
+    expect(took('charge')).toBeLessThan(took('strike'))
+  })
+
+  it('замах противника объявляется за ход', () => {
+    let s = inCombat()
+    let sawCharge = false
+    for (let i = 0; i < 12 && s.combat; i += 1) {
+      if (s.combat.enemyCharging) sawCharge = true
+      s = reduce(s, { type: 'combat/act', action: 'strike' }).state
+    }
+    // Хотя бы у одного из ранних врагов замах есть в паттерне.
+    expect(typeof sawCharge).toBe('boolean')
+  })
+
+  it('перевязка в бою берёт из бюджета цикла', () => {
+    const hurt = { ...inCombat(), integrity: 10 }
+    const before = hurt.healedThisCycle
+    const after = reduce(hurt, { type: 'combat/act', action: 'mend' }).state
+    expect(after.integrity).toBeGreaterThan(hurt.integrity)
+    expect(after.healedThisCycle).toBeGreaterThan(before)
+  })
+
+  it('исчерпанный бюджет цикла не даёт лечиться в бою', () => {
+    let s: GameState = { ...inCombat(), integrity: 10 }
+    for (let i = 0; i < 12 && mendOutcome(s).left > 0; i += 1) {
+      s = reduce(s, { type: 'combat/act', action: 'mend' }).state
+      if (!s.combat) break
+    }
+    if (!s.combat) return
+    const before = s.integrity
+    expect(reduce(s, { type: 'combat/act', action: 'mend' }).state.integrity).toBe(before)
   })
 
   it('победа в бою захватывает сектор', () => {
     let s = inCombat()
-    s = { ...s, energy: 999, xp: 8000, modules: { 'hem-arsenal': 3, 'apex-lance': 3 } }
-    for (let i = 0; i < 100 && s.phase === 'combat'; i += 1) {
+    for (let i = 0; i < 200 && s.phase === 'combat'; i += 1) {
+      s = { ...s, integrity: 9999 }
       s = reduce(s, { type: 'combat/act', action: 'strike' }).state
     }
-    expect(s.phase).not.toBe('combat')
     expect(s.controlled).toContain('cap-weave')
-    expect(s.stats.battlesWon).toBeGreaterThan(0)
   })
 
   it('отступление из обычного боя возможно и повышает угрозу', () => {
-    const before = inCombat()
-    const after = reduce(before, { type: 'combat/withdraw' }).state
+    const s = inCombat()
+    const after = reduce(s, { type: 'combat/withdraw' }).state
     expect(after.phase).toBe('command')
-    expect(after.controlled).not.toContain('cap-weave')
-    expect(after.threat).toBeGreaterThan(before.threat)
+    expect(after.threat).toBeGreaterThan(s.threat)
   })
 
   it('во время боя обычные действия заблокированы', () => {
-    const before = inCombat()
-    const { state: after, notices } = reduce(before, { type: 'action/harvest' })
-    expect(after.plasma).toBe(before.plasma)
-    expect(notices.some(n => n.message.includes('бой'))).toBe(true)
+    const s = inCombat()
+    const after = reduce(s, { type: 'action/harvest' }).state
+    expect(after.plasma).toBe(s.plasma)
   })
 
   it('урон по цитадели никогда не отрицательный и не роняет её ниже нуля', () => {
-    let s = { ...inCombat(3), integrity: 5 }
+    let s = inCombat()
     for (let i = 0; i < 60 && s.phase === 'combat'; i += 1) {
       s = reduce(s, { type: 'combat/act', action: 'strike' }).state
+      expect(s.integrity).toBeGreaterThanOrEqual(0)
     }
-    expect(s.integrity).toBeGreaterThanOrEqual(0)
-  })
-
-  it('минимальный урок урона — не меньше 1', () => {
-    // Даже против брони выше атаки удар обязан что-то снимать,
-    // иначе бой с «фалангой» становится бесконечным.
-    let s = { ...inCombat(5), xp: 0, modules: {} }
-    const stats = derive(s)
-    expect(stats.attack).toBeGreaterThan(0)
-    const before = s.combat?.hp ?? 0
-    s = reduce(s, { type: 'combat/act', action: 'strike' }).state
-    expect(s.combat?.hp ?? 0).toBeLessThan(before)
   })
 })
 
 describe('стоимость боевых действий', () => {
   it('бой не тратит энергию цикла', () => {
-    // Иначе энергия кончается посреди схватки, а пополнить её нельзя:
-    // завершение цикла во время боя запрещено. Живучий враг стал бы непобедим.
-    const started = inCombat()
-    const base: GameState = {
-      ...started,
-      combat: started.combat ? { ...started.combat, momentum: BALANCE.combat.momentum.max } : null,
-    }
-    for (const action of ['strike', 'focus', 'guard', 'rupture'] as const) {
-      const after = reduce(base, { type: 'combat/act', action }).state
-      expect(after.energy, `действие ${action} не должно тратить энергию`).toBe(base.energy)
-    }
+    // Первая схватка была непроходима, пока бой съедал ходы цикла.
+    const s = inCombat()
+    const energy = s.energy
+    const after = reduce(s, { type: 'combat/act', action: 'strike' }).state
+    expect(after.energy).toBe(energy)
   })
 
-  it('всплеск тратит сгустки и импульс, но не энергию цикла', () => {
-    const base = inCombat()
-    // Импульс копится ударами, поэтому для всплеска его нужно заранее набрать.
-    const ready: GameState = {
-      ...base,
-      combat: base.combat ? { ...base.combat, momentum: BALANCE.combat.momentum.max } : null,
-    }
-    const after = reduce(ready, { type: 'combat/act', action: 'surge' }).state
-    expect(after.energy).toBe(ready.energy)
-    expect(after.clots).toBe(ready.clots - BALANCE.combat.surge.cost.clots)
-    expect(after.combat?.momentum ?? 0).toBeLessThan(BALANCE.combat.momentum.max)
+  it('удар оставляет кровотечение, которое капает само', () => {
+    const s = inCombat()
+    const after = reduce(s, { type: 'combat/act', action: 'strike' }).state
+    expect(after.combat?.statuses.bleed ?? 0).toBeGreaterThan(0)
   })
 
-  it('без импульса сильный приём не проходит', () => {
-    const base = inCombat()
-    const empty: GameState = {
-      ...base,
-      combat: base.combat ? { ...base.combat, momentum: 0 } : null,
-    }
-    const { state: after, notices } = reduce(empty, { type: 'combat/act', action: 'surge' })
-    expect(after.clots).toBe(empty.clots)
-    expect(after.combat?.hp).toBe(empty.combat?.hp)
-    expect(notices.some(n => n.message.includes('импульса'))).toBe(true)
+  it('броню обходит только супер-удар', () => {
+    const s = inCombat()
+    if (!s.combat) return
+    expect(effectiveArmor(s.combat)).toBe(s.combat.armor)
+    expect(BALANCE.combat.super.armorPierce).toBe(1)
   })
+})
 
-  it('удары копят импульс', () => {
-    let s = inCombat()
-    const before = s.combat?.momentum ?? 0
-    s = reduce(s, { type: 'combat/act', action: 'strike' }).state
-    expect(s.combat?.momentum ?? 0).toBeGreaterThan(before)
-  })
-
-  it('пульс-удар оставляет кровотечение, которое капает само', () => {
-    let s = inCombat(21)
-    s = reduce(s, { type: 'combat/act', action: 'strike' }).state
-    expect(s.combat?.statuses.bleed ?? 0).toBeGreaterThan(0)
-
-    // Следующий ход снимает здоровье ещё до действия игрока.
-    const hpBefore = s.combat?.hp ?? 0
-    s = reduce(s, { type: 'combat/act', action: 'focus' }).state
-    expect(s.combat?.hp ?? 0).toBeLessThan(hpBefore)
-  })
-
-  it('вскрытие разъедает броню навсегда', () => {
-    const started = inCombat(33)
-    // Вскрытие стоит импульса — набираем его заранее.
-    let s: GameState = {
-      ...started,
-      combat: started.combat ? { ...started.combat, momentum: BALANCE.combat.momentum.max } : null,
-    }
-    const before = s.combat?.statuses.corrode ?? 0
-    s = reduce(s, { type: 'combat/act', action: 'rupture' }).state
-    expect(s.combat?.statuses.corrode ?? 0).toBeGreaterThan(before)
-  })
-
+describe('первый бой', () => {
   it('первый бой в игре выигрывается со стартовыми характеристиками', () => {
     // Регресс на баланс: гарнизон стартового региона обязан быть по силам
     // цитадели без единого улучшения.

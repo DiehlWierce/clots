@@ -41,15 +41,13 @@ function buildCombat(
     maxHp: hp,
     attack,
     armor: enemy.armor,
-    armorBroken: 0,
-    shield: 0,
     // Стартовое намерение выбирается случайно, чтобы бои с одним и тем же
     // врагом не были копией друг друга.
     intentIndex: rng.int(0, Math.max(0, enemy.pattern.length - 1)),
-    focused: false,
-    guarded: false,
-    momentum: 0,
-    statuses: { bleed: 0, corrode: 0, stun: 0 },
+    charging: false,
+    enemyCharging: false,
+    mended: 0,
+    statuses: { bleed: 0 },
     round: 1,
     forced,
   }
@@ -64,8 +62,7 @@ export function currentIntent(combat: CombatState): IntentDef {
 }
 
 export function effectiveArmor(combat: CombatState): number {
-  // Разъедание снижает броню постоянно, вскрытие — на этот бой.
-  return Math.max(0, combat.armor - combat.armorBroken - combat.statuses.corrode)
+  return Math.max(0, combat.armor)
 }
 
 export interface PlayerHitResult {
@@ -87,10 +84,8 @@ export function resolvePlayerHit(
   const c = BALANCE.combat
   const enemy = getEnemy(combat.enemyId)
 
-  const power = action === 'surge' ? c.surge.power : action === 'rupture' ? c.rupture.power : 1
-  let raw = stats.attack * power
-
-  if (combat.focused) raw *= c.focus.multiplier
+  const isSuper = action === 'super'
+  let raw = stats.attack * (isSuper ? c.super.power : c.strike.power)
 
   const weakness = enemy?.weakness === action
   if (weakness) raw *= c.weaknessMultiplier
@@ -102,15 +97,14 @@ export function resolvePlayerHit(
   raw *= 1 + rng.float(-c.variance, c.variance)
   raw *= damageScale
 
-  // Броня режет урон, пробитие её частично игнорирует.
-  const armor = Math.max(0, effectiveArmor(combat) - stats.pierce)
-  let damage = Math.max(1, Math.round(raw - armor))
+  // Броня режет урон; супер-удар её пробивает целиком — это его вторая роль
+  // помимо силы, и единственный способ обойти броню.
+  const armor = isSuper
+    ? Math.max(0, effectiveArmor(combat) * (1 - c.super.armorPierce) - stats.pierce)
+    : Math.max(0, effectiveArmor(combat) - stats.pierce)
+  const damage = Math.max(1, Math.round(raw - armor))
 
-  // Щит врага поглощает урон до здоровья.
-  const absorbed = Math.min(combat.shield, damage)
-  damage -= absorbed
-
-  return { damage, crit, weakness, absorbed }
+  return { damage, crit, weakness, absorbed: 0 }
 }
 
 export interface EnemyTurnResult {
@@ -125,7 +119,14 @@ export interface EnemyTurnResult {
   threat: number
 }
 
-/** Считает ход врага по его текущему намерению. */
+/**
+ * Считает ход врага по его текущему намерению.
+ *
+ * Противник играет теми же тремя глаголами, что и игрок: бьёт, замахивается
+ * или перевязывается. Замах всегда виден за ход вперёд — именно на нём
+ * строится решение игрока: ответить своим замахом (и вдвое ослабить удар),
+ * добить обычным ударом или уйти.
+ */
 export function resolveEnemyTurn(
   combat: CombatState,
   stats: DerivedStats,
@@ -134,39 +135,29 @@ export function resolveEnemyTurn(
 ): EnemyTurnResult {
   const intent = currentIntent(combat)
   const enemy = getEnemy(combat.enemyId)
+  const c = BALANCE.combat
+
+  // Замах, объявленный в прошлый ход, срабатывает сейчас.
+  const power = combat.enemyCharging ? c.enemySuperPower : intent.power
 
   let damage = 0
-  if (intent.power > 0) {
-    const raw = combat.attack * intent.power
-    const defenseApplied = stats.defense * (1 - (intent.ignoreDefense ?? 0))
-    damage = Math.max(1, raw - defenseApplied)
-    if (combat.guarded) damage *= 1 - BALANCE.combat.guard.reduction
+  if (power > 0) {
+    damage = Math.max(1, combat.attack * power - stats.defense)
+    // Игрок в замахе принимает удар вполсилы: замах — это и подготовка,
+    // и защита, иначе он повторил бы судьбу «Фокуса».
+    if (combat.charging) damage *= 1 - c.charge.mitigation
     damage = Math.max(1, Math.round(damage * damageScale))
   }
 
-  // Оглушённый враг пропускает ход целиком.
-  if (combat.statuses.stun > 0) {
-    return {
-      intent,
-      damage: 0,
-      energyDrained: 0,
-      healed: 0,
-      shielded: 0,
-      threat: 0,
-      stunned: true,
-    }
-  }
-
-  // Лечение врага ограничено долей его максимума за ход: см. enemyHealCap.
-  const rawHeal = ((intent.healSelf ?? 0) + (enemy?.regen ?? 0)) * regenScale
-  const healed = Math.min(rawHeal, Math.round(combat.maxHp * BALANCE.combat.enemyHealCap))
+  const rawHeal = ((intent.healSelf ?? 0) * combat.maxHp + (enemy?.regen ?? 0)) * regenScale
+  const healed = Math.min(rawHeal, Math.round(combat.maxHp * c.enemyHealCap))
 
   return {
     intent,
     damage,
-    energyDrained: intent.drainEnergy ?? 0,
-    healed,
-    shielded: intent.shieldSelf ?? 0,
+    energyDrained: 0,
+    healed: Math.round(healed),
+    shielded: 0,
     threat: intent.threat,
   }
 }
@@ -174,27 +165,4 @@ export function resolveEnemyTurn(
 /** Урон кровотечения за ход. */
 export function bleedDamage(stats: DerivedStats): number {
   return Math.max(1, Math.round(stats.attack * BALANCE.combat.bleedDamage))
-}
-
-/** Хватает ли импульса на приём. */
-export function momentumCost(action: PlayerCombatAction): number {
-  const c = BALANCE.combat
-  if (action === 'surge') return c.surge.momentum
-  if (action === 'rupture') return c.rupture.momentum
-  return 0
-}
-
-/** Сколько импульса приносит приём. */
-export function momentumGain(action: PlayerCombatAction): number {
-  const m = BALANCE.combat.momentum
-  switch (action) {
-    case 'strike':
-      return m.perStrike
-    case 'focus':
-      return m.perFocus
-    case 'guard':
-      return m.perGuard
-    default:
-      return 0
-  }
 }

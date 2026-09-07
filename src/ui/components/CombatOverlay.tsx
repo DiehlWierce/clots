@@ -1,7 +1,7 @@
 import { BALANCE } from '@/engine/balance'
 import { getEnemy } from '@/engine/content'
-import { canAfford } from '@/engine/selectors'
-import { currentIntent, effectiveArmor, momentumCost } from '@/engine/systems/combat'
+import { mendOutcome } from '@/engine/selectors'
+import { currentIntent, effectiveArmor } from '@/engine/systems/combat'
 import type { GameAction } from '@/engine/actions'
 import type { CombatState, DerivedStats, GameState, PlayerCombatAction } from '@/engine/types'
 import type { ContentTranslator } from '@/i18n/content/translate'
@@ -20,31 +20,8 @@ interface MoveSpec {
   action: PlayerCombatAction
   label: string
   hint: string
-  cost?: { clots: number }
-}
-
-/** Полоса импульса: ресурс копится ударами и тратится на сильные приёмы. */
-function MomentumBar({ value, max, label }: { value: number; max: number; label: string }) {
-  return (
-    <div className="momentum" title={label}>
-      <span className="momentum__label">{label}</span>
-      <div
-        className="momentum__pips"
-        role="meter"
-        aria-valuenow={value}
-        aria-valuemin={0}
-        aria-valuemax={max}
-        aria-label={label}
-      >
-        {Array.from({ length: max }, (_, i) => (
-          <span key={i} className={`momentum__pip${i < value ? ' momentum__pip--on' : ''}`} />
-        ))}
-      </div>
-      <span className="momentum__value">
-        {value}/{max}
-      </span>
-    </div>
-  )
+  /** Почему приём сейчас недоступен. Пусто — доступен. */
+  blocked?: string
 }
 
 export function CombatOverlay({ state, combat, stats, dispatch, tc, t }: Props) {
@@ -53,34 +30,34 @@ export function CombatOverlay({ state, combat, stats, dispatch, tc, t }: Props) 
   const c = BALANCE.combat
   const hpPercent = (combat.hp / combat.maxHp) * 100
   const recent = state.log.slice(-3).reverse()
-  const shieldPercent = Math.min(100 - hpPercent, (combat.shield / combat.maxHp) * 100)
+  const mend = mendOutcome(state, stats)
+  const heal = Math.min(mend.left, Math.round(stats.maxIntegrity * c.mend.share))
 
   const moves: MoveSpec[] = [
     {
       action: 'strike',
-      label: '⚔️ Пульс-удар',
-      hint: `Атака и кровотечение на ${c.strike.bleed} хода. +${c.momentum.perStrike} импульса.`,
+      label: '⚔️ Удар',
+      hint: `Обычная атака. Оставляет кровотечение на ${c.strike.bleed} хода.`,
     },
+    combat.charging
+      ? {
+          action: 'super',
+          label: '💥 Супер-удар',
+          hint: `Замах готов: урон ×${c.super.power}, броня не считается.`,
+        }
+      : {
+          action: 'charge',
+          label: '🌀 Замах',
+          hint: `Ход без урона, зато входящий удар вполсилы. Следующий ваш — ×${c.super.power}.`,
+        },
     {
-      action: 'surge',
-      label: '💥 Гемо-всплеск',
-      hint: `Урон ×${c.surge.power}. Тратит импульс и сгустки.`,
-      cost: c.surge.cost,
-    },
-    {
-      action: 'rupture',
-      label: '🔧 Вскрытие',
-      hint: `Срывает щит, снимает броню, разъедает её навсегда. Шанс оглушить.`,
-    },
-    {
-      action: 'focus',
-      label: '🎯 Фокус',
-      hint: `Следующий удар ×${c.focus.multiplier}. +${c.momentum.perFocus} импульса.`,
-    },
-    {
-      action: 'guard',
-      label: '🛡️ Щит',
-      hint: `Урон следующего хода −${Math.round(c.guard.reduction * 100)}%. +${c.momentum.perGuard} импульса.`,
+      action: 'mend',
+      label: '🫀 Перевязка',
+      hint:
+        heal > 0
+          ? `Ход на ремонт: +${heal} целостности. Общий бюджет цикла — ${mend.budget}.`
+          : 'Ядро приняло весь ремонт этого цикла.',
+      ...(heal > 0 ? {} : { blocked: 'бюджет цикла исчерпан' }),
     },
   ]
 
@@ -121,30 +98,20 @@ export function CombatOverlay({ state, combat, stats, dispatch, tc, t }: Props) 
             aria-label="Здоровье противника"
           >
             <div className="enemy__hp" style={{ width: `${hpPercent}%` }} />
-            {combat.shield > 0 ? (
-              <div className="enemy__shield" style={{ width: `${shieldPercent}%` }} />
-            ) : null}
           </div>
 
           <div className="effects">
             <span className="tag">
               {combat.hp} / {combat.maxHp} HP
             </span>
-            {combat.shield > 0 ? <span className="tag tag--info">щит {combat.shield}</span> : null}
             <span className="tag tag--bad">
               {t.combat.armor} {effectiveArmor(combat)}
             </span>
-            {combat.statuses.corrode > 0 ? (
-              <span className="tag tag--good">
-                {t.combat.corrode} {combat.statuses.corrode}
-              </span>
-            ) : null}
             {combat.statuses.bleed > 0 ? (
               <span className="tag tag--good">
                 {t.combat.bleed} {combat.statuses.bleed}
               </span>
             ) : null}
-            {combat.statuses.stun > 0 ? <span className="tag tag--good">оглушён</span> : null}
             {enemy?.weakness ? (
               <span className="tag tag--good">
                 {t.combat.weakTo}: {moveName(enemy.weakness)}
@@ -154,19 +121,23 @@ export function CombatOverlay({ state, combat, stats, dispatch, tc, t }: Props) 
         </div>
 
         {/* Намерение всегда показано заранее: бой должен читаться, а не угадываться. */}
-        <div className="intent">
-          <span aria-hidden="true">{combat.statuses.stun > 0 ? '💫' : '🔮'}</span>
+        {/* Намерение всегда показано заранее: бой должен читаться, а не
+            угадываться. Объявленный замах — главный повод замахнуться самому. */}
+        <div className="intent" style={combat.enemyCharging ? { borderColor: 'var(--c-bad)' } : {}}>
+          <span aria-hidden="true">{combat.enemyCharging ? '⚡' : '🔮'}</span>
           <div>
             <div className="intent__label">
-              {combat.statuses.stun > 0
-                ? 'Оглушён: пропустит ход'
+              {combat.enemyCharging
+                ? `Замахнулся: сейчас ударит ×${c.enemySuperPower}`
                 : `Следующий ход: ${intent.label}`}
             </div>
-            <div className="intent__desc">{intent.description}</div>
+            <div className="intent__desc">
+              {combat.enemyCharging
+                ? `Ответьте замахом — удар придёт вполсилы (×${Math.round(c.enemySuperPower * (1 - c.charge.mitigation) * 10) / 10}), и ваш следующий пробьёт броню.`
+                : intent.description}
+            </div>
           </div>
         </div>
-
-        <MomentumBar value={combat.momentum} max={c.momentum.max} label={t.combat.momentum} />
 
         <div className="effects" style={{ marginBottom: 'var(--sp-3)' }}>
           <span className="tag">
@@ -174,29 +145,22 @@ export function CombatOverlay({ state, combat, stats, dispatch, tc, t }: Props) 
           </span>
           <span className="tag">🫀 {state.integrity}</span>
           <span className="tag">🩸 {state.clots}</span>
-          {combat.focused ? <span className="tag tag--good">фокус активен</span> : null}
-          {combat.guarded ? <span className="tag tag--good">щит поднят</span> : null}
+          {combat.charging ? <span className="tag tag--good">замах готов</span> : null}
         </div>
 
         <div className="moves">
           {moves.map(move => {
-            const need = momentumCost(move.action)
-            const noMomentum = combat.momentum < need
-            const noClots = move.cost ? !canAfford(state, move.cost) : false
-            const price = [need > 0 ? `⚡︎${need}` : null, move.cost ? `🩸${move.cost.clots}` : null]
-              .filter(Boolean)
-              .join('  ·  ')
             return (
               <button
                 key={move.action}
                 type="button"
                 className="move"
-                disabled={noMomentum || noClots}
+                disabled={move.blocked !== undefined}
                 onClick={() => dispatch({ type: 'combat/act', action: move.action })}
               >
                 <span className="move__title">{move.label}</span>
                 <span className="move__hint">{move.hint}</span>
-                <span className="move__cost">{price || t.combat.free}</span>
+                <span className="move__cost">{move.blocked ?? t.combat.free}</span>
               </button>
             )
           })}
@@ -228,13 +192,6 @@ export function CombatOverlay({ state, combat, stats, dispatch, tc, t }: Props) 
   )
 }
 
-function moveName(action: PlayerCombatAction): string {
-  const names: Record<PlayerCombatAction, string> = {
-    strike: 'пульс-удар',
-    surge: 'гемо-всплеск',
-    focus: 'фокус',
-    guard: 'щит',
-    rupture: 'вскрытие',
-  }
-  return names[action]
+function moveName(action: 'strike' | 'super'): string {
+  return action === 'super' ? 'супер-удар' : 'удар'
 }

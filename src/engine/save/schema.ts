@@ -236,12 +236,10 @@ function sanitizeCombat(value: unknown): GameState['combat'] {
     maxHp,
     attack: num(raw.attack, 1, 0),
     armor: int(raw.armor, 0, 0),
-    armorBroken: int(raw.armorBroken, 0, 0),
-    shield: int(raw.shield, 0, 0),
     intentIndex: int(raw.intentIndex, 0, 0, 999),
-    focused: bool(raw.focused, false),
-    guarded: bool(raw.guarded, false),
-    momentum: int(raw.momentum, 0, 0, BALANCE.combat.momentum.max),
+    charging: bool(raw.charging, false),
+    enemyCharging: bool(raw.enemyCharging, false),
+    mended: int(raw.mended, 0, 0),
     statuses: sanitizeStatuses(raw.statuses),
     round: int(raw.round, 1, 1),
     forced: bool(raw.forced, false),
@@ -250,11 +248,7 @@ function sanitizeCombat(value: unknown): GameState['combat'] {
 
 function sanitizeStatuses(value: unknown): CombatState['statuses'] {
   const raw = (typeof value === 'object' && value !== null ? value : {}) as Record<string, unknown>
-  return {
-    bleed: int(raw.bleed, 0, 0, 99),
-    corrode: int(raw.corrode, 0, 0, 999),
-    stun: int(raw.stun, 0, 0, 9),
-  }
+  return { bleed: int(raw.bleed, 0, 0, 99) }
 }
 
 function sanitizeLog(value: unknown): GameState['log'] {
