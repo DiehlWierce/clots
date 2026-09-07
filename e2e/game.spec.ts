@@ -150,13 +150,20 @@ test('после завершения цикла игрок возвращает
 
 test('режимы сортировки дают разный порядок, а не одинаковый', async ({ page }) => {
   // На первом цикле недоступно вообще ничего, и режимы совпадают честно.
-  // Разница появляется, когда часть покупок уже по карману, — копим ресурсы.
-  for (let i = 0; i < 8; i += 1) {
+  // Разница появляется, когда часть покупок уже по карману. Копим до этого
+  // условия, а не фиксированное число циклов: сколько именно их нужно,
+  // зависит от баланса и от выпавших событий.
+  for (let i = 0; i < 30; i += 1) {
     const dialog = page.getByRole('dialog').first()
     if (await dialog.isVisible()) {
-      await dialog.getByRole('button').first().click()
+      const inCombat = await dialog.getByRole('button', { name: /Отступить/ }).count()
+      if (inCombat > 0) await dialog.getByRole('button', { name: /Отступить/ }).click()
+      else await dialog.getByRole('button').first().click()
       continue
     }
+    await page.getByRole('tab', { name: 'Развитие' }).click()
+    const affordable = await page.locator('.node .btn--primary').count()
+    if (affordable > 1) break
     await page.getByRole('button', { name: /Завершить цикл/ }).click()
   }
 
