@@ -5,7 +5,7 @@ import { applyTheme, readThemeMode, resolveTheme } from './telegram'
 import { reportStorageFailures, useGame } from './store/useGame'
 import { ErrorBoundary } from './ui/components/ErrorBoundary'
 import { encodeSaveCodeCompressed } from './engine/save'
-import { recordError, watchErrors } from './telegram'
+import { recordError, registerOffline, watchErrors } from './telegram'
 import './styles/tokens.css'
 import './styles/base.css'
 import './styles/app.css'
@@ -18,6 +18,9 @@ reportStorageFailures()
 
 // Необработанные ошибки складываются локально; отправку решает игрок.
 watchErrors()
+
+// Партия и так хранится на устройстве — играть можно и без сети.
+registerOffline()
 
 const container = document.getElementById('root')
 if (!container) throw new Error('Не найден корневой элемент #root')

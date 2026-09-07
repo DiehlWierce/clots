@@ -3,3 +3,4 @@ coverage
 node_modules
 *.png
 *.svg
+public/sw.js

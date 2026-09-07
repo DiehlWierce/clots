@@ -4,6 +4,7 @@ export { applyTheme, detectTheme, readThemeMode, resolveTheme, writeThemeMode } 
 export type { ThemeMode, ResolvedTheme } from './theme'
 export { watchViewport } from './viewport'
 export { isPlaytest } from './playtest'
+export { registerOffline } from './offline'
 export { shareRun, buildRunSummary, buildShareUrl } from './share'
 export { watchErrors, listErrors, clearErrors, recordError, buildErrorReport } from './diagnostics'
 export type { ErrorRecord } from './diagnostics'

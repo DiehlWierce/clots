@@ -4,7 +4,9 @@ import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'node_modules'] },
+  // public/sw.js исполняется браузером как есть и живёт в среде service
+  // worker, которой нет в конфигурации проекта.
+  { ignores: ['dist', 'coverage', 'node_modules', 'public/sw.js'] },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   reactHooks.configs.flat['recommended-latest'],
@@ -34,8 +36,9 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
-    // Скрипты для терминала: печать в консоль — их прямое назначение.
-    files: ['scripts/**/*.ts'],
+    // Скрипты и E2E печатают в терминал: это их прямое назначение —
+    // замеры и отчёты видны в логах CI.
+    files: ['scripts/**/*.ts', 'e2e/**/*.ts'],
     rules: { 'no-console': 'off' },
   },
 )
