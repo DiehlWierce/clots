@@ -9,6 +9,7 @@ import {
   isAchievementEarned,
   ngPlusPressure,
   overdriveCost,
+  overdriveUnlocked,
   sectorDelivery,
   threatGain,
 } from '@/engine/selectors'
@@ -21,6 +22,7 @@ import {
   MODULES,
   MUTATIONS,
   SECTORS,
+  THRONE_SECTOR,
   getEnemy,
 } from '@/engine/content'
 import {
@@ -905,7 +907,11 @@ describe('бюджет снижения угрозы', () => {
 
 describe('перегрузка ядра', () => {
   /** Партия, дошедшая до уровня, с которого перегрузка открыта. */
-  const deepGame = (): GameState => ({ ...newGame(3), xp: 40_000 })
+  const deepGame = (): GameState => ({
+    ...newGame(3),
+    xp: 40_000,
+    controlled: [...newGame(3).controlled, THRONE_SECTOR],
+  })
 
   it('покупается бесконечно, но каждый уровень дороже', () => {
     // Пустой эндгейм: в разобранной партии игрока на сотом цикле лежали
@@ -923,12 +929,12 @@ describe('перегрузка ядра', () => {
     expect(after.attack).toBeGreaterThan(before.attack)
   })
 
-  it('до нужного уровня цитадели перегрузка недоступна', () => {
-    // Правило жило только в интерфейсе, а движок пускал покупку с первого
-    // цикла: стиль, топивший излишки в перегрузку вместо дерева, обгонял
-    // обычные. Источник правды — движок.
+  it('до низложения Суверена перегрузка недоступна', () => {
+    // Сток для излишков должен открываться там, где излишки и появляются.
+    // Пока правило было «с шестого уровня», он открывался в середине партии
+    // и обгонял само дерево развития.
     const early: GameState = { ...newGame(3), plasma: 200_000, clots: 200_000, essence: 20_000 }
-    expect(derive(early).level).toBeLessThan(BALANCE.overdrive.minLevel)
+    expect(overdriveUnlocked(early)).toBe(false)
     expect(reduce(early, { type: 'overdrive/buy' }).state.overdrive).toBe(0)
   })
 

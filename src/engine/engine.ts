@@ -29,6 +29,7 @@ import {
   nextCost,
   ngPlusPressure,
   overdriveCost,
+  overdriveUnlocked,
   requirementsMet,
   VAULT_ENERGY,
   VAULT_INTEGRITY,
@@ -917,7 +918,7 @@ function doBuyDoctrine(ctx: Ctx, id: string): void {
  * уровнем, отдача — нет.
  */
 function doOverdrive(ctx: Ctx): void {
-  if (derive(ctx.s).level < BALANCE.overdrive.minLevel) return
+  if (!overdriveUnlocked(ctx.s)) return
   const cost = overdriveCost(ctx.s.overdrive)
   if (!payCost(ctx, cost)) return
   ctx.s.overdrive += 1

@@ -4,9 +4,9 @@ import { DOCTRINES, DOCTRINE_PATHS, MODULES, TECHS } from '@/engine/content'
 import {
   canAfford,
   doctrineForkBlocked,
-  derive,
   nextCost,
   overdriveCost,
+  overdriveUnlocked,
   requirementsMet,
 } from '@/engine/selectors'
 import { BALANCE } from '@/engine/balance'
@@ -338,7 +338,6 @@ function OverdriveCard({
 }
 
 export function DevelopmentTab({ state, dispatch, tc, t }: Props) {
-  const derived = derive(state)
   const [section, setSection] = useState<Section>('modules')
   // Выбор пути и развилки необратим до конца партии, поэтому такие покупки
   // проходят через подтверждение, а не совершаются одним нажатием.
@@ -423,12 +422,11 @@ export function DevelopmentTab({ state, dispatch, tc, t }: Props) {
             : t.development.sortHintCheapest}
       </p>
 
-      {/* Перегрузка — поздняя механика. До середины партии она заняла бы
-          лучшее место в списке, будучи заведомо недоступной. */}
-      {section === 'modules' &&
-        (derived.level >= BALANCE.overdrive.minLevel || state.overdrive > 0) && (
-          <OverdriveCard state={state} dispatch={dispatch} t={t} />
-        )}
+      {/* Перегрузка открывается только после низложения Суверена: это сток
+          для излишков, а излишки появляются именно там. */}
+      {section === 'modules' && overdriveUnlocked(state) && (
+        <OverdriveCard state={state} dispatch={dispatch} t={t} />
+      )}
 
       {section === 'modules' && (
         <Listing

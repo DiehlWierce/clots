@@ -11,7 +11,7 @@ import {
   getSector,
   neighborsOf,
 } from './content'
-import { START_SECTOR } from './content/sectors'
+import { START_SECTOR, THRONE_SECTOR } from './content/sectors'
 import type {
   CitadelEffects,
   DerivedStats,
@@ -446,6 +446,19 @@ export function isRegionCleared(state: GameState, region: string): boolean {
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100
+}
+
+/**
+ * Открыта ли перегрузка ядра.
+ *
+ * Она задумана стоком для излишков — того, что копится, когда покупать уже
+ * нечего. Пока правило было «с шестого уровня», сток открывался в середине
+ * партии и обгонял само дерево развития: стиль, топивший в него ресурсы,
+ * выигрывал 90% против 50–52% у обычных. Теперь он открывается там, где
+ * излишки и появляются: после низложения Суверена, на время осады.
+ */
+export function overdriveUnlocked(state: GameState): boolean {
+  return state.controlled.includes(THRONE_SECTOR)
 }
 
 /**

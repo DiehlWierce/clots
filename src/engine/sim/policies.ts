@@ -15,6 +15,7 @@ import {
   isSectorReachable,
   nextCost,
   overdriveCost,
+  overdriveUnlocked,
   requirementsMet,
 } from '../selectors'
 import { currentIntent, momentumCost } from '../systems/combat'
@@ -799,7 +800,7 @@ export function step(state: GameState, policy: Policy): GameState {
 
 function pickPurchase(s: GameState, policy: Policy): GameAction | null {
   // Перегрузчик топит излишки в бесконечный сток раньше дерева развития.
-  if (policy.overdriveFirst && canAfford(s, overdriveCost(s.overdrive))) {
+  if (policy.overdriveFirst && overdriveUnlocked(s) && canAfford(s, overdriveCost(s.overdrive))) {
     return { type: 'overdrive/buy' }
   }
 
@@ -841,7 +842,9 @@ function pickPurchase(s: GameState, policy: Policy): GameAction | null {
 
   // Излишкам поздней партии нужно назначение: когда покупать больше нечего,
   // ресурсы уходят в перегрузку, а не копятся мёртвым грузом.
-  if (canAfford(s, overdriveCost(s.overdrive))) return { type: 'overdrive/buy' }
+  if (overdriveUnlocked(s) && canAfford(s, overdriveCost(s.overdrive))) {
+    return { type: 'overdrive/buy' }
+  }
 
   return null
 }
