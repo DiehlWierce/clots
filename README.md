@@ -128,12 +128,3 @@ set -eo pipefail && npm run verify && npx playwright test
    `/newapp` привяжите Mini App к адресу сборки.
 2. Задайте кнопку меню: `/setmenubutton` → URL приложения.
 3. Разверните проект (`npm run deploy` или GitHub Actions) и откройте бота.
-
-## Документы
-
-- [docs/EXPERIENCE.md](docs/EXPERIENCE.md) — открытый роадмап по игровому
-  опыту: что делать дальше и почему. Самодостаточен, рассчитан на работу
-  с чистого листа.
-- [docs/ROADMAP.md](docs/ROADMAP.md) — 17 пунктов функциональности, закрыты.
-- [docs/OPTIMIZATION.md](docs/OPTIMIZATION.md) — 18 пунктов оптимизации,
-  закрыты (кроме сознательно отложенного перехода на Preact).

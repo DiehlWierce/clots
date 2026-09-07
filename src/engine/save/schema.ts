@@ -287,6 +287,9 @@ function sanitizeStats(value: unknown, fallback: GameState['stats']): GameState[
     damageDealt: int(raw.damageDealt, 0),
     damageTaken: int(raw.damageTaken, 0),
     bestStreak: int(raw.bestStreak, 0),
+    masksUsed: int(raw.masksUsed, 0, 0),
+    scansUsed: int(raw.scansUsed, 0, 0),
+    mendsUsed: int(raw.mendsUsed, 0, 0),
     streak: int(raw.streak, 0),
   }
 }

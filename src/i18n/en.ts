@@ -32,6 +32,8 @@ export const en: Dictionary = {
     open: 'Open in Telegram',
   },
   settings: {
+    tutorial: 'Tutorial',
+    tutorialHint: 'Show hints in every new run. The cross hides them for the current one.',
     appearance: 'Appearance',
     language: 'Language',
     languageHint: 'Defaults to your Telegram or system language.',

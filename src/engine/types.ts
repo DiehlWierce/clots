@@ -449,6 +449,10 @@ export interface RunStats {
   damageTaken: number
   bestStreak: number
   streak: number
+  /** Сколько раз игрок воспользовался каждым действием цикла. */
+  masksUsed: number
+  scansUsed: number
+  mendsUsed: number
 }
 
 /** Итоговые характеристики цитадели после всех модулей, доктрин и технологий. */

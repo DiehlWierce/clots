@@ -6,6 +6,7 @@ import { useTheme } from '@/ui/hooks/useTheme'
 import { useBackButton } from '@/ui/hooks/useBackButton'
 import { useMainButton } from '@/ui/hooks/useMainButton'
 import { useLocale } from '@/ui/hooks/useLocale'
+import { useTutorialPref } from '@/ui/hooks/useTutorialPref'
 import { useContent } from '@/ui/hooks/useContent'
 import { Hud } from '@/ui/components/Hud'
 import { CommandTab } from '@/ui/components/CommandTab'
@@ -60,6 +61,9 @@ export default function App() {
   const [tab, setTab] = useState<TabId>(HOME)
   const { mode: themeMode, setMode: setThemeMode } = useTheme()
   const { locale, setLocale, t } = useLocale()
+  // Крестик убирает подсказку до конца забега, галка в настройках решает,
+  // вернётся ли она в следующем.
+  const [tutorialEnabled, setTutorialEnabled] = useTutorialPref()
   const tc = useContent(locale)
   const stats = useDerived(state)
 
@@ -142,7 +146,9 @@ export default function App() {
       <Hud state={state} stats={stats} />
 
       <main className="content">
-        {!state.tutorialDismissed ? <TutorialHint state={state} dispatch={dispatch} /> : null}
+        {tutorialEnabled && !state.tutorialDismissed ? (
+          <TutorialHint state={state} dispatch={dispatch} />
+        ) : null}
 
         {tab === 'command' && (
           <CommandTab state={state} stats={stats} dispatch={dispatch} tc={tc} />
@@ -166,6 +172,8 @@ export default function App() {
               onThemeChange={setThemeMode}
               onLoad={loadState}
               onRestart={restart}
+              tutorialEnabled={tutorialEnabled}
+              onTutorialChange={setTutorialEnabled}
             />
           </Suspense>
         )}

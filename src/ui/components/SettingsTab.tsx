@@ -32,6 +32,8 @@ interface Props {
   onThemeChange: (mode: ThemeMode) => void
   onLoad: (state: GameState) => void
   onRestart: () => void
+  tutorialEnabled: boolean
+  onTutorialChange: (value: boolean) => void
 }
 
 const REASONS: Record<string, string> = {
@@ -74,6 +76,8 @@ export function SettingsTab({
   onThemeChange,
   onLoad,
   onRestart,
+  tutorialEnabled,
+  onTutorialChange,
 }: Props) {
   const [code, setCode] = useState('')
   const [status, setStatus] = useState<{ text: string; ok: boolean } | null>(null)
@@ -190,6 +194,21 @@ export function SettingsTab({
                   : t.settings.themeDark}
             </button>
           ))}
+        </div>
+
+        <div className="setting">
+          <div>
+            <div className="setting__label">{t.settings.tutorial}</div>
+            <div className="setting__hint">{t.settings.tutorialHint}</div>
+          </div>
+          <Switch
+            checked={tutorialEnabled}
+            label={t.settings.tutorial}
+            onChange={value => {
+              onTutorialChange(value)
+              haptics.select()
+            }}
+          />
         </div>
 
         <div className="setting">

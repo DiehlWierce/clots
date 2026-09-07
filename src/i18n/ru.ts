@@ -36,6 +36,9 @@ export const ru = {
     open: 'Открыть в Telegram',
   },
   settings: {
+    tutorial: 'Обучение',
+    tutorialHint:
+      'Показывать подсказки в каждом новом забеге. Крестик убирает их до конца текущего.',
     appearance: 'Оформление',
     language: 'Язык',
     languageHint: 'По умолчанию — как в Telegram или в системе.',

@@ -400,6 +400,7 @@ function doMask(ctx: Ctx): void {
     return
   }
   ctx.s.masking += cfg.actionGain
+  ctx.s.stats.masksUsed += 1
   ctx.log(`Маскировка усилена: +${cfg.actionGain}.`, 'good')
   unlock(ctx, 'first-blood')
 }
@@ -414,6 +415,7 @@ function doScan(ctx: Ctx): void {
   const relief = Math.min(cfg.threatRelief, room)
   ctx.s.threat -= relief
   ctx.s.reliefUsed += relief
+  ctx.s.stats.scansUsed += 1
   const revealed = revealFrontier(ctx)
   const threatPart = relief > 0 ? `угроза −${relief}` : 'угроза не снижена: предел цикла исчерпан'
   ctx.log(
@@ -449,6 +451,7 @@ function doMend(ctx: Ctx): void {
   const healed = Math.min(perAction, room, stats.maxIntegrity - ctx.s.integrity)
   ctx.s.integrity += healed
   ctx.s.healedThisCycle += healed
+  ctx.s.stats.mendsUsed += 1
   ctx.log(`Ядро восстановлено: +${healed} целостности.`, 'good')
   unlock(ctx, 'first-blood')
 }

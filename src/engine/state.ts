@@ -100,6 +100,9 @@ export function createInitialState(seed: number): GameState {
       damageTaken: 0,
       bestStreak: 0,
       streak: 0,
+      masksUsed: 0,
+      scansUsed: 0,
+      mendsUsed: 0,
     },
   }
 }
