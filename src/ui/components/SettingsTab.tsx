@@ -22,6 +22,7 @@ import { LOCALES, dictionary } from '@/i18n'
 import type { Locale } from '@/i18n'
 import type { ThemeMode } from '@/telegram'
 import type { GameState } from '@/engine/types'
+import '../../styles/settings.css'
 
 interface Props {
   state: GameState
@@ -376,14 +377,14 @@ export function SettingsTab({
         <div className="panel__head">
           <h2>Как играть</h2>
         </div>
-        <details className="chapter" open>
+        <details className="fold" open>
           <summary style={{ cursor: 'pointer', fontWeight: 650 }}>Цикл — это ход</summary>
           <p>
             Энергия — очки действий на цикл. Потратили — завершайте цикл: придёт доход с секторов,
             энергия восстановится полностью, а угроза подрастёт.
           </p>
         </details>
-        <details className="chapter">
+        <details className="fold">
           <summary style={{ cursor: 'pointer', fontWeight: 650 }}>
             Территория стоит внимания
           </summary>
@@ -392,7 +393,7 @@ export function SettingsTab({
             60% начинаются рейды: чем выше угроза, тем чаще и сильнее.
           </p>
         </details>
-        <details className="chapter">
+        <details className="fold">
           <summary style={{ cursor: 'pointer', fontWeight: 650 }}>Бой читается заранее</summary>
           <p>
             Противник всегда показывает следующее намерение. «Тяжёлый выпад» — ставьте щит,
@@ -400,7 +401,7 @@ export function SettingsTab({
             действию: урон ×1.5.
           </p>
         </details>
-        <details className="chapter">
+        <details className="fold">
           <summary style={{ cursor: 'pointer', fontWeight: 650 }}>Путь выбирается один раз</summary>
           <p>
             Первая принятая доктрина закрывает два других пути до конца партии. Разоритель — урон,

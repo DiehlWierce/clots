@@ -1,0 +1,111 @@
+/**
+ * Стили вкладки «Настройки» — приезжают вместе с самой вкладкой.
+ */
+
+/* ─── Настройки и прочее ──────────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.field textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--c-text);
+  background: var(--c-bg-elevated);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  resize: vertical;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.row > .btn {
+  flex: 1 1 auto;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+}
+
+.setting + .setting {
+  border-top: 1px solid var(--c-border);
+}
+
+.setting__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.setting__hint {
+  font-size: 0.75rem;
+  color: var(--c-text-muted);
+}
+
+/* Переключатель */
+.switch {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 28px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--c-border);
+  border: none;
+  transition: background 0.18s ease;
+}
+
+.switch[aria-checked='true'] {
+  background: var(--c-accent);
+}
+
+.switch__knob {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-1);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.switch[aria-checked='true'] .switch__knob {
+  transform: translateX(20px);
+}
+
+/* Сворачиваемая группа настроек. */
+.fold {
+  padding: var(--sp-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-bg-elevated);
+  margin-bottom: var(--sp-2);
+}
+
+.fold h4 {
+  font-size: 0.875rem;
+  margin-bottom: var(--sp-2);
+}
+
+.fold p {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--c-text-muted);
+  margin-bottom: var(--sp-2);
+}
+
+.fold p:last-child {
+  margin-bottom: 0;
+}

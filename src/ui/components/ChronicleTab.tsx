@@ -6,6 +6,7 @@ import { haptics } from '@/telegram'
 import { Empty } from './Empty'
 import type { GameState } from '@/engine/types'
 import type { ContentTranslator } from '@/i18n/content/translate'
+import '../../styles/chronicle.css'
 
 type Section = 'journal' | 'lore' | 'achievements'
 

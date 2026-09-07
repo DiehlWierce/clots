@@ -29,7 +29,9 @@ const BUDGETS: Budget[] = [
   { prefix: 'en-', ext: '.js', label: 'английский пакет', maxGzipKb: 20 },
   { prefix: 'ChronicleTab-', ext: '.js', label: 'хроника', maxGzipKb: 12 },
   { prefix: 'SettingsTab-', ext: '.js', label: 'настройки', maxGzipKb: 12 },
-  { prefix: 'index-', ext: '.css', label: 'стили', maxGzipKb: 10 },
+  { prefix: 'index-', ext: '.css', label: 'стили ядра', maxGzipKb: 8 },
+  { prefix: 'ChronicleTab-', ext: '.css', label: 'стили хроники', maxGzipKb: 3 },
+  { prefix: 'SettingsTab-', ext: '.css', label: 'стили настроек', maxGzipKb: 3 },
 ]
 
 const dir = join(process.cwd(), 'dist', 'assets')
@@ -66,19 +68,23 @@ for (const budget of BUDGETS) {
 }
 
 // Суммарный вес того, что скачивается при первом открытии на русском.
-const initial = [
-  ['index-', '.js'],
-  ['vendor-react-', '.js'],
-  ['vendor-state-', '.js'],
-  ['vendor-', '.js'],
-  ['index-', '.css'],
-]
-  .map(([prefix, ext]) =>
-    files.find(
-      f => prefix !== undefined && ext !== undefined && f.startsWith(prefix) && f.endsWith(ext),
-    ),
-  )
-  .filter((f): f is string => Boolean(f))
+const initial = (() => {
+  const taken = new Set<string>()
+  const pick = (prefix: string, ext: string): string | undefined => {
+    // Файл засчитывается один раз: префикс 'vendor-' иначе поймал бы
+    // vendor-react и удвоил бы его вес в итоговой сумме.
+    const match = files.find(f => f.startsWith(prefix) && f.endsWith(ext) && !taken.has(f))
+    if (match) taken.add(match)
+    return match
+  }
+  return [
+    pick('index-', '.js'),
+    pick('vendor-react-', '.js'),
+    pick('vendor-state-', '.js'),
+    pick('vendor-', '.js'),
+    pick('index-', '.css'),
+  ].filter((f): f is string => Boolean(f))
+})()
 const initialGzip = initial.reduce(
   (sum, file) => sum + kb(gzipSync(readFileSync(join(dir, file))).length),
   0,

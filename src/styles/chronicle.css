@@ -1,0 +1,100 @@
+/**
+ * Стили вкладки «Хроника».
+ *
+ * Живут рядом с самой вкладкой, а не в общем листе: вкладка грузится лениво,
+ * и её оформление приезжает тем же чанком — первый экран за него не платит.
+ */
+
+/* ─── Журнал, лор, достижения ─────────────────────────────────────────────── */
+
+.log {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--sp-1);
+}
+
+.log__row {
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border-radius: var(--r-sm);
+  font-size: 0.8125rem;
+  background: var(--c-bg-elevated);
+  border-left: 2px solid var(--c-border);
+}
+
+.log__row--good {
+  border-left-color: var(--c-good);
+}
+.log__row--bad {
+  border-left-color: var(--c-bad);
+}
+
+.log__cycle {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--c-text-faint);
+  flex: 0 0 auto;
+}
+
+.era {
+  margin-bottom: var(--sp-4);
+}
+
+.chapter {
+  padding: var(--sp-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-bg-elevated);
+  margin-bottom: var(--sp-2);
+}
+
+.chapter h4 {
+  font-size: 0.875rem;
+  margin-bottom: var(--sp-2);
+}
+
+.chapter p {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--c-text-muted);
+  margin-bottom: var(--sp-2);
+}
+
+.chapter p:last-child {
+  margin-bottom: 0;
+}
+
+.chapter--locked {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.ach {
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-bg-elevated);
+}
+
+.ach--done {
+  border-color: color-mix(in srgb, var(--c-good) 45%, var(--c-border));
+}
+
+.ach__icon {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  flex: 0 0 auto;
+}
+
+.ach__title {
+  font-weight: 650;
+  font-size: 0.875rem;
+}
+
+.ach__desc {
+  font-size: 0.75rem;
+  color: var(--c-text-muted);
+}
