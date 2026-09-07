@@ -41,6 +41,7 @@ function UpgradeCard({
   state,
   onBuy,
   lockedReason,
+  confirmNote,
 }: {
   item: UpgradeLike
   level: number
@@ -48,6 +49,8 @@ function UpgradeCard({
   state: GameState
   onBuy: () => void
   lockedReason?: string | undefined
+  /** Предупреждение перед необратимой покупкой. */
+  confirmNote?: string | undefined
 }) {
   const maxed = level >= item.maxLevel
   const cost = nextCost(item.costs, level)
@@ -82,14 +85,19 @@ function UpgradeCard({
       ) : !requirementsOk ? (
         <span className="tag">Требуется предыдущий уровень ветки</span>
       ) : (
-        <button
-          type="button"
-          className={`btn${affordable ? ' btn--primary' : ''} btn--block`}
-          disabled={!affordable}
-          onClick={onBuy}
-        >
-          {level === 0 ? 'Открыть' : `Улучшить до ${level + 1}`} · {cost ? formatCost(cost) : '—'}
-        </button>
+        <>
+          {confirmNote !== undefined ? <span className="tag tag--warn">{confirmNote}</span> : null}
+          <button
+            type="button"
+            className={`btn${affordable ? ' btn--primary' : ''} btn--block`}
+            disabled={!affordable}
+            onClick={onBuy}
+          >
+            {confirmNote !== undefined
+              ? 'Подтвердить выбор'
+              : `${level === 0 ? 'Открыть' : `Улучшить до ${level + 1}`} · ${cost ? formatCost(cost) : '—'}`}
+          </button>
+        </>
       )}
     </div>
   )
@@ -110,6 +118,9 @@ function groupByBranch<T extends { branch: string; tier: number }>(items: T[]): 
 
 export function DevelopmentTab({ state, dispatch }: Props) {
   const [section, setSection] = useState<Section>('modules')
+  // Выбор пути и развилки необратим до конца партии, поэтому такие покупки
+  // проходят через подтверждение, а не совершаются одним нажатием.
+  const [confirm, setConfirm] = useState<string | null>(null)
 
   const moduleBranches = useMemo(() => groupByBranch(MODULES), [])
   const techBranches = useMemo(() => groupByBranch(TECHS), [])
@@ -218,8 +229,27 @@ export function DevelopmentTab({ state, dispatch }: Props) {
                         level={state.doctrines[item.id] ?? 0}
                         levels={state.doctrines}
                         state={state}
-                        onBuy={() => dispatch({ type: 'doctrine/buy', id: item.id })}
+                        onBuy={() => {
+                          const irreversible =
+                            (state.doctrinePath === null || item.fork !== undefined) &&
+                            (state.doctrines[item.id] ?? 0) === 0
+                          if (irreversible && confirm !== item.id) {
+                            setConfirm(item.id)
+                            haptics.warning()
+                            return
+                          }
+                          setConfirm(null)
+                          dispatch({ type: 'doctrine/buy', id: item.id })
+                        }}
                         {...(reason !== undefined ? { lockedReason: reason } : {})}
+                        {...(confirm === item.id
+                          ? {
+                              confirmNote:
+                                state.doctrinePath === null
+                                  ? 'Выбор пути закроет два других навсегда. Нажмите ещё раз.'
+                                  : 'Соседняя доктрина развилки закроется навсегда. Нажмите ещё раз.',
+                            }
+                          : {})}
                       />
                     )
                   })}

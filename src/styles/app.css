@@ -1308,3 +1308,55 @@
   border-radius: 50%;
   border: 2px solid var(--c-border);
 }
+
+/* Короткая история боя: что случилось за последние ходы. */
+.combat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-2);
+  border-radius: var(--r-md);
+  background: var(--c-bg-elevated);
+  border: 1px solid var(--c-border);
+}
+
+.combat-log__row {
+  font-size: 0.75rem;
+  color: var(--c-text-muted);
+  line-height: 1.35;
+}
+
+.combat-log__row--good {
+  color: var(--c-good);
+}
+
+.combat-log__row--bad {
+  color: var(--c-bad);
+}
+
+/* Пустые состояния: раздел без содержимого должен объяснять, чего ждать. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-5) var(--sp-3);
+  text-align: center;
+  color: var(--c-text-muted);
+}
+
+.empty__icon {
+  font-size: 1.75rem;
+}
+
+.empty__title {
+  font-weight: 650;
+  font-size: 0.875rem;
+  color: var(--c-text);
+}
+
+.empty__text {
+  font-size: 0.8125rem;
+  max-width: 32ch;
+}

@@ -48,6 +48,7 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
   const intent = currentIntent(combat)
   const c = BALANCE.combat
   const hpPercent = (combat.hp / combat.maxHp) * 100
+  const recent = state.log.slice(-3).reverse()
   const shieldPercent = Math.min(100 - hpPercent, (combat.shield / combat.maxHp) * 100)
 
   const moves: MoveSpec[] = [
@@ -182,6 +183,18 @@ export function CombatOverlay({ state, combat, stats, dispatch }: Props) {
             )
           })}
         </div>
+
+        {/* Короткая история: в бою был виден только последний ход, и понять,
+            что произошло за раунд, было нельзя. */}
+        {recent.length > 0 ? (
+          <ul className="combat-log">
+            {recent.map(entry => (
+              <li key={entry.id} className={`combat-log__row combat-log__row--${entry.tone}`}>
+                {entry.message}
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <button
           type="button"

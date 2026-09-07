@@ -1,4 +1,5 @@
 import { BALANCE } from '@/engine/balance'
+import { useAnimatedNumber } from '../hooks/useAnimatedNumber'
 import { formatNumber } from '../format'
 import type { DerivedStats, GameState } from '@/engine/types'
 
@@ -11,15 +12,20 @@ function Resource({
   kind,
   icon,
   label,
-  value,
+  amount,
+  suffix,
   delta,
 }: {
   kind: string
   icon: string
   label: string
-  value: string
+  amount: number
+  suffix?: string
   delta?: string
 }) {
+  // Число досчитывается до нового значения: так виден результат действия.
+  const shown = useAnimatedNumber(amount)
+  const value = `${formatNumber(shown)}${suffix ?? ''}`
   return (
     <div className={`res res--${kind}`}>
       <span className="res__icon" aria-hidden="true">
@@ -106,28 +112,29 @@ export function Hud({ state, stats }: Props) {
           kind="plasma"
           icon="💧"
           label="Плазма"
-          value={formatNumber(state.plasma)}
+          amount={state.plasma}
           delta={`+${stats.income.plasma}`}
         />
         <Resource
           kind="clots"
           icon="🩸"
           label="Сгустки"
-          value={formatNumber(state.clots)}
+          amount={state.clots}
           {...(stats.income.clots > 0 ? { delta: `+${stats.income.clots}` } : {})}
         />
         <Resource
           kind="essence"
           icon="✨"
           label="Эссенция"
-          value={formatNumber(state.essence)}
+          amount={state.essence}
           {...(stats.income.essence > 0 ? { delta: `+${stats.income.essence}` } : {})}
         />
         <Resource
           kind="energy"
           icon="⚡"
           label="Энергия"
-          value={`${state.energy}/${stats.maxEnergy}`}
+          amount={state.energy}
+          suffix={`/${stats.maxEnergy}`}
         />
       </div>
 

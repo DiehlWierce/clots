@@ -4,6 +4,7 @@ import { REGIONS, SECTORS, getEnemy, getSector, neighborsOf } from '@/engine/con
 import { isSectorReachable, sectorDelivery } from '@/engine/selectors'
 import { SECTOR_TYPE_ICON, SECTOR_TYPE_LABEL, formatIncome } from '../format'
 import { SectorGraph } from './SectorGraph'
+import { Empty } from './Empty'
 import { haptics } from '@/telegram'
 import type { GameAction } from '@/engine/actions'
 import type { GameState, SectorDef } from '@/engine/types'
@@ -194,6 +195,16 @@ export function MapTab({ state, dispatch }: Props) {
             )
           })}
       </section>
+
+      {!selected ? (
+        <section className="panel">
+          <Empty
+            icon="🗺️"
+            title="Сектор не выбран"
+            text="Выберите узел на схеме, чтобы увидеть его доход, гарнизон и соседей."
+          />
+        </section>
+      ) : null}
 
       {selected ? (
         <section className="panel">

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ACHIEVEMENTS, ALL_CHAPTERS, LORE } from '@/engine/content'
 import { isAchievementEarned } from '@/engine/selectors'
 import { haptics } from '@/telegram'
+import { Empty } from './Empty'
 import type { GameState } from '@/engine/types'
 
 type Section = 'journal' | 'lore' | 'achievements'
@@ -44,7 +45,11 @@ export function ChronicleTab({ state }: { state: GameState }) {
 
       {section === 'journal' &&
         (state.log.length === 0 ? (
-          <p className="muted">Журнал пуст.</p>
+          <Empty
+            icon="📖"
+            title="Журнал пуст"
+            text="Здесь появятся события партии: захваты, бои, рейды и решения эпох."
+          />
         ) : (
           <div className="log">
             {state.log.map(entry => (
@@ -55,6 +60,14 @@ export function ChronicleTab({ state }: { state: GameState }) {
             ))}
           </div>
         ))}
+
+      {section === 'lore' && unlockedLore.size === 0 ? (
+        <Empty
+          icon="📜"
+          title="Летопись ещё не начата"
+          text="Главы открываются по мере продвижения империи: за первые захваты, регионы и достижения."
+        />
+      ) : null}
 
       {section === 'lore' &&
         LORE.map(era => (

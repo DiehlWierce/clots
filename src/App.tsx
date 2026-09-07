@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { useGame } from '@/store/useGame'
 import { useDerived } from '@/ui/hooks/useDerived'
 import { useScrollLock } from '@/ui/hooks/useScrollLock'
@@ -9,8 +9,14 @@ import { Hud } from '@/ui/components/Hud'
 import { CommandTab } from '@/ui/components/CommandTab'
 import { MapTab } from '@/ui/components/MapTab'
 import { DevelopmentTab } from '@/ui/components/DevelopmentTab'
-import { ChronicleTab } from '@/ui/components/ChronicleTab'
-import { SettingsTab } from '@/ui/components/SettingsTab'
+// «Хроника» и «Настройки» не нужны на первом экране: мини-приложение
+// открывают по клику в чате, и первый рендер важнее всего.
+const ChronicleTab = lazy(() =>
+  import('@/ui/components/ChronicleTab').then(m => ({ default: m.ChronicleTab })),
+)
+const SettingsTab = lazy(() =>
+  import('@/ui/components/SettingsTab').then(m => ({ default: m.SettingsTab })),
+)
 import { CombatOverlay } from '@/ui/components/CombatOverlay'
 import { VaultOverlay } from '@/ui/components/VaultOverlay'
 import { MutationOverlay } from '@/ui/components/MutationOverlay'
@@ -128,18 +134,24 @@ export default function App() {
         {tab === 'command' && <CommandTab state={state} stats={stats} dispatch={dispatch} />}
         {tab === 'map' && <MapTab state={state} dispatch={dispatch} />}
         {tab === 'development' && <DevelopmentTab state={state} dispatch={dispatch} />}
-        {tab === 'chronicle' && <ChronicleTab state={state} />}
+        {tab === 'chronicle' && (
+          <Suspense fallback={<p className="muted">Загружаем хронику…</p>}>
+            <ChronicleTab state={state} />
+          </Suspense>
+        )}
         {tab === 'settings' && (
-          <SettingsTab
-            state={state}
-            cloudBusy={cloudBusy}
-            onCloudPush={pushToCloud}
-            onCloudPull={syncFromCloud}
-            themeMode={themeMode}
-            onThemeChange={setThemeMode}
-            onLoad={loadState}
-            onRestart={restart}
-          />
+          <Suspense fallback={<p className="muted">Загружаем настройки…</p>}>
+            <SettingsTab
+              state={state}
+              cloudBusy={cloudBusy}
+              onCloudPush={pushToCloud}
+              onCloudPull={syncFromCloud}
+              themeMode={themeMode}
+              onThemeChange={setThemeMode}
+              onLoad={loadState}
+              onRestart={restart}
+            />
+          </Suspense>
         )}
       </main>
 
