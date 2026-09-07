@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { BALANCE } from '@/engine/balance'
 import { REGIONS, SECTORS, getEnemy, getSector, neighborsOf } from '@/engine/content'
 import { isSectorReachable, sectorDelivery } from '@/engine/selectors'
@@ -18,7 +18,7 @@ interface Props {
   t: Dictionary
 }
 
-function SectorCard({
+const SectorCard = memo(function SectorCard({
   sector,
   state,
   tc,
@@ -33,7 +33,7 @@ function SectorCard({
 }) {
   const owned = state.controlled.includes(sector.id)
   const reachable = isSectorReachable(state, sector.id)
-  const income = sector.income ? formatIncome(sector.income) : []
+  const income = useMemo(() => (sector.income ? formatIncome(sector.income) : []), [sector.income])
   // Доход физически идёт по сети: показываем, сколько реально доходит,
   // иначе потери на доставке выглядели бы как «числа какие-то не те».
   const delivery = owned && sector.income ? sectorDelivery(state, sector.id) : null
@@ -88,7 +88,7 @@ function SectorCard({
       ) : null}
     </button>
   )
-}
+})
 
 export function MapTab({ state, dispatch, tc, t }: Props) {
   const [view, setView] = useState<'graph' | 'list'>('graph')

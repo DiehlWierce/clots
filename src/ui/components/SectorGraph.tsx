@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { MAP_LAYOUT } from '@/engine/systems/layout'
 import { REGIONS, getSector } from '@/engine/content'
 import { isSectorReachable } from '@/engine/selectors'
@@ -27,6 +27,16 @@ function statusOf(state: GameState, id: string): Status {
   return 'hidden'
 }
 
+/** Что на карте вообще может измениться: остальное её не касается. */
+export function mapSignature(state: GameState): string {
+  return [
+    state.controlled.join(','),
+    state.revealed.join(','),
+    state.regions.join(','),
+    state.selectedSector ?? '',
+  ].join('|')
+}
+
 const FILL: Record<Status, string> = {
   owned: 'var(--c-good)',
   reachable: 'var(--c-accent)',
@@ -41,7 +51,13 @@ const FILL: Record<Status, string> = {
  * карточек: связи, ради которых он делался, были невидимы. Здесь видно, что
  * откуда достижимо и какие маршруты ведут вглубь системы.
  */
-export function SectorGraph({ state, tc, onSelect }: Props) {
+/**
+ * Карта перерисовывается только при изменении того, что на ней видно.
+ *
+ * Раньше SVG из 38 узлов и 49 рёбер пересобирался на любое действие —
+ * включая сбор плазмы, никак карту не меняющий.
+ */
+function SectorGraphView({ state, tc, onSelect }: Props) {
   const { nodes, edges, regionBounds } = MAP_LAYOUT
 
   const visibleRegions = useMemo(() => new Set(state.regions), [state.regions])
@@ -200,3 +216,11 @@ export function SectorGraph({ state, tc, onSelect }: Props) {
     </div>
   )
 }
+
+export const SectorGraph = memo(
+  SectorGraphView,
+  (prev, next) =>
+    prev.tc === next.tc &&
+    prev.onSelect === next.onSelect &&
+    mapSignature(prev.state) === mapSignature(next.state),
+)

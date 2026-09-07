@@ -10,6 +10,9 @@ import {
 import { ENEMIES, ENEMY_BY_ID } from '@/engine/content/enemies'
 import { MODULES, DOCTRINES, TECHS } from '@/engine/content/upgrades'
 import { MAP_LAYOUT, buildLayout } from '@/engine/systems/layout'
+import { mapSignature } from '@/ui/components/SectorGraph'
+import { reduce } from '@/engine/engine'
+import { newGame } from './helpers'
 
 describe('целостность карты', () => {
   it('все рёбра ведут к существующим секторам', () => {
@@ -169,5 +172,35 @@ describe('раскладка карты', () => {
     for (const [id, node] of MAP_LAYOUT.nodes) {
       expect(again.nodes.get(id)).toEqual(node)
     }
+  })
+})
+
+/**
+ * Карта перерисовывается только при изменении того, что на ней видно.
+ * Раньше SVG из 38 узлов пересобирался на любое действие, включая сбор
+ * плазмы, никак карту не меняющий.
+ */
+describe('подпись состояния карты', () => {
+  const base = newGame(1)
+
+  it('добыча ресурсов карту не меняет', () => {
+    const after = reduce(base, { type: 'action/harvest' }).state
+    expect(mapSignature(after)).toBe(mapSignature(base))
+  })
+
+  it('захват сектора карту меняет', () => {
+    const after = reduce(base, { type: 'map/capture', sectorId: 'cap-drift' }).state
+    expect(mapSignature(after)).not.toBe(mapSignature(base))
+  })
+
+  it('выбор сектора карту меняет', () => {
+    const after = reduce(base, { type: 'map/select', sectorId: 'cap-silt' }).state
+    expect(mapSignature(after)).not.toBe(mapSignature(base))
+  })
+
+  it('завершение цикла само по себе карту не меняет', () => {
+    const after = reduce({ ...base, threat: 0 }, { type: 'cycle/end' }).state
+    // Разведка новых секторов происходит при захвате, а не по циклу.
+    expect(mapSignature(after)).toBe(mapSignature({ ...base, threat: 0 }))
   })
 })

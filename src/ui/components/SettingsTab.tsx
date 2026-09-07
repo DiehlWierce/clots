@@ -81,6 +81,9 @@ export function SettingsTab({
   // монтируется по требованию, и пересчитывать чаще незачем.
   const snapshots = useMemo(() => listSnapshots(), [])
   const [errors, setErrors] = useState(() => listErrors())
+  // Генерация и разбор кода стали асинхронными: без индикации на медленном
+  // устройстве кажется, что кнопка не сработала.
+  const [busy, setBusy] = useState<'generate' | 'load' | null>(null)
   const [hapticsOn, setHapticsOn] = useState(isHapticsEnabled)
 
   const t = dictionary(locale)
@@ -88,12 +91,15 @@ export function SettingsTab({
   const platform = getWebApp()?.platform
 
   const generate = () => {
+    setBusy('generate')
     // Сжатый код в разы короче; если сжатие недоступно, вернётся обычный.
-    void encodeSaveCodeCompressed(state).then(generated => {
-      setCode(generated)
-      setStatus({ text: `Код готов: ${generated.length} символов.`, ok: true })
-      haptics.success()
-    })
+    void encodeSaveCodeCompressed(state)
+      .then(generated => {
+        setCode(generated)
+        setStatus({ text: `Код готов: ${generated.length} символов.`, ok: true })
+        haptics.success()
+      })
+      .finally(() => setBusy(null))
   }
 
   const copy = async () => {
@@ -109,16 +115,19 @@ export function SettingsTab({
   }
 
   const load = () => {
-    void decodeSaveCodeAsync(code).then(result => {
-      if (result.ok) {
-        onLoad(result.state)
-        setStatus({ text: 'Сохранение загружено.', ok: true })
-        haptics.success()
-      } else {
-        setStatus({ text: REASONS[result.reason] ?? 'Не удалось загрузить код.', ok: false })
-        haptics.error()
-      }
-    })
+    setBusy('load')
+    void decodeSaveCodeAsync(code)
+      .then(result => {
+        if (result.ok) {
+          onLoad(result.state)
+          setStatus({ text: 'Сохранение загружено.', ok: true })
+          haptics.success()
+        } else {
+          setStatus({ text: REASONS[result.reason] ?? 'Не удалось загрузить код.', ok: false })
+          haptics.error()
+        }
+      })
+      .finally(() => setBusy(null))
   }
 
   return (
@@ -217,14 +226,19 @@ export function SettingsTab({
             onChange={event => setCode(event.target.value)}
           />
           <div className="row">
-            <button type="button" className="btn btn--primary" onClick={generate}>
-              💾 Сгенерировать
+            <button
+              type="button"
+              className="btn btn--primary"
+              disabled={busy !== null}
+              onClick={generate}
+            >
+              {busy === 'generate' ? '⏳ Готовим…' : '💾 Сгенерировать'}
             </button>
             <button type="button" className="btn" disabled={!code} onClick={() => void copy()}>
               📋 Скопировать
             </button>
-            <button type="button" className="btn" disabled={!code} onClick={load}>
-              📥 Загрузить
+            <button type="button" className="btn" disabled={!code || busy !== null} onClick={load}>
+              {busy === 'load' ? '⏳ Читаем…' : '📥 Загрузить'}
             </button>
           </div>
           {status ? (
