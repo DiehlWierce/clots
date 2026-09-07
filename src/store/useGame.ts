@@ -75,7 +75,7 @@ const schedulePersist = (() => {
     }
   }
 
-  return (state: GameState) => {
+  const schedule = (state: GameState) => {
     pending = state
     // Блокирующая фаза — то, что игрок обязан разрешить: событие, бой,
     // хранилище, выбор мутации. Отложить её запись значит подарить способ
@@ -89,7 +89,29 @@ const schedulePersist = (() => {
     if (typeof requestIdleCallback === 'function') requestIdleCallback(flush, { timeout: 500 })
     else setTimeout(flush, 200)
   }
+
+  return Object.assign(schedule, { flush })
 })()
+
+/**
+ * Дописывает отложенную запись немедленно.
+ *
+ * Страница может исчезнуть в любой момент — перезагрузка, закрытие
+ * мини-приложения, переход в другой чат, — и полсекунды ожидания простоя
+ * означали бы потерянный ход. Браузер даёт этот момент один раз, поэтому
+ * слушаем и pagehide, и уход в фон: на мобильных pagehide срабатывает не
+ * всегда.
+ */
+export function flushPersist(): void {
+  schedulePersist.flush()
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushPersist)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushPersist()
+  })
+}
 
 let toastId = 0
 
