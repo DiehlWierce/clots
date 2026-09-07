@@ -135,3 +135,49 @@ describe('таптик', () => {
     expect(() => haptics.crit()).not.toThrow()
   })
 })
+
+describe('режим отладки в браузере', () => {
+  function mockLocation(search: string): void {
+    const target = globalThis as { window?: unknown }
+    const store = new Map<string, string>()
+    target.window = {
+      location: { search },
+      sessionStorage: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+      },
+    }
+    ;(globalThis as { sessionStorage?: unknown }).sessionStorage = (
+      target.window as { sessionStorage: unknown }
+    ).sessionStorage
+  }
+
+  it('без параметра выключен', async () => {
+    mockLocation('')
+    const { isPlaytest } = await import('@/telegram/playtest')
+    expect(isPlaytest()).toBe(false)
+  })
+
+  it('включается ключом в адресе и запоминается на вкладку', async () => {
+    mockLocation('?playtest=hem')
+    const { isPlaytest } = await import('@/telegram/playtest')
+    expect(isPlaytest()).toBe(true)
+    // После перехода по внутренней ссылке параметр из адреса пропадает,
+    // но режим обязан сохраниться до конца сессии.
+    mockLocationKeepStorage('')
+    expect(isPlaytest()).toBe(true)
+  })
+
+  it('неверный ключ не включает режим', async () => {
+    mockLocation('?playtest=нет')
+    const { isPlaytest } = await import('@/telegram/playtest')
+    expect(isPlaytest()).toBe(false)
+  })
+
+  let keptStorage: unknown = null
+  function mockLocationKeepStorage(search: string): void {
+    const target = globalThis as { window?: { sessionStorage?: unknown } }
+    keptStorage = target.window?.sessionStorage
+    target.window = { location: { search }, sessionStorage: keptStorage }
+  }
+})

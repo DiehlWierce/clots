@@ -18,7 +18,7 @@ import { TelegramGate } from '@/ui/components/TelegramGate'
 import { Toasts } from '@/ui/components/Toasts'
 import { ACHIEVEMENTS } from '@/engine/content'
 import { isAchievementEarned } from '@/engine/selectors'
-import { haptics, initWebApp, isTelegram, watchViewport } from '@/telegram'
+import { haptics, initWebApp, isPlaytest, isTelegram, watchViewport } from '@/telegram'
 
 type TabId = 'command' | 'map' | 'development' | 'chronicle' | 'settings'
 
@@ -82,9 +82,9 @@ export default function App() {
     dispatch({ type: 'cycle/end' })
   }, [dispatch])
 
-  // Игра работает только внутри Telegram. Единственное исключение —
-  // локальная разработка: в продакшен-сборке этой ветки нет.
-  if (!isTelegram() && !import.meta.env.DEV) {
+  // Игра работает только внутри Telegram. Исключения — локальная разработка
+  // и скрытый режим отладки (?playtest=hem), о котором игрок не знает.
+  if (!isTelegram() && !import.meta.env.DEV && !isPlaytest()) {
     return <TelegramGate />
   }
 
